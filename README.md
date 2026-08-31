@@ -26,7 +26,7 @@
 - [docs/DECISIONS.md](docs/DECISIONS.md) — лог принятых решений и почему
 - [docs/ROADMAP.md](docs/ROADMAP.md) — девять вех с датами и критериями выхода
 - [docs/REFERENCES.md](docs/REFERENCES.md) — референсы и разбор чужого опыта
-- [docs/plan.html](docs/plan.html) — тот же план в виде страницы
+- [docs/plan.pdf](docs/plan.pdf) — тот же план одним документом для печати и пересылки
 - [docs/roadmap.svg](docs/roadmap.svg) — роадмап-дорога для доски
 
 ## Инструменты

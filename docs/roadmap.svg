@@ -91,9 +91,9 @@
 <circle cx="835" cy="620" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
 <text x="835" y="626" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M4</text>
 <line x1="835" y1="651" x2="835" y2="678" stroke="#D3D9D0" stroke-width="2"/>
-<rect x="635.0" y="678" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
-<rect x="635.0" y="678" width="4" height="100.0" fill="#1F6B5E"/>
-<rect x="635.0" y="778.0" width="4" height="100.0" fill="#9A6B1E"/>
+<rect x="635.0" y="678" width="400" height="226" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="635.0" y="678" width="4" height="113.0" fill="#1F6B5E"/>
+<rect x="635.0" y="791.0" width="4" height="113.0" fill="#9A6B1E"/>
 <text x="655.0" y="712" font-size="20" font-weight="700" fill="#141A18">Контент и выход на витрину</text>
 <text x="655.0" y="736" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">8 дек 2026 – 1 фев 2027</text>
 <text x="1015.0" y="736" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">8 недель</text>
@@ -105,7 +105,9 @@
 <circle cx="658.0" cy="825" r="3" fill="#1F6B5E"/>
 <text x="671.0" y="830" font-size="14.5" fill="#3A4441">Steam Direct, капсульный арт, трейлер</text>
 <circle cx="658.0" cy="851" r="3" fill="#1F6B5E"/>
-<text x="671.0" y="856" font-size="14.5" fill="#3A4441">Страница публикуется здесь, не на релизе</text>
+<text x="671.0" y="856" font-size="14.5" fill="#3A4441">Раскрытие использования ИИ — поле Steamworks</text>
+<circle cx="658.0" cy="877" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="882" font-size="14.5" fill="#3A4441">Страница публикуется здесь, не на релизе</text>
 <circle cx="400" cy="620" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
 <text x="400" y="626" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M5</text>
 <line x1="400" y1="651" x2="400" y2="678" stroke="#D3D9D0" stroke-width="2"/>
@@ -121,14 +123,14 @@
 <circle cx="223.0" cy="799" r="3" fill="#1F6B5E"/>
 <text x="236.0" y="804" font-size="14.5" fill="#3A4441">Переименование пародийных персонажей</text>
 <circle cx="223.0" cy="825" r="3" fill="#1F6B5E"/>
-<text x="236.0" y="830" font-size="14.5" fill="#3A4441">Сборки Windows и macOS, нотаризация</text>
+<text x="236.0" y="830" font-size="14.5" fill="#3A4441">Сборки Win / macOS / Linux, нотаризация</text>
 <circle cx="223.0" cy="851" r="3" fill="#1F6B5E"/>
-<text x="236.0" y="856" font-size="14.5" fill="#3A4441">Демо-билд и Steam Playtest</text>
+<text x="236.0" y="856" font-size="14.5" fill="#3A4441">Демо-билд, Steam Playtest, выкладка на itch.io</text>
 <circle cx="400" cy="1020" r="31" fill="#F4F6F2" stroke="#9A6B1E" stroke-width="3"/>
 <text x="400" y="1026" font-size="19" font-weight="700" text-anchor="middle" fill="#6E4A12" font-family="Menlo, Consolas, monospace">M6</text>
 <line x1="400" y1="1051" x2="400" y2="1078" stroke="#D3D9D0" stroke-width="2"/>
-<rect x="200.0" y="1078" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
-<rect x="200.0" y="1078" width="4" height="200" fill="#9A6B1E"/>
+<rect x="200.0" y="1078" width="400" height="226" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="200.0" y="1078" width="4" height="226" fill="#9A6B1E"/>
 <text x="220.0" y="1112" font-size="20" font-weight="700" fill="#141A18">Вишлисты</text>
 <text x="220.0" y="1136" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">23 мар – 23 июл 2027</text>
 <text x="580.0" y="1136" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">4 месяца</text>
@@ -140,7 +142,9 @@
 <circle cx="223.0" cy="1225" r="3" fill="#9A6B1E"/>
 <text x="236.0" y="1230" font-size="14.5" fill="#3A4441">Стримеры: главный канал для рогалика</text>
 <circle cx="223.0" cy="1251" r="3" fill="#9A6B1E"/>
-<text x="236.0" y="1256" font-size="14.5" fill="#3A4441">Цель 12–14 тысяч с учётом региона</text>
+<text x="236.0" y="1256" font-size="14.5" fill="#3A4441">Локализация: 6 языков — EN RU ZH ES FR DE</text>
+<circle cx="223.0" cy="1277" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="1282" font-size="14.5" fill="#3A4441">Цель 12–14 тысяч с учётом региона</text>
 <circle cx="835" cy="1020" r="31" fill="#F4F6F2" stroke="#9A6B1E" stroke-width="3"/>
 <text x="835" y="1026" font-size="19" font-weight="700" text-anchor="middle" fill="#6E4A12" font-family="Menlo, Consolas, monospace">M7</text>
 <line x1="835" y1="1051" x2="835" y2="1078" stroke="#D3D9D0" stroke-width="2"/>
