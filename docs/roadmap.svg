@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1780 1350" width="1780" height="1350" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<defs>
+<pattern id="checker" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#F2F4F1"/><rect width="8" height="8" fill="#121816"/><rect x="8" y="8" width="8" height="8" fill="#121816"/></pattern>
+<linearGradient id="fade" x1="0" x2="1"><stop offset="0" stop-color="#F4F6F2" stop-opacity="0"/><stop offset="1" stop-color="#F4F6F2" stop-opacity="1"/></linearGradient>
+</defs>
+<rect width="1780" height="1350" rx="6" fill="#F4F6F2"/>
+<text x="60" y="72" font-size="42" font-weight="700" fill="#141A18" letter-spacing="-1">Ломка — производственный роадмап</text>
+<text x="60" y="104" font-size="16" fill="#58635E">Кооперативный рогалик на Godot 4.7.2 · от каркаса до месяца после релиза в Steam</text>
+<text x="60" y="136" font-size="12.5" fill="#8A948E" font-family="Menlo, Consolas, monospace" letter-spacing="1.4">СТАРТ 1 СЕНТЯБРЯ 2026 · ОРИЕНТИР РЕЛИЗА — КОНЕЦ АВГУСТА 2027 · ОЦЕНКА ДЛЯ РАБОТЫ ВЕЧЕРАМИ, ОДИН ЧЕЛОВЕК</text>
+<g transform="translate(1180,48)">
+<rect x="0" y="0" width="150" height="24" rx="3" fill="#1F6B5E"/>
+<text x="12" y="16.5" font-size="11.5" fill="#FFFFFF" font-family="Menlo, Consolas, monospace" letter-spacing="1.2">РАЗРАБОТКА</text>
+<text x="164" y="16.5" font-size="12.5" fill="#58635E" font-family="Menlo, Consolas, monospace">M0 → M5</text>
+<rect x="0" y="34" width="150" height="24" rx="3" fill="#9A6B1E"/>
+<text x="12" y="50.5" font-size="11.5" fill="#FFFFFF" font-family="Menlo, Consolas, monospace" letter-spacing="1.2">РЫНОК</text>
+<text x="164" y="50.5" font-size="12.5" fill="#58635E" font-family="Menlo, Consolas, monospace">M4 → M8</text>
+<text x="0" y="94" font-size="13" fill="#58635E">Треки идут параллельно и пересекаются</text>
+<text x="0" y="112" font-size="13" fill="#58635E">на M4–M5 — самый загруженный отрезок.</text>
+</g>
+<path d="M 160 220 H 1490 A 200 200 0 0 1 1490 620 H 360 A 200 200 0 0 0 360 1020 H 1700" fill="none" stroke="#4A544F" stroke-width="80" stroke-linecap="round"/>
+<path d="M 160 220 H 1490 A 200 200 0 0 1 1490 620 H 360 A 200 200 0 0 0 360 1020 H 1700" fill="none" stroke="#2A322F" stroke-width="72" stroke-linecap="round"/>
+<path d="M 160 220 H 1490 A 200 200 0 0 1 1490 620 H 360 A 200 200 0 0 0 360 1020 H 1700" fill="none" stroke="#E8ECE6" stroke-width="4" stroke-dasharray="26 30" stroke-linecap="butt" opacity="0.85"/>
+<rect x="761" y="984.0" width="22" height="72" fill="url(#checker)"/>
+<rect x="1490" y="978.0" width="216" height="84" fill="url(#fade)"/>
+<circle cx="400" cy="220" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="400" y="226" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M0</text>
+<line x1="400" y1="251" x2="400" y2="278" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="200.0" y="278" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="200.0" y="278" width="4" height="200" fill="#1F6B5E"/>
+<text x="220.0" y="312" font-size="20" font-weight="700" fill="#141A18">Разведка и фундамент</text>
+<text x="220.0" y="336" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">1–7 сен 2026</text>
+<text x="580.0" y="336" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">1 неделя</text>
+<line x1="220.0" y1="352" x2="580.0" y2="352" stroke="#D3D9D0"/>
+<circle cx="223.0" cy="373" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="378" font-size="14.5" fill="#3A4441">Каркас симуляции, потоки случайности</text>
+<circle cx="223.0" cy="399" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="404" font-size="14.5" fill="#3A4441">Схема персонажа и предметов как данных</text>
+<circle cx="223.0" cy="425" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="430" font-size="14.5" fill="#3A4441">Headless-тесты и проверка сейвов</text>
+<circle cx="223.0" cy="451" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="456" font-size="14.5" fill="#3A4441">Рынок: девлог с нуля — аудитория копится годами</text>
+<circle cx="835" cy="220" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="835" y="226" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M1</text>
+<line x1="835" y1="251" x2="835" y2="278" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="635.0" y="278" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="635.0" y="278" width="4" height="200" fill="#1F6B5E"/>
+<text x="655.0" y="312" font-size="20" font-weight="700" fill="#141A18">Боевое ядро</text>
+<text x="655.0" y="336" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">8–28 сен 2026</text>
+<text x="1015.0" y="336" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">3 недели</text>
+<line x1="655.0" y1="352" x2="1015.0" y2="352" stroke="#D3D9D0"/>
+<circle cx="658.0" cy="373" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="378" font-size="14.5" fill="#3A4441">Стрельба, три врага, комната, зачистка</text>
+<circle cx="658.0" cy="399" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="404" font-size="14.5" fill="#3A4441">Восемь предметов на стеке модификаторов</text>
+<circle cx="658.0" cy="425" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="430" font-size="14.5" fill="#3A4441">Активные способности целиком</text>
+<circle cx="658.0" cy="451" r="3" fill="#9A6B1E"/>
+<text x="671.0" y="456" font-size="14.5" fill="#3A4441">Рынок: первые гифки</text>
+<circle cx="1270" cy="220" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="1270" y="226" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M2</text>
+<line x1="1270" y1="251" x2="1270" y2="278" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="1070.0" y="278" width="400" height="174" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="1070.0" y="278" width="4" height="174" fill="#1F6B5E"/>
+<text x="1090.0" y="312" font-size="20" font-weight="700" fill="#141A18">Сеть — намеренно рано</text>
+<text x="1090.0" y="336" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">29 сен – 26 окт 2026</text>
+<text x="1450.0" y="336" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">4 недели</text>
+<line x1="1090.0" y1="352" x2="1450.0" y2="352" stroke="#D3D9D0"/>
+<circle cx="1093.0" cy="373" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="378" font-size="14.5" fill="#3A4441">Авторитетный хост, лобби, подключение</text>
+<circle cx="1093.0" cy="399" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="404" font-size="14.5" fill="#3A4441">Предсказание движения на клиенте</text>
+<circle cx="1093.0" cy="425" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="430" font-size="14.5" fill="#3A4441">Позже прикручивать втрое дороже</text>
+<circle cx="1270" cy="620" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="1270" y="626" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M3</text>
+<line x1="1270" y1="651" x2="1270" y2="678" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="1070.0" y="678" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="1070.0" y="678" width="4" height="200" fill="#1F6B5E"/>
+<text x="1090.0" y="712" font-size="20" font-weight="700" fill="#141A18">Забег целиком</text>
+<text x="1090.0" y="736" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">27 окт – 7 дек 2026</text>
+<text x="1450.0" y="736" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">6 недель</text>
+<line x1="1090.0" y1="752" x2="1450.0" y2="752" stroke="#D3D9D0"/>
+<circle cx="1093.0" cy="773" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="778" font-size="14.5" fill="#3A4441">Зоны, органы, ломка, торговец, босс</text>
+<circle cx="1093.0" cy="799" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="804" font-size="14.5" fill="#3A4441">Падение и подъём, автоподъём на переходе</text>
+<circle cx="1093.0" cy="825" r="3" fill="#1F6B5E"/>
+<text x="1106.0" y="830" font-size="14.5" fill="#3A4441">Сейв на каждом уровне, слоты игроков</text>
+<circle cx="1093.0" cy="851" r="3" fill="#9A6B1E"/>
+<text x="1106.0" y="856" font-size="14.5" fill="#3A4441">Рынок: первый внешний плейтест</text>
+<circle cx="835" cy="620" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="835" y="626" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M4</text>
+<line x1="835" y1="651" x2="835" y2="678" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="635.0" y="678" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="635.0" y="678" width="4" height="100.0" fill="#1F6B5E"/>
+<rect x="635.0" y="778.0" width="4" height="100.0" fill="#9A6B1E"/>
+<text x="655.0" y="712" font-size="20" font-weight="700" fill="#141A18">Контент и выход на витрину</text>
+<text x="655.0" y="736" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">8 дек 2026 – 1 фев 2027</text>
+<text x="1015.0" y="736" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">8 недель</text>
+<line x1="655.0" y1="752" x2="1015.0" y2="752" stroke="#D3D9D0"/>
+<circle cx="658.0" cy="773" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="778" font-size="14.5" fill="#3A4441">40 предметов, 12 врагов, 3 босса, зоны</text>
+<circle cx="658.0" cy="799" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="804" font-size="14.5" fill="#3A4441">Все персонажи, реестр достижений</text>
+<circle cx="658.0" cy="825" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="830" font-size="14.5" fill="#3A4441">Steam Direct, капсульный арт, трейлер</text>
+<circle cx="658.0" cy="851" r="3" fill="#1F6B5E"/>
+<text x="671.0" y="856" font-size="14.5" fill="#3A4441">Страница публикуется здесь, не на релизе</text>
+<circle cx="400" cy="620" r="31" fill="#F4F6F2" stroke="#1F6B5E" stroke-width="3"/>
+<text x="400" y="626" font-size="19" font-weight="700" text-anchor="middle" fill="#14483F" font-family="Menlo, Consolas, monospace">M5</text>
+<line x1="400" y1="651" x2="400" y2="678" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="200.0" y="678" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="200.0" y="678" width="4" height="100.0" fill="#1F6B5E"/>
+<rect x="200.0" y="778.0" width="4" height="100.0" fill="#9A6B1E"/>
+<text x="220.0" y="712" font-size="20" font-weight="700" fill="#141A18">Тон, арт, звук</text>
+<text x="220.0" y="736" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">2 фев – 22 мар 2027</text>
+<text x="580.0" y="736" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">7 недель</text>
+<line x1="220.0" y1="752" x2="580.0" y2="752" stroke="#D3D9D0"/>
+<circle cx="223.0" cy="773" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="778" font-size="14.5" fill="#3A4441">Визуальная идентичность и звук</text>
+<circle cx="223.0" cy="799" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="804" font-size="14.5" fill="#3A4441">Переименование пародийных персонажей</text>
+<circle cx="223.0" cy="825" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="830" font-size="14.5" fill="#3A4441">Сборки Windows и macOS, нотаризация</text>
+<circle cx="223.0" cy="851" r="3" fill="#1F6B5E"/>
+<text x="236.0" y="856" font-size="14.5" fill="#3A4441">Демо-билд и Steam Playtest</text>
+<circle cx="400" cy="1020" r="31" fill="#F4F6F2" stroke="#9A6B1E" stroke-width="3"/>
+<text x="400" y="1026" font-size="19" font-weight="700" text-anchor="middle" fill="#6E4A12" font-family="Menlo, Consolas, monospace">M6</text>
+<line x1="400" y1="1051" x2="400" y2="1078" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="200.0" y="1078" width="400" height="200" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="200.0" y="1078" width="4" height="200" fill="#9A6B1E"/>
+<text x="220.0" y="1112" font-size="20" font-weight="700" fill="#141A18">Вишлисты</text>
+<text x="220.0" y="1136" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">23 мар – 23 июл 2027</text>
+<text x="580.0" y="1136" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">4 месяца</text>
+<line x1="220.0" y1="1152" x2="580.0" y2="1152" stroke="#D3D9D0"/>
+<circle cx="223.0" cy="1173" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="1178" font-size="14.5" fill="#3A4441">Next Fest — один раз за всю жизнь игры</text>
+<circle cx="223.0" cy="1199" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="1204" font-size="14.5" fill="#3A4441">Фесты ~3 раза в год: фев / июн / окт</text>
+<circle cx="223.0" cy="1225" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="1230" font-size="14.5" fill="#3A4441">Стримеры: главный канал для рогалика</text>
+<circle cx="223.0" cy="1251" r="3" fill="#9A6B1E"/>
+<text x="236.0" y="1256" font-size="14.5" fill="#3A4441">Цель 12–14 тысяч с учётом региона</text>
+<circle cx="835" cy="1020" r="31" fill="#F4F6F2" stroke="#9A6B1E" stroke-width="3"/>
+<text x="835" y="1026" font-size="19" font-weight="700" text-anchor="middle" fill="#6E4A12" font-family="Menlo, Consolas, monospace">M7</text>
+<line x1="835" y1="1051" x2="835" y2="1078" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="635.0" y="1078" width="400" height="174" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="635.0" y="1078" width="4" height="174" fill="#9A6B1E"/>
+<text x="655.0" y="1112" font-size="20" font-weight="700" fill="#141A18">Релиз</text>
+<text x="655.0" y="1136" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">24 июл – 23 авг 2027</text>
+<text x="1015.0" y="1136" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">1 месяц</text>
+<line x1="655.0" y1="1152" x2="1015.0" y2="1152" stroke="#D3D9D0"/>
+<circle cx="658.0" cy="1173" r="3" fill="#9A6B1E"/>
+<text x="671.0" y="1178" font-size="14.5" fill="#3A4441">Ранний доступ или полный релиз</text>
+<circle cx="658.0" cy="1199" r="3" fill="#9A6B1E"/>
+<text x="671.0" y="1204" font-size="14.5" fill="#3A4441">Дата ставится ПОСЛЕ выбранного Next Fest</text>
+<circle cx="658.0" cy="1225" r="3" fill="#9A6B1E"/>
+<text x="671.0" y="1230" font-size="14.5" fill="#3A4441">Цена, региональные цены, пресс-кит</text>
+<circle cx="1270" cy="1020" r="31" fill="#F4F6F2" stroke="#9A6B1E" stroke-width="3"/>
+<text x="1270" y="1026" font-size="19" font-weight="700" text-anchor="middle" fill="#6E4A12" font-family="Menlo, Consolas, monospace">M8</text>
+<line x1="1270" y1="1051" x2="1270" y2="1078" stroke="#D3D9D0" stroke-width="2"/>
+<rect x="1070.0" y="1078" width="400" height="174" rx="4" fill="#FFFFFF" stroke="#D3D9D0"/>
+<rect x="1070.0" y="1078" width="4" height="174" fill="#9A6B1E"/>
+<text x="1090.0" y="1112" font-size="20" font-weight="700" fill="#141A18">После релиза</text>
+<text x="1090.0" y="1136" font-size="12.5" fill="#141A18" font-weight="600" font-family="Menlo, Consolas, monospace">с сен 2027</text>
+<text x="1450.0" y="1136" font-size="11.5" fill="#8A948E" text-anchor="end" font-family="Menlo, Consolas, monospace">постоянно</text>
+<line x1="1090.0" y1="1152" x2="1450.0" y2="1152" stroke="#D3D9D0"/>
+<circle cx="1093.0" cy="1173" r="3" fill="#9A6B1E"/>
+<text x="1106.0" y="1178" font-size="14.5" fill="#3A4441">Первая неделя патчей решает отзывы</text>
+<circle cx="1093.0" cy="1199" r="3" fill="#9A6B1E"/>
+<text x="1106.0" y="1204" font-size="14.5" fill="#3A4441">Контентные обновления возвращают игроков</text>
+<circle cx="1093.0" cy="1225" r="3" fill="#9A6B1E"/>
+<text x="1106.0" y="1230" font-size="14.5" fill="#3A4441">Распродажи Steam</text>
+<text x="60" y="1322" font-size="12.5" fill="#8A948E" font-family="Menlo, Consolas, monospace" letter-spacing="1.2">ДАТЫ — ПОРЯДОК И ЗАВИСИМОСТИ, А НЕ ОБЯЗАТЕЛЬСТВА. КРИТЕРИИ ВЫХОДА И РИСКИ — В ПОЛНОМ ДОКУМЕНТЕ ПЛАНА</text>
+</svg>
