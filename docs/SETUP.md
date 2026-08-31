@@ -28,9 +28,9 @@ func _init():
 
 Universal binary, на Apple Silicon идёт нативно.
 
-**Стоковый Godot** (`/Applications/Godot.app`, из Homebrew) для этого проекта
-не используется — в нём нет Steamworks. Оставлен для сторонних экспериментов,
-можно удалить через `brew uninstall --cask godot`.
+**Стоковый Godot** из Homebrew удалён 1 сентября 2026 — в нём нет Steamworks,
+и для этого проекта он бесполезен. Если понадобится для сторонних
+экспериментов: `brew install --cask godot`.
 
 ## Шаблоны экспорта
 
