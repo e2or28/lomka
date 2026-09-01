@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/dev_sandbox.gd" id="1_d2tvu"]
+
+[node name="DevSandbox" type="Node2D" unique_id=310183878]
+script = ExtResource("1_d2tvu")
