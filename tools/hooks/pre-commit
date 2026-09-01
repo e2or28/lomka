@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Проверка перед коммитом: аудит синтаксиса, тесты, дымовой прогон стенда.
+#
+# Зачем. Ошибки сериализации и рассинхрона не падают в момент появления —
+# они всплывают через месяц как «после загрузки что-то не так» (docs/PLAN.md).
+# Три секунды на коммит дешевле вечера поисков.
+#
+# Проверяется рабочее дерево, а не индекс: у одного разработчика частичные
+# коммиты редки, а честная проверка индекса требует отдельного клона.
+# Если коммитишь часть изменений — проверь, что остальное не сломано.
+#
+# Обойти в исключительном случае: git commit --no-verify
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# Правки только в документах движок гонять не заставляют
+if git diff --cached --name-only | grep -qvE '\.(md|svg|pdf|txt)$|^\.gitignore$'; then
+    :
+else
+    echo "pre-commit: только документы, проверки пропущены"
+    exit 0
+fi
+
+step() {
+    local title="$1"; shift
+    if ! output="$("$@" 2>&1)"; then
+        echo ""
+        echo "$output"
+        echo ""
+        echo "pre-commit: $title — НЕ ПРОЙДЕНО. Коммит отменён." >&2
+        echo "Обойти осознанно: git commit --no-verify" >&2
+        exit 1
+    fi
+    echo "pre-commit: $title — ок"
+}
+
+step "аудит синтаксиса" bash tools/audit_syntax.sh
+step "тесты" bash tools/test.sh
+step "стенд" bash tools/smoke.sh 120
+
+exit 0
