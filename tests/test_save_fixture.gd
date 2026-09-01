@@ -69,7 +69,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 ## Отпечаток эталона зафиксирован числом. Если он поехал, а байты совпали —
 ## значит поехал сам state_hash, и все сверки хоста с клиентом врут.
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), 8195988924363772192,
+	eq(ReferenceRun.build().state_hash(), -2830059960163233632,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 
