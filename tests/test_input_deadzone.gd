@@ -57,13 +57,14 @@ func _test_no_jump_at_the_threshold() -> bool:
 
 
 func _test_direction_survives() -> bool:
+	var broken := PackedStringArray()
 	for raw in [Vector2(0.6, 0.0), Vector2(-0.5, 0.5), Vector2(0.0, -0.8), Vector2(-0.3, -0.9)]:
 		var out := InputReader.apply_deadzone(raw)
-		check(out != Vector2.ZERO, "ввод длины %.2f срезан" % raw.length())
 		if out == Vector2.ZERO:
-			continue
-		almost_eq(out.normalized().angle(), raw.normalized().angle(),
-			"направление наклона изменилось", 1e-5)
+			broken.append("(%.1f %.1f) срезан" % [raw.x, raw.y])
+		elif absf(out.normalized().angle() - raw.normalized().angle()) > 1e-5:
+			broken.append("(%.1f %.1f) повернулся" % [raw.x, raw.y])
+	check(broken.is_empty(), "наклон стика искажён: " + ", ".join(broken))
 	return true
 
 
@@ -80,13 +81,15 @@ func _test_keyboard_is_untouched() -> bool:
 
 ## Чем сильнее наклон, тем быстрее — без провалов и ступенек.
 func _test_monotonic() -> bool:
+	var dips := PackedStringArray()
 	var previous := 0.0
 	var value := DZ
 	while value <= 1.0:
 		var length := InputReader.apply_deadzone(Vector2(value, 0)).length()
-		check(length >= previous - 1e-6,
-			"на наклоне %.2f скорость упала: %.4f после %.4f" % [value, length, previous])
+		if length < previous - 1e-6:
+			dips.append("на %.2f упало с %.3f до %.3f" % [value, previous, length])
 		previous = length
 		value += 0.05
+	check(dips.is_empty(), "скорость проваливается при росте наклона: " + ", ".join(dips))
 	almost_eq(previous, 1.0, "полный наклон не даёт полной скорости", 0.06)
 	return true

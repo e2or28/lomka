@@ -26,6 +26,7 @@
 - [docs/DECISIONS.md](docs/DECISIONS.md) — лог принятых решений и почему
 - [docs/ROADMAP.md](docs/ROADMAP.md) — девять вех с датами и критериями выхода
 - [docs/REFERENCES.md](docs/REFERENCES.md) — референсы и разбор чужого опыта
+- [docs/CASE_HEXSTORM.md](docs/CASE_HEXSTORM.md) — кейс: как соло-разработчик выпустил игру, написанную ИИ
 - [docs/LEVEL_EDITOR.md](docs/LEVEL_EDITOR.md) — инструменты баланса: автобот, дашборд, редактор таблиц спавна
 - [docs/SETUP.md](docs/SETUP.md) — что установлено на машине и где лежит
 - [docs/plan.pdf](docs/plan.pdf) — тот же план одним документом для печати и пересылки
