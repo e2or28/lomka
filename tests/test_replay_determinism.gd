@@ -13,6 +13,8 @@ const SimTick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")
 const CommandLog = preload("res://sim/input/command_log.gd")
 const Motion = preload("res://sim/motion.gd")
+const Encounter = preload("res://sim/encounter.gd")
+const Actor = preload("res://sim/actor.gd")
 const SaveGame = preload("res://sim/save/save_game.gd")
 
 const SEED := "реплей-1"
@@ -24,12 +26,7 @@ func title() -> String:
 
 
 func _make_state() -> RunState:
-	var state := RunState.new(SEED)
-	for i in 2:
-		state.slots[i].occupied = true
-		state.slots[i].character_id = "khimik"
-		state.slots[i].stack.base = Motion.PLACEHOLDER_STATS.duplicate()
-	return state
+	return Encounter.dev_room(SEED, 2, 2)
 
 
 ## Журнал строится из потока случайности, а не из Rand-функций: сам тест
@@ -159,12 +156,13 @@ func _test_log_roundtrip() -> bool:
 func _test_downed_slot_does_not_move() -> bool:
 	var state := _make_state()
 	state.slots[1].downed = true
+	var started_at: Vector2 = state.actor_of_slot(1).position
 	var journal := CommandLog.new()
 	for tick in 60:
 		journal.record(0, Command.from_axes(tick, Vector2(1, 0), Vector2.ZERO))
 		journal.record(1, Command.from_axes(tick, Vector2(1, 0), Vector2.ZERO))
 	SimTick.run_log(state, journal)
 
-	check(state.slots[0].position.x > 1.0, "живой слот не сдвинулся")
-	almost_eq(state.slots[1].position.x, 0.0, "упавший слот уехал", 1e-6)
+	check(state.actor_of_slot(0).position.x > started_at.x + 1.0, "живой слот не сдвинулся")
+	almost_eq(state.actor_of_slot(1).position.x, started_at.x, "упавший слот уехал", 1e-6)
 	return true

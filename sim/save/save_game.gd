@@ -13,11 +13,15 @@ extends RefCounted
 ##
 ## Риск из docs/PLAN.md: ошибки сериализации не падают, а проявляются как
 ## «после загрузки что-то не так». Отсюда тест-круговорот в tests/.
+##
+## Версия 2: тела переехали из слотов в акторов, появились снаряды и комната.
+## Сейвы версии 1 не читаются — забегов на них никто не начинал, писать
+## миграцию не для кого. С первого выпущенного билда так уже нельзя.
 
 const RunState = preload("res://sim/run_state.gd")
 
 const MAGIC := "LOMKA"
-const FORMAT := 1
+const FORMAT := 2
 
 
 static func to_bytes(state: RunState) -> PackedByteArray:

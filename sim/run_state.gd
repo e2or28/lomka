@@ -1,13 +1,15 @@
 extends RefCounted
 ## Состояние забега — корень всего, что уходит в сейв.
 ##
-## На M0 здесь только фундамент: сид, позиции потоков случайности, зона и
-## слоты со стеками модификаторов. Геймплея нет, и это правильно — но
-## дисциплина сериализации заведена сразу, задним числом её не ввести
-## (правило 8).
+## Дисциплина сериализации заведена с первого дня: задним числом её ввести
+## невозможно (правило 8). Каждая новая сущность обязана уметь записываться
+## и восстанавливаться в тот же день, когда появилась.
 
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const PlayerSlot = preload("res://sim/player_slot.gd")
+const Actor = preload("res://sim/actor.gd")
+const Projectile = preload("res://sim/projectile.gd")
+const Room = preload("res://sim/room.gd")
 const Fnv = preload("res://sim/core/fnv.gd")
 
 const MAX_PLAYERS := 4
@@ -21,19 +23,72 @@ var tick: int = 0
 
 var rng: RngStreams = null
 var slots: Array[PlayerSlot] = []
+var actors: Array[Actor] = []
+var projectiles: Array[Projectile] = []
+var room: Room = null
+
+## Общий счётчик идентификаторов тел и снарядов. Хранится в состоянии,
+## а не выводится из длины массива: иначе после смерти тела номер
+## переиспользуется, и снаряд попадает не в того, кого целил.
+var next_id: int = 1
 
 
 func _init(seed_text: String = "") -> void:
 	run_seed = seed_text
 	rng = RngStreams.new(seed_text)
+	room = Room.new()
 	slots = []
 	for i in MAX_PLAYERS:
 		slots.append(PlayerSlot.new(i))
 
 
-## Сколько слотов занято. От этого считается масштабирование сложности,
-## поэтому число выводится из состояния, а не хранится отдельно: иначе оно
-## разъедется с составом после переподключения.
+func take_id() -> int:
+	var id := next_id
+	next_id += 1
+	return id
+
+
+func actor_by_id(id: int) -> Actor:
+	for actor in actors:
+		if actor.id == id:
+			return actor
+	return null
+
+
+func actor_of_slot(slot_index: int) -> Actor:
+	if slot_index < 0 or slot_index >= slots.size():
+		return null
+	return actor_by_id(slots[slot_index].actor_id)
+
+
+func living(kind: Actor.Kind) -> Array[Actor]:
+	var found: Array[Actor] = []
+	for actor in actors:
+		if actor.alive and actor.kind == kind:
+			found.append(actor)
+	return found
+
+
+## Комната зачищена, когда врагов не осталось. Условие выхода из комнаты
+## и первая настоящая цель боя.
+func room_cleared() -> bool:
+	return living(Actor.Kind.ENEMY).is_empty()
+
+
+## Забег кончился, когда упали все. В одиночку падение заканчивает забег —
+## это записано в docs/DECISIONS.md.
+func party_down() -> bool:
+	var occupied_slots := 0
+	var standing := 0
+	for slot in slots:
+		if not slot.occupied:
+			continue
+		occupied_slots += 1
+		if not slot.downed:
+			standing += 1
+	return occupied_slots > 0 and standing == 0
+
+
 func occupied_count() -> int:
 	var n := 0
 	for slot in slots:
@@ -43,11 +98,21 @@ func occupied_count() -> int:
 
 
 func to_dict() -> Dictionary:
+	var actors_out: Array = []
+	for actor in actors:
+		actors_out.append(actor.to_dict())
+	var projectiles_out: Array = []
+	for projectile in projectiles:
+		projectiles_out.append(projectile.to_dict())
 	var slots_out: Array = []
 	for slot in slots:
 		slots_out.append(slot.to_dict())
 	return {
+		"actors": actors_out,
+		"next_id": next_id,
+		"projectiles": projectiles_out,
 		"rng": rng.to_dict(),
+		"room": room.to_dict(),
 		"run_seed": run_seed,
 		"slots": slots_out,
 		"tick": tick,
@@ -64,12 +129,24 @@ func state_hash() -> int:
 
 static func from_dict(data: Dictionary):
 	var state := new(data.get("run_seed", ""))
-	state.zone_index = int(data.get("zone_index", 0))
-	state.tick = int(data.get("tick", 0))
+	state.next_id = int(data.get("next_id", 1))
 	state.rng = RngStreams.from_dict(data.get("rng", {}))
-	var slots_in: Array = data.get("slots", [])
-	var restored: Array[PlayerSlot] = []
-	for entry in slots_in:
-		restored.append(PlayerSlot.from_dict(entry))
-	state.slots = restored
+	state.room = Room.from_dict(data.get("room", {}))
+	state.tick = int(data.get("tick", 0))
+	state.zone_index = int(data.get("zone_index", 0))
+
+	var restored_actors: Array[Actor] = []
+	for entry in data.get("actors", []):
+		restored_actors.append(Actor.from_dict(entry))
+	state.actors = restored_actors
+
+	var restored_projectiles: Array[Projectile] = []
+	for entry in data.get("projectiles", []):
+		restored_projectiles.append(Projectile.from_dict(entry))
+	state.projectiles = restored_projectiles
+
+	var restored_slots: Array[PlayerSlot] = []
+	for entry in data.get("slots", []):
+		restored_slots.append(PlayerSlot.from_dict(entry))
+	state.slots = restored_slots
 	return state

@@ -33,6 +33,12 @@ const HOLD_TICKS := 20
 
 var _failures: PackedStringArray = []
 
+## Сколько случаев реально дошло до конца. Ошибка скрипта гасит только свою
+## функцию и молча возвращает управление — без этого счётчика проверка,
+## упавшая на каждом случае, рапортовала бы «в порядке» с пустым списком
+## падений. Так уже случилось при переезде тела из слота в актора.
+var _completed := 0
+
 
 func _initialize() -> void:
 	_run()
@@ -69,6 +75,11 @@ func _run() -> void:
 		for case in CASES:
 			await _check(sandbox, case, layout)
 
+	var expected := CASES.size() * LAYOUTS.size()
+	if _completed != expected:
+		_failures.append("до конца дошло %d проверок из %d — ищи ошибку скрипта выше" % [
+			_completed, expected])
+
 	sandbox.queue_free()
 	await process_frame
 
@@ -90,7 +101,7 @@ func _check(sandbox: Node, case: Dictionary, layout: Dictionary) -> void:
 	sandbox._reset()
 	await process_frame
 
-	var before: Vector2 = sandbox._state.slots[0].position
+	var before: Vector2 = sandbox._state.actor_of_slot(0).position
 	_press(case, layout, true)
 	# Считаются тики симуляции, а не кадры: сколько физических шагов уложится
 	# в кадр отрисовки, зависит от нагрузки, и на этом тест бы дребезжал.
@@ -99,7 +110,7 @@ func _check(sandbox: Node, case: Dictionary, layout: Dictionary) -> void:
 		await process_frame
 	_press(case, layout, false)
 
-	var after: Vector2 = sandbox._state.slots[0].position
+	var after: Vector2 = sandbox._state.actor_of_slot(0).position
 	var moved := after - before
 	var along: float = moved.x if case["axis"] == "x" else moved.y
 	var across: float = moved.y if case["axis"] == "x" else moved.x
@@ -112,6 +123,7 @@ func _check(sandbox: Node, case: Dictionary, layout: Dictionary) -> void:
 		case["label"], moved.x, moved.y,
 		"ok" if ok and clean else "ПАДЕНИЕ"])
 
+	_completed += 1
 	if not ok:
 		_failures.append("%s / %s: тело не поехало (сдвиг по оси %.2f, ожидался знак %d)" % [
 			layout["name"], case["label"], along, want])

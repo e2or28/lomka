@@ -7,7 +7,8 @@
 # упадёт в рантайме, а `instance()` найдётся не сразу.
 set -uo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+source "$(dirname "${BASH_SOURCE[0]}")/godot_env.sh"
+cd "$PROJECT_DIR"
 
 # Разделитель — «::», а не «|»: вертикальная черта нужна самим шаблонам
 # для альтернации, и на ней разбор строки разъезжается.
@@ -43,5 +44,25 @@ if [ $fail -ne 0 ]; then
     exit 1
 fi
 
-echo "аудит синтаксиса: чисто"
+# Разбор каждого скрипта движком. Ловит то, чего не видит grep: неверный
+# вывод типа, обращение к несуществующему методу, битый extends. Дешевле
+# любого прогона и называет файл и строку.
+checked=0
+for script in $(find sim game tools tests -name '*.gd' | sort); do
+    out="$("$GODOT" --headless --path . --check-only --script "res://$script" 2>&1)"
+    if grep -qE 'Parse Error|Compile Error' <<< "$out"; then
+        echo "  $script:" >&2
+        grep -E 'Parse Error|Compile Error' <<< "$out" | sed 's/^/    /' >&2
+        fail=1
+    fi
+    checked=$((checked + 1))
+done
+
+if [ $fail -ne 0 ]; then
+    echo "" >&2
+    echo "АУДИТ СИНТАКСИСА НЕ ПРОЙДЕН" >&2
+    exit 1
+fi
+
+echo "аудит синтаксиса: чисто, разобрано $checked скриптов"
 exit 0

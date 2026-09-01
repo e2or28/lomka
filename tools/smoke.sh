@@ -48,7 +48,9 @@ echo "стенд: $FRAMES кадров без ошибок"
 input_output="$("$GODOT" --headless --path . --script res://tools/smoke_input.gd 2>&1)"
 input_code=$?
 
-if [ $input_code -ne 0 ] || ! grep -q "ВВОД СТЕНДА В ПОРЯДКЕ" <<< "$input_output"; then
+if [ $input_code -ne 0 ] \
+   || ! grep -q "ВВОД СТЕНДА В ПОРЯДКЕ" <<< "$input_output" \
+   || grep -qE 'SCRIPT ERROR|Parse Error' <<< "$input_output"; then
     echo "$input_output"
     echo ""
     echo "СКВОЗНАЯ ПРОВЕРКА ВВОДА НЕ ПРОЙДЕНА" >&2

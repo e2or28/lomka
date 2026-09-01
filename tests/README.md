@@ -25,6 +25,7 @@ pre-commit хук.
 | `test_project_settings.gd` | Рендерер, тик, главная сцена против `DECISIONS.md` |
 | `test_input_map.gd` | `project.godot` не разошёлся с таблицей ввода |
 | `test_input_deadzone.gd` | Круговая мёртвая зона стика |
+| `test_combat.gd` | Стрельба, урон, падение игрока, зачистка комнаты |
 | `test_art_library.gd` | Горячая замена спрайтов из `art/` |
 
 `framework/test_case.gd` — база, `framework/reference_run.gd` — эталонный

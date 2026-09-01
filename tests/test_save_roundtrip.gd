@@ -10,6 +10,8 @@ extends "res://tests/framework/test_case.gd"
 ## с того же места, а не начинаться заново.
 
 const RunState = preload("res://sim/run_state.gd")
+const Encounter = preload("res://sim/encounter.gd")
+const Actor = preload("res://sim/actor.gd")
 const SaveGame = preload("res://sim/save/save_game.gd")
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
@@ -26,21 +28,16 @@ func title() -> String:
 ## Забег в середине: слоты заняты, кто-то упал, предметы в стеках,
 ## потоки случайности вычерпаны по-разному.
 func _make_state() -> RunState:
-	var state := RunState.new("забег-сейв-7")
+	var state := Encounter.dev_room("забег-сейв-7", 2, 2)
 	state.zone_index = 2
 
-	state.slots[0].occupied = true
-	state.slots[0].character_id = "khimik"
-	state.slots[0].stack.base = {"health": 100.0, "damage": 10.0, "move_speed": 220.0}
-	state.slots[0].stack.add(Modifier.make("damage", Modifier.Op.ADD, 4.0, "item:shprits", "m1"))
-	state.slots[0].stack.add(Modifier.make("damage", Modifier.Op.MUL, 1.5, "item:pechen", "m2"))
-	state.slots[0].stack.add(Modifier.make("health", Modifier.Op.ADD, 25.0, "organ:serdce", "m3"))
+	var first := state.actor_of_slot(0)
+	first.stack.add(Modifier.make("damage", Modifier.Op.ADD, 4.0, "item:shprits", "m1"))
+	first.stack.add(Modifier.make("damage", Modifier.Op.MUL, 1.5, "item:pechen", "m2"))
+	first.stack.add(Modifier.make("health", Modifier.Op.ADD, 25.0, "organ:serdce", "m3"))
 
-	state.slots[1].occupied = true
-	state.slots[1].character_id = "sanitar"
 	state.slots[1].downed = true
-	state.slots[1].stack.base = {"health": 80.0, "damage": 14.0}
-	state.slots[1].stack.add(Modifier.make("move_speed", Modifier.Op.SET, 0.0, "state:downed", "m4"))
+	state.actor_of_slot(1).health = 0.0
 
 	# Потоки вычерпаны неравномерно — как в живом забеге.
 	for i in 37:
@@ -78,9 +75,13 @@ func _test_played_run_roundtrip() -> bool:
 	eq(loaded.zone_index, state.zone_index, "номер зоны потерян")
 	eq(loaded.occupied_count(), 2, "состав слотов потерян")
 	eq(loaded.slots[1].downed, true, "признак падения потерян")
-	eq(loaded.slots[0].character_id, "khimik", "выбранный персонаж потерян")
-	eq(loaded.slots[0].stack.compute(), state.slots[0].stack.compute(), "стек модификаторов посчитался иначе")
-	eq(loaded.slots[0].stack.size(), 3, "модификаторы потеряны")
+	eq(loaded.slots[0].character_id, "clerk", "выбранный персонаж потерян")
+	eq(loaded.actor_of_slot(0).stack.compute(), state.actor_of_slot(0).stack.compute(),
+		"стек модификаторов посчитался иначе")
+	eq(loaded.actor_of_slot(0).stack.size(), 3, "модификаторы потеряны")
+	eq(loaded.actors.size(), state.actors.size(), "тела потеряны")
+	eq(loaded.living(Actor.Kind.ENEMY).size(), 2, "враги потеряны")
+	eq(loaded.next_id, state.next_id, "счётчик идентификаторов поехал")
 	return true
 
 
