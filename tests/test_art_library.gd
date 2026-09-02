@@ -13,6 +13,8 @@ extends "res://tests/framework/test_case.gd"
 ## отследить, перечитался ли файл, можно по самой текстуре.
 
 const ArtLibrary = preload("res://game/art_library.gd")
+const WorldView = preload("res://game/world_view.gd")
+const Room = preload("res://sim/room.gd")
 
 const DIR := "user://test_art"
 
@@ -107,4 +109,44 @@ func _test_document_briefcase_is_integrated() -> bool:
 	eq(image.get_width(), 42, "ширина портфеля разошлась с утверждённой")
 	eq(image.get_height(), 34, "высота портфеля разошлась с утверждённой")
 	eq(image.get_format(), Image.FORMAT_RGBA8, "портфель записан без RGBA")
+	return true
+
+
+## Фон комнаты и отступ стен обязаны сходиться. Художник перерисует комнату,
+## файл сменит размер, а константа в представлении останется прежней — и
+## пол уедет относительно невидимых границ. Ошибка тихая: на глаз фон стоит
+## как стоял, а персонаж упирается в воздух.
+func _test_room_background_matches_the_inset() -> bool:
+	var image := Image.new()
+	var err := image.load("res://art/room_start.png")
+	eq(err, OK, "фон комнаты не загрузился")
+	if err != OK:
+		return true
+
+	# Тип не пишется: у статической фабрики его нет, см. «Ловушки» в CLAUDE.md
+	var room = Room.dev_room()
+	var inset := WorldView.ROOM_INSET
+	check(inset.x > 0.0 and inset.y > 0.0, "отступ стен нулевой — фон сядет по холсту")
+	check(image.get_width() >= inset.x + room.bounds.size.x,
+		"нарисованного пола не хватает на ширину комнаты: %d против %d" % [
+			image.get_width(), int(inset.x + room.bounds.size.x)])
+	check(image.get_height() >= inset.y + room.bounds.size.y,
+		"нарисованного пола не хватает на высоту комнаты: %d против %d" % [
+			image.get_height(), int(inset.y + room.bounds.size.y)])
+	return true
+
+
+## Комната со стенами обязана помещаться в окно стенда целиком: срезанные
+## края — это ровно те стены, по которым комнату и узнают.
+func _test_room_background_fits_the_window() -> bool:
+	var image := Image.new()
+	if image.load("res://art/room_start.png") != OK:
+		return true
+	var window := Vector2i(
+		int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)),
+		int(ProjectSettings.get_setting("display/window/size/viewport_height", 0)))
+	check(image.get_width() <= window.x,
+		"фон шире окна стенда: %d против %d" % [image.get_width(), window.x])
+	check(image.get_height() <= window.y,
+		"фон выше окна стенда: %d против %d" % [image.get_height(), window.y])
 	return true

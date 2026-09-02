@@ -36,6 +36,7 @@
 | `python3 tools/cut_layer.py ВХОД ВЫХОД --auto-neck` | Вырезать часть спрайта в отдельный слой на том же холсте. `--auto-neck` находит шею по самому узкому месту силуэта |
 | `python3 tools/make_placeholder_art.py` | Заглушки для спрайтов, которых нет. Существующие файлы не трогает без `--force` |
 | `python3 tools/import_sprite.py ВХОД ВЫХОД` | Растянутая картинка → спрайт в нативном разрешении: находит сетку апскейла, вырезает фон, чистит крошку JPEG. `--height N`, `--step S`, `--keep-bg` |
+| `python3 tools/import_room.py ВХОД ВЫХОД --inner X0,Y0,X1,Y1` | Нарисованная комната → фон под игровую зону: пол садится ровно на `Room.bounds`, стены остаются снаружи. Печатает отступ для `WorldView.ROOM_INSET` |
 | `python3 tools/import_frames.py ПРЕФИКС ВХОД...` | Набор кадров → общий холст: один рост на весь набор, посадка по полу и центру туловища. `--height N`, `--canvas WxH`, `--root-y N`, `--torso-x N` |
 | `python3 tools/make_placeholder_art.py` | Пересобрать заглушки `monster.png` и `folder.png` из пиксельных карт |
 | `python3 tools/make_icon.py art/player.png ФАЙЛ` | Квадратная иконка из спрайта |

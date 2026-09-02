@@ -42,6 +42,15 @@ const PLAYER_CANVAS := Vector2(128, 192)
 const LEFT_SHOULDER := Vector2(45, 63)
 const RIGHT_SHOULDER := Vector2(83, 63)
 
+## Сколько нарисованной стены лежит слева и сверху от игровой зоны.
+##
+## Фон комнаты нарисован вместе со стенами, а Room.bounds — это только пол,
+## по которому ходят. Совместить их надо точно: разъедется на десяток
+## пикселей, и персонаж упрётся в невидимую стену посреди нарисованного
+## пола. Число печатает tools/import_room.py при импорте комнаты; менять
+## его руками нельзя — только вместе с картинкой.
+const ROOM_INSET := Vector2(89, 98)
+
 const SLOT_COLORS: Array[Color] = [
 	Color(0.45, 0.85, 0.55),
 	Color(0.95, 0.65, 0.35),
@@ -119,6 +128,14 @@ func _draw() -> void:
 
 func _draw_room() -> void:
 	var rect := Rect2(origin + state.room.bounds.position, state.room.bounds.size)
+
+	# Нарисованная комната садится по полу, а не по холсту: стены выходят
+	# за игровую зону, и это правильно — в них упираются, по ним не ходят.
+	var background: Texture2D = textures.get("room_start")
+	if background != null:
+		draw_texture(background, rect.position - ROOM_INSET)
+		return
+
 	draw_rect(rect, Color(0.11, 0.10, 0.12), true)
 	draw_rect(rect, Color(0.35, 0.33, 0.38), false, 2.0)
 
