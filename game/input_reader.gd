@@ -25,11 +25,12 @@ const CharacterPose = preload("res://game/character_pose.gd")
 ## геймпаде, — почти всегда изношенный потенциометр, а не ошибка в коде.
 const STICK_DEADZONE := 0.22
 
-## Во сколько направлений притягивать прицел. Ноль — свободный угол,
-## как записано в решениях. Восемь — как в Isaac: четыре стороны плюс
-## диагонали. Переключается в стенде клавишей F2, чтобы можно было
-## попробовать оба, а не спорить о них на бумаге.
-static var aim_directions := 0
+## Прицеливание по-исааковски: четыре клавиши направления, диагональ при
+## двух нажатых. Итого восемь направлений — свободного угла нет.
+##
+## Решение пересмотрено 2 сентября 2026, docs/DECISIONS.md. Мышь больше не
+## целится: она давала тот самый свободный угол, от которого отказались.
+const AIM_DIRECTIONS := 8
 
 ## Движковая зона оставлена почти нулевой намеренно: круговую зону нельзя
 ## посчитать по уже обрезанным осям. Значение в карте ввода служит только
@@ -67,19 +68,19 @@ static func raw_move(player: int) -> Vector2:
 		_axis(player, "move_up", "move_down"))
 
 
-static func read(player: int, tick: int, mouse_aim: Vector2 = Vector2.ZERO):
+static func read(player: int, tick: int):
 	var move := apply_deadzone(raw_move(player))
 
-	var aim := apply_deadzone(Vector2(
-		_axis(player, "aim_left", "aim_right"),
-		_axis(player, "aim_up", "aim_down")))
-	if aim == Vector2.ZERO:
-		aim = mouse_aim
-	if aim_directions > 0:
-		aim = CharacterPose.snap_aim(aim, aim_directions)
+	var aim := CharacterPose.snap_aim(
+		apply_deadzone(Vector2(
+			_axis(player, "aim_left", "aim_right"),
+			_axis(player, "aim_up", "aim_down"))),
+		AIM_DIRECTIONS)
 
 	var buttons := 0
-	if _held(player, "fire"):
+	# В Isaac отдельной кнопки огня нет: нажал направление — полетело.
+	# Кнопка оставлена для геймпада, где прицел на стике.
+	if aim != Vector2.ZERO or _held(player, "fire"):
 		buttons |= Command.BTN_FIRE
 	if _held(player, "interact"):
 		buttons |= Command.BTN_INTERACT

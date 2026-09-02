@@ -218,8 +218,8 @@ func _test_vertical_aim_does_not_turn_the_body() -> bool:
 	return true
 
 
-## Восемь направлений, как в Isaac. Режим для пробы: свободный угол
-## записан в docs/DECISIONS.md и остаётся основным.
+## Восемь направлений, как в Isaac: четыре клавиши плюс диагональ при двух
+## нажатых. Свободный угол убран решением от 2 сентября 2026.
 func _test_snap_aim_quantises_to_eight() -> bool:
 	var snapped := Pose.snap_aim(Vector2(1.0, 0.15).normalized(), 8)
 	almost_eq(snapped.angle(), 0.0, "почти горизонтальный прицел не притянулся к оси", 1e-5)
@@ -239,8 +239,10 @@ func _test_snap_aim_quantises_to_eight() -> bool:
 	return true
 
 
-func _test_snap_aim_is_off_by_default() -> bool:
+## Отпущенный прицел обязан остаться отпущенным: иначе персонаж стрелял бы
+## непрерывно, ведь стрельба теперь начинается от направления.
+func _test_snap_aim_keeps_zero_zero() -> bool:
+	eq(Pose.snap_aim(Vector2.ZERO, 8), Vector2.ZERO, "нулевой прицел превратился в направление")
 	var free := Vector2(1.0, 0.15).normalized()
 	eq(Pose.snap_aim(free, 0), free, "при нуле направлений прицел всё равно притянулся")
-	eq(Pose.snap_aim(Vector2.ZERO, 8), Vector2.ZERO, "нулевой прицел превратился в направление")
 	return true

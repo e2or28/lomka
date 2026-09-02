@@ -48,7 +48,7 @@ func _ready() -> void:
 	_hint = Label.new()
 	_hint.add_theme_font_size_override("font_size", 11)
 	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-	_hint.text = "F1 масштаб · F2 прицел · F3 оверлей · F5 art/ · Tab слот · R сброс · Esc"
+	_hint.text = "F1 масштаб · F3 оверлей · F5 art/ · Tab слот · R сброс · Esc · стрелки стреляют"
 	_panel.add_child(_hint)
 
 

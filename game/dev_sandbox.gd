@@ -93,7 +93,7 @@ func _recenter() -> void:
 func _physics_process(_delta: float) -> void:
 	var commands := {}
 	for i in _active_slots:
-		var command: Command = InputReader.read(i, _state.tick, _mouse_aim(i))
+		var command: Command = InputReader.read(i, _state.tick)
 		commands[i] = command
 		_journal.record(i, command)
 	SimTick.step(_state, commands)
@@ -106,16 +106,6 @@ func _physics_process(_delta: float) -> void:
 		if commands.has(i) and slot.actor_id >= 0:
 			_view.firing[slot.actor_id] = commands[i].pressed(Command.BTN_FIRE)
 
-
-## Мышью целится только первый слот и только пока правый стик отпущен.
-func _mouse_aim(slot_index: int) -> Vector2:
-	if slot_index != 0:
-		return Vector2.ZERO
-	var actor := _state.actor_of_slot(0)
-	if actor == null:
-		return Vector2.ZERO
-	var to_cursor := get_viewport().get_mouse_position() - (_origin + actor.position)
-	return to_cursor.normalized() if to_cursor.length() > 1.0 else Vector2.ZERO
 
 
 ## Тело, ползущее при отпущенном вводе, — почти всегда изношенный стик,
@@ -179,9 +169,7 @@ func _readout() -> String:
 			stats.get("damage", 0.0), stats.get("fire_rate", 0.0),
 			stats.get("range", 0.0), stats.get("move_speed", 0.0)])
 
-	lines.append("прицел: %s   (F2 переключить)" % (
-		"свободный угол" if InputReader.aim_directions == 0
-		else "%d направлений, как в Isaac" % InputReader.aim_directions))
+	lines.append("прицел: %d направлений, стрелками, как в Isaac" % InputReader.AIM_DIRECTIONS)
 	lines.append("")
 	for line in InputReader.diagnostics(0):
 		lines.append(line)
@@ -217,10 +205,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F1:
 			_scale_ref.enabled = not _scale_ref.enabled
 			_scale_ref.queue_redraw()
-		KEY_F2:
-			# Свободный угол против восьми направлений, как в Isaac.
-			# Решение записано в DECISIONS.md, поэтому это проба, а не замена.
-			InputReader.aim_directions = 0 if InputReader.aim_directions > 0 else 8
 		KEY_F3:
 			_overlay.visible = not _overlay.visible
 		KEY_F5:

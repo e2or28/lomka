@@ -75,6 +75,8 @@ func _run() -> void:
 		for case in CASES:
 			await _check(sandbox, case, layout)
 
+	await _check_shooting(sandbox)
+
 	var expected := CASES.size() * LAYOUTS.size()
 	if _completed != expected:
 		_failures.append("до конца дошло %d проверок из %d — ищи ошибку скрипта выше" % [
@@ -95,6 +97,43 @@ func _run() -> void:
 	print("ВВОД СТЕНДА СЛОМАН: %d из %d проверок" % [
 		_failures.size(), CASES.size() * LAYOUTS.size()])
 	quit(1)
+
+
+## Стрельба идёт от направления, без отдельной кнопки огня — так в Isaac,
+## и так записано в docs/DECISIONS.md с 2 сентября 2026. Проверяется в живой
+## сцене: путь от клавиши до снаряда в воздухе длиннее, чем кажется.
+func _check_shooting(sandbox: Node) -> void:
+	sandbox._reset()
+	await process_frame
+
+	var arrows := {KEY_RIGHT: "вправо", KEY_UP: "вверх", KEY_LEFT: "влево", KEY_DOWN: "вниз"}
+	for key in arrows:
+		sandbox._reset()
+		await process_frame
+		var before: int = sandbox._state.projectiles.size()
+
+		var down := InputEventKey.new()
+		down.physical_keycode = key
+		down.pressed = true
+		Input.parse_input_event(down)
+		Input.flush_buffered_events()
+
+		var until: int = sandbox._state.tick + 4
+		while sandbox._state.tick < until:
+			await process_frame
+
+		var up := InputEventKey.new()
+		up.physical_keycode = key
+		up.pressed = false
+		Input.parse_input_event(up)
+		Input.flush_buffered_events()
+		await process_frame
+
+		var fired: int = sandbox._state.projectiles.size() - before
+		print("    стрелка %-7s снарядов %d  %s" % [
+			arrows[key], fired, "ok" if fired > 0 else "ПАДЕНИЕ"])
+		if fired <= 0:
+			_failures.append("стрелка %s не выстрелила — отдельной кнопки огня быть не должно" % arrows[key])
 
 
 func _check(sandbox: Node, case: Dictionary, layout: Dictionary) -> void:

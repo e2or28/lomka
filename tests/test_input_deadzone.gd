@@ -93,3 +93,17 @@ func _test_monotonic() -> bool:
 	check(dips.is_empty(), "скорость проваливается при росте наклона: " + ", ".join(dips))
 	almost_eq(previous, 1.0, "полный наклон не даёт полной скорости", 0.06)
 	return true
+
+
+## Прицеливание после решения от 2 сентября 2026: свободного угла нет,
+## только восемь направлений. Проверяется на самой константе, потому что
+## промах здесь означает вернувшийся свободный угол.
+func _test_aiming_has_no_free_angle() -> bool:
+	eq(InputReader.AIM_DIRECTIONS, 8,
+		"число направлений прицела разошлось с решением из DECISIONS.md")
+
+	var free := Vector2(1.0, 0.15).normalized()
+	var snapped := InputReader.CharacterPose.snap_aim(free, InputReader.AIM_DIRECTIONS)
+	check(absf(snapped.angle() - free.angle()) > 0.05,
+		"прицел не притянулся к направлению — свободный угол вернулся")
+	return true
