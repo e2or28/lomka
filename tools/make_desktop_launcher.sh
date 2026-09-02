@@ -15,6 +15,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/godot_env.sh"
 cd "$PROJECT_DIR"
 
+# Бандл движка, а не бинарник внутри него: запуск идёт через
+# LaunchServices, иначе окно не выходит на передний план.
+GODOT_APP="${GODOT_APP:-$(cd "$(dirname "$GODOT")/../.." && pwd)}"
+
 APP_NAME="${1:-Ломка}"
 APP="$HOME/Desktop/$APP_NAME.app"
 STAGE="$(mktemp -d)"
@@ -45,8 +49,10 @@ PLIST
 cat > "$APP/Contents/MacOS/launch" <<LAUNCH
 #!/bin/bash
 # Собран tools/make_desktop_launcher.sh — правки здесь сотрёт пересборка.
+GODOT_APP="$GODOT_APP"
 GODOT="$GODOT"
 PROJECT="$PROJECT_DIR"
+LOG="\$HOME/Library/Logs/$APP_NAME.log"
 
 if [ ! -x "\$GODOT" ]; then
     osascript -e 'display alert "Движок не найден" message "Нет GodotSteam по пути:\n$GODOT\n\nСмотри docs/SETUP.md." as critical'
@@ -57,7 +63,40 @@ if [ ! -f "\$PROJECT/project.godot" ]; then
     exit 1
 fi
 
-exec "\$GODOT" --path "\$PROJECT"
+mkdir -p "\$(dirname "\$LOG")"
+
+# Уже открыто — не плодить второе окно, а показать существующее.
+# open -n каждый раз создаёт новый экземпляр, и три клика подряд дают три
+# копии игры, между которыми потом не разобраться.
+# Через ps, а не pgrep: pgrep -f на macOS сопоставляет шаблон с каждым
+# аргументом по отдельности, и шаблон с пробелом не находит ничего.
+#
+# Скобка вокруг первой буквы — чтобы grep не нашёл сам себя: его
+# собственная командная строка попадает в вывод ps, и без скобки ярлык
+# считает игру уже запущенной, никогда её не запуская.
+if ps -eo command | grep -q -- "[G]odot --path \$PROJECT"; then
+    open -a "\$GODOT_APP"
+    exit 0
+fi
+
+# Запуск через LaunchServices, а не exec бинарника.
+#
+# Раньше здесь был exec: движок стартовал, Metal поднимался, ошибок в
+# системном логе не было — а окна на экране не появлялось. Причина в том,
+# что бинарник, запущенный из чужого бандла, остаётся процессом этого
+# бандла: система не считает его полноценным приложением и не выводит
+# окно на передний план.
+#
+# open -n -a регистрирует GodotSteam как своё приложение, и окно выходит
+# вперёд. Цена — в Dock появляется иконка Godot, а не Ломки: своя иконка
+# будет, когда игра начнёт собираться в настоящий бандл на M5.
+#
+# --log-file нужен, чтобы у молчаливого отказа осталась причина: при
+# запуске из Finder вывод движка иначе уходит в никуда.
+if ! open -n -a "\$GODOT_APP" --args --path "\$PROJECT" --log-file "\$LOG"; then
+    osascript -e 'display alert "Не запустилось" message "Система отказалась открыть GodotSteam.\n\nЛог: ~/Library/Logs/$APP_NAME.log\nЗапасной путь: $APP_NAME.command" as critical'
+    exit 1
+fi
 LAUNCH
 chmod +x "$APP/Contents/MacOS/launch"
 
