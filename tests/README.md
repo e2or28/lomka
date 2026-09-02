@@ -27,6 +27,7 @@ pre-commit хук.
 | `test_input_deadzone.gd` | Круговая мёртвая зона стика |
 | `test_combat.gd` | Стрельба, урон, падение игрока, зачистка комнаты |
 | `test_art_library.gd` | Горячая замена спрайтов из `art/` |
+| `test_projectile_pose.gd` | Один прыжок, один оборот и тень метательного портфеля |
 
 `framework/test_case.gd` — база, `framework/reference_run.gd` — эталонный
 забег для фикстуры, `fixtures/` — эталонный сейв в гите.

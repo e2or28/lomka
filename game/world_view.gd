@@ -13,9 +13,11 @@ const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
+const ProjectilePose = preload("res://game/projectile_pose.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
+const PROJECTILE_SHADOW_RADIUS := 10.0
 
 ## Персонаж собирается из слоёв: корпус, руки, голова. Порядок от заднего
 ## к переднему задан в art/player_layers.json и менять его нельзя — руки
@@ -57,21 +59,49 @@ var textures: Dictionary = {}
 ## влияют, и раздувать сейв.
 var stride_phase: Dictionary = {}
 var facing: Dictionary = {}
+var projectile_age: Dictionary = {}
+var projectile_duration: Dictionary = {}
 var breath := 0.0
+
+## Какое состояние сейчас обслуживают локальные фазы. После сброса комнаты
+## идентификаторы начинаются заново, поэтому старые фазы надо забыть.
+var _animation_state: RunState = null
 
 
 ## Двигать фазы. Вызывается стендом каждый кадр — здесь, а не в _draw,
 ## потому что _draw может вызываться чаще или реже кадра.
 func advance(delta: float) -> void:
 	breath += delta
+	if state != _animation_state:
+		_animation_state = state
+		stride_phase.clear()
+		facing.clear()
+		projectile_age.clear()
+		projectile_duration.clear()
 	if state == null:
 		return
+
 	for actor in state.actors:
 		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
 		facing[actor.id] = CharacterPose.facing(actor.velocity, facing.get(actor.id, -1))
+
+	var live_projectiles := {}
+	for projectile in state.projectiles:
+		live_projectiles[projectile.id] = true
+		if not projectile_age.has(projectile.id):
+			projectile_age[projectile.id] = 0.0
+			projectile_duration[projectile.id] = maxf(projectile.life, delta)
+		else:
+			projectile_age[projectile.id] = float(projectile_age[projectile.id]) + delta
+
+	for id in projectile_age.keys():
+		if live_projectiles.has(id):
+			continue
+		projectile_age.erase(id)
+		projectile_duration.erase(id)
 
 
 func _draw() -> void:
@@ -90,20 +120,45 @@ func _draw_room() -> void:
 	draw_rect(rect, Color(0.35, 0.33, 0.38), false, 2.0)
 
 
-## Папка с документами: летит, не вращаясь — вращение это уже ощущение,
-## а его подбирает человек, а не формула.
+## A4-портфель делает один прыжок и один полный переворот за полёт. Всё это
+## только рисунок: позиция столкновения остаётся там, где её считает sim/.
 func _draw_projectile(projectile: Projectile) -> void:
-	var at := origin + projectile.position
-	var body := Rect2(at - PROJECTILE * 0.5, PROJECTILE)
+	var ground_at := origin + projectile.position
+	var age := float(projectile_age.get(projectile.id, 0.0))
+	var duration := float(projectile_duration.get(
+		projectile.id, maxf(projectile.life, 1.0 / 60.0)))
+	var progress := ProjectilePose.progress(age, duration)
+
+	_draw_projectile_shadow(ground_at, progress)
+
+	var at := ground_at - Vector2(0.0, ProjectilePose.lift(progress))
+	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
+	var angle := ProjectilePose.rotation(progress) * turn_direction
+	draw_set_transform(at, angle, Vector2.ONE)
+
 	var paper: Texture2D = textures.get("folder")
 	if paper != null:
 		var size := paper.get_size()
-		draw_texture_rect(paper, Rect2(at - size * 0.5, size), false)
-		return
-	draw_rect(body, PAPER_COLOR, true)
-	draw_rect(body, PAPER_COLOR.darkened(0.5), false, 1.0)
-	draw_line(at + Vector2(-4, -2), at + Vector2(4, -2), PAPER_COLOR.darkened(0.4), 1.0)
-	draw_line(at + Vector2(-4, 1), at + Vector2(2, 1), PAPER_COLOR.darkened(0.4), 1.0)
+		draw_texture(paper, -size * 0.5)
+	else:
+		var body := Rect2(-PROJECTILE * 0.5, PROJECTILE)
+		draw_rect(body, PAPER_COLOR, true)
+		draw_rect(body, PAPER_COLOR.darkened(0.5), false, 1.0)
+		draw_line(Vector2(-4, -2), Vector2(4, -2), PAPER_COLOR.darkened(0.4), 1.0)
+		draw_line(Vector2(-4, 1), Vector2(2, 1), PAPER_COLOR.darkened(0.4), 1.0)
+
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Тень остаётся в настоящей позиции снаряда. Масштаб по Y превращает круг
+## в плоский овал; наверху он меньше и светлее, поэтому прыжок читается даже
+## на тёмном полу комнаты.
+func _draw_projectile_shadow(at: Vector2, progress: float) -> void:
+	var scale := ProjectilePose.shadow_scale(progress)
+	var alpha := ProjectilePose.shadow_alpha(progress)
+	draw_set_transform(at, 0.0, Vector2(scale, scale * 0.32))
+	draw_circle(Vector2.ZERO, PROJECTILE_SHADOW_RADIUS, Color(0.0, 0.0, 0.0, alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_actor(actor: Actor) -> void:

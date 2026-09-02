@@ -52,7 +52,7 @@ func _test_loads_png_without_import() -> bool:
 	check(texture != null, "PNG не прочитался в обход импорта движка")
 	if texture == null:
 		return true
-	eq(texture.get_size(), Vector2i(16, 16), "размер спрайта прочитался не тот")
+	eq(texture.get_size(), Vector2(16, 16), "размер спрайта прочитался не тот")
 
 	_remove("probe")
 	return true
@@ -66,7 +66,7 @@ func _test_refresh_picks_up_changes() -> bool:
 	check(before != null, "спрайт не загрузился с первого раза")
 	if before == null:
 		return true
-	eq(before.get_size(), Vector2i(8, 8), "исходный размер не тот")
+	eq(before.get_size(), Vector2(8, 8), "исходный размер не тот")
 
 	# Отметка времени в файловой системе — секундная, поэтому подменяем
 	# содержимое и заставляем перечитать явно: refresh проверяет метку,
@@ -77,7 +77,7 @@ func _test_refresh_picks_up_changes() -> bool:
 	var after := library.get_texture("changing")
 	check(after != null, "спрайт не перечитался")
 	if after != null:
-		eq(after.get_size(), Vector2i(24, 24), "стенд показал бы старую версию спрайта")
+		eq(after.get_size(), Vector2(24, 24), "стенд показал бы старую версию спрайта")
 
 	_remove("changing")
 	return true
@@ -90,4 +90,18 @@ func _test_refresh_ignores_untouched() -> bool:
 	eq(library.refresh(), PackedStringArray(),
 		"refresh сообщил об изменении файла, которого никто не трогал")
 	_remove("stable")
+	return true
+
+
+## В стенде должен лежать утверждённый A4-портфель, а не программная
+## заглушка 26x24. Размер фиксирует масштаб снаряда относительно служащего.
+func _test_document_briefcase_is_integrated() -> bool:
+	var image := Image.new()
+	var err := image.load("res://art/folder.png")
+	eq(err, OK, "финальный портфель не загрузился")
+	if err != OK:
+		return true
+	eq(image.get_width(), 42, "ширина портфеля разошлась с утверждённой")
+	eq(image.get_height(), 34, "высота портфеля разошлась с утверждённой")
+	eq(image.get_format(), Image.FORMAT_RGBA8, "портфель записан без RGBA")
 	return true
