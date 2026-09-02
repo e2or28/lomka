@@ -257,17 +257,9 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	_draw_arm("player_arm_left", canvas, LEFT_SHOULDER, angles[0], lifts[0], tint)
 	_draw_arm("player_arm_right", canvas, RIGHT_SHOULDER, angles[1], lifts[1], tint)
 
-	# Голова смотрит по прицелу, а не по телу: так в Isaac, и так видно,
-	# куда полетит следующая папка. Нет нужного слоя — берётся анфас.
-	var head_offset := CharacterPose.head_offset(phase, speed, breath)
-	var head: Texture2D = textures.get(CharacterPose.head_layer(actor.aim))
-	if head == null:
-		head = textures.get(CharacterPose.HEAD_FRONT)
+	var head: Texture2D = textures.get("player_head")
 	if head != null:
-		if CharacterPose.head_flipped(actor.aim):
-			_draw_facing(head, canvas + head_offset, -1, tint)
-		else:
-			draw_texture(head, canvas + head_offset, tint)
+		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
 	_draw_weapon(actor, canvas, phase, speed, false, facing.get(actor.id, 1), tint)
 	return true
 
