@@ -12,6 +12,7 @@ extends Node2D
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const RunState = preload("res://sim/run_state.gd")
+const CharacterPose = preload("res://game/character_pose.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
@@ -24,8 +25,16 @@ const PROJECTILE := Vector2(18, 14)
 ## поэтому кладутся друг на друга без подгонки. Якорь — character_root
 ## оттуда же: это точка под ногами, а не центр холста. Совмещать надо её
 ## с положением тела в симуляции, иначе персонаж будет плавать над полом.
-const PLAYER_LAYERS: Array[String] = ["player_body", "player_arms", "player_head"]
+## Руки взяты отдельными слоями, а не общим: махать ими на бегу можно только
+## поодиночке. Проверено, что arm_left и arm_right складываются в прежний
+## общий слой пиксель-в-пиксель, а вся сборка совпадает с мастером.
 const PLAYER_ROOT := Vector2(64, 174)
+
+## Плечи из art/player_layers.json, набор godot_128. Вокруг них вращаются
+## руки: пивот в плече читается как мах, пивот в центре холста — как отрыв
+## конечности.
+const LEFT_SHOULDER := Vector2(45, 63)
+const RIGHT_SHOULDER := Vector2(83, 63)
 
 const SLOT_COLORS: Array[Color] = [
 	Color(0.45, 0.85, 0.55),
@@ -39,6 +48,28 @@ const PAPER_COLOR := Color(0.93, 0.88, 0.72)
 var state: RunState = null
 var origin := Vector2.ZERO
 var textures: Dictionary = {}
+
+## Фаза шага на каждое тело и общий счётчик для дыхания.
+##
+## Живут в представлении, а не в состоянии забега: от них ничего не зависит,
+## попадание считается по положению тела, а не по нарисованной руке. Класть
+## их в симуляцию значило бы гонять по сети данные, которые ни на что не
+## влияют, и раздувать сейв.
+var stride_phase: Dictionary = {}
+var breath := 0.0
+
+
+## Двигать фазы. Вызывается стендом каждый кадр — здесь, а не в _draw,
+## потому что _draw может вызываться чаще или реже кадра.
+func advance(delta: float) -> void:
+	breath += delta
+	if state == null:
+		return
+	for actor in state.actors:
+		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
+			continue
+		stride_phase[actor.id] = CharacterPose.advance_stride(
+			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
 
 
 func _draw() -> void:
@@ -117,14 +148,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		return false
 
 	if actor.kind == Actor.Kind.PLAYER:
-		var drawn := false
-		for layer in PLAYER_LAYERS:
-			var texture: Texture2D = textures.get(layer)
-			if texture == null:
-				continue
-			draw_texture(texture, at - PLAYER_ROOT, tint)
-			drawn = true
-		return drawn
+		return _draw_player(actor, at, tint)
 
 	var sprite: Texture2D = textures.get("monster")
 	if sprite == null:
@@ -133,6 +157,50 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var size := sprite.get_size()
 	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
 	return true
+
+
+## Персонаж послойно, с позой. Порядок от заднего к переднему задан
+## в art/player_layers.json и менять его нельзя: руки обязаны лежать поверх
+## корпуса, но под головой.
+func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
+	var body: Texture2D = textures.get("player_body")
+	if body == null:
+		return false
+
+	var canvas := at - PLAYER_ROOT
+	var speed := actor.velocity.length()
+	var phase: float = stride_phase.get(actor.id, 0.0)
+	var stats := actor.stack.compute()
+	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
+	var throw_right := actor.aim.x >= 0.0
+	var angles := CharacterPose.arm_angles(phase, speed, throw, throw_right)
+	var lifts := CharacterPose.arm_lift(phase, speed, throw, throw_right)
+
+	draw_texture(body, canvas + CharacterPose.body_offset(phase, speed, breath), tint)
+	_draw_arm("player_arm_left", canvas, LEFT_SHOULDER, angles[0], lifts[0], tint)
+	_draw_arm("player_arm_right", canvas, RIGHT_SHOULDER, angles[1], lifts[1], tint)
+
+	var head: Texture2D = textures.get("player_head")
+	if head != null:
+		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
+	return true
+
+
+## Рука поворачивается вокруг плеча. Холст у всех слоёв общий, поэтому
+## смещать текстуру не нужно — достаточно поставить начало координат в
+## плечо и нарисовать слой со сдвигом на минус плечо.
+func _draw_arm(layer: String, canvas: Vector2, shoulder: Vector2,
+		angle: float, lift: float, tint: Color) -> void:
+	var texture: Texture2D = textures.get(layer)
+	if texture == null:
+		return
+	var at := canvas + Vector2(0.0, lift)
+	if is_zero_approx(angle):
+		draw_texture(texture, at, tint)
+		return
+	draw_set_transform(at + shoulder, angle, Vector2.ONE)
+	draw_texture(texture, -shoulder, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:

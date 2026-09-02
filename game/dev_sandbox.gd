@@ -30,7 +30,8 @@ const ScaleReference = preload("res://game/scale_reference.gd")
 ## Персонаж собран из слоёв — см. art/player_layers.json. Монстр и папка
 ## пока заглушки из tools/make_placeholder_art.py.
 const SPRITES: Array[String] = [
-	"player_body", "player_arms", "player_head", "monster", "folder",
+	"player_body", "player_arm_left", "player_arm_right", "player_head",
+	"monster", "folder",
 ]
 
 const SEED := "стенд"
@@ -130,6 +131,7 @@ func _watch_drift(commands: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
+	_view.advance(delta)
 	_view.queue_redraw()
 
 	if _art_note_left > 0.0:
