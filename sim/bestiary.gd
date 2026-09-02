@@ -30,8 +30,17 @@ const CLERK := {
 	"unlocked_by_default": true,
 }
 
-## Манекен для стенда. Ходит к ближайшему игроку и бьёт касанием.
-## Имя и повадки — за Егором, это заглушка под проверку боя.
+## Три типа врагов, как требует M1. Различаются не числами, а тем, как
+## себя ведут: одинаковые по повадкам враги в толпе не читаются, сколько
+## бы у них ни было разного здоровья.
+##
+## Поведение задаётся полем behaviour и разбирается в sim/tick.gd. Это
+## данные, а не классы (правило 7): четвёртый тип врага не должен стоить
+## нового файла.
+##
+## Имена — заглушки. Тексты и юмор остаются человеку, docs/PLAN.md.
+
+## Идёт напролом. Опорный враг, по которому меряются остальные.
 const TEST_MONSTER := {
 	"id": "test_monster",
 	"name": "Монстр",
@@ -42,13 +51,54 @@ const TEST_MONSTER := {
 		"acceleration": 900.0,
 		"friction": 1400.0,
 	},
+	"behaviour": "charger",
 	"organ_drops": [],
 	"zones": ["dev_room"],
 	"tier": 1,
 }
 
+## Быстрый и хрупкий: налетает, отходит, налетает снова. Заставляет
+## двигаться, а не отстреливаться стоя.
+const RUNNER := {
+	"id": "runner",
+	"name": "Курьер",
+	"base_stats": {
+		"health": 22.0,
+		"damage": 6.0,
+		"move_speed": 175.0,
+		"acceleration": 1600.0,
+		"friction": 2200.0,
+	},
+	"behaviour": "harrier",
+	"organ_drops": [],
+	"zones": ["dev_room"],
+	"tier": 1,
+}
+
+## Медленный и толстый: держит дистанцию и давит массой. Наказывает
+## тех, кто пятится в угол.
+const HEAVY := {
+	"id": "heavy",
+	"name": "Начальник",
+	"base_stats": {
+		"health": 110.0,
+		"damage": 16.0,
+		"move_speed": 62.0,
+		"acceleration": 420.0,
+		"friction": 700.0,
+	},
+	"behaviour": "bruiser",
+	"organ_drops": [],
+	"zones": ["dev_room"],
+	"tier": 2,
+}
+
 const CHARACTERS := {"clerk": CLERK}
-const ENEMIES := {"test_monster": TEST_MONSTER}
+const ENEMIES := {
+	"test_monster": TEST_MONSTER,
+	"runner": RUNNER,
+	"heavy": HEAVY,
+}
 
 
 static func character(id: String) -> Dictionary:

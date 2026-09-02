@@ -42,9 +42,10 @@ const HIT_INVULNERABILITY := 0.4
 ## Насколько близко враг должен подойти, чтобы ударить касанием.
 const TOUCH_RANGE := 40.0
 
-## Выше этой высоты снаряд проходит над телом, не задевая. Без этого дуга
-## была бы чистой декорацией: папка била бы, пролетая на уровне головы.
-const HIT_HEIGHT := 60.0
+## Курьер: сколько тиков длится полный цикл «налетел — отошёл» и с какой
+## дистанции он начинает пятиться.
+const HARRIER_PERIOD := 96
+const HARRIER_BACKOFF := 120.0
 
 
 static func step(state: RunState, commands: Dictionary) -> void:
@@ -105,11 +106,45 @@ static func _drive_enemies(state: RunState) -> void:
 		var move := Vector2.ZERO
 		if target != null:
 			var offset := target.position - actor.position
-			if offset.length() > TOUCH_RANGE * 0.5:
-				move = offset.normalized()
-			actor.aim = offset.normalized() if offset != Vector2.ZERO else actor.aim
+			if offset != Vector2.ZERO:
+				actor.aim = offset.normalized()
+			move = _behaviour_move(actor, offset, state.tick)
 		var stats := actor.stack.compute()
 		actor.velocity = Motion.step_velocity(actor.velocity, move, stats, DELTA)
+
+
+## Куда враг хочет идти. Разбор повадки вынесен сюда, чтобы четвёртый тип
+## стоил одной ветки, а не нового файла.
+##
+## Случайности здесь нет намеренно. Разброс должен браться из потока
+## AI_SPREAD, а лишний бросок сдвигает поток и рассинхронизирует забег —
+## поэтому все три повадки детерминированы от расстояния и номера тика.
+static func _behaviour_move(actor, offset: Vector2, tick: int) -> Vector2:
+	var distance := offset.length()
+	if distance <= 0.001:
+		return Vector2.ZERO
+	var towards := offset / distance
+
+	match actor.behaviour:
+		"harrier":
+			# Налетает и отходит: держаться на дистанции удара не даёт
+			# отстреливаться стоя.
+			var cycle := (tick % HARRIER_PERIOD) < HARRIER_PERIOD / 2
+			if distance < HARRIER_BACKOFF and not cycle:
+				return -towards
+			if distance > TOUCH_RANGE * 0.5:
+				return towards
+			return Vector2.ZERO
+
+		"bruiser":
+			# Идёт напролом и не останавливается вплотную: давит массой.
+			return towards
+
+		_:
+			# charger: подошёл на удар — встал.
+			if distance > TOUCH_RANGE * 0.5:
+				return towards
+			return Vector2.ZERO
 
 
 ## Ближайший стоящий игрок. Упавшего враги не добивают — его поднимают
@@ -166,10 +201,6 @@ static func _fly_projectiles(state: RunState) -> void:
 		var spent := false
 		for actor in state.actors:
 			if not projectile.can_hit(actor):
-				continue
-			# Снаряд выше тела проходит над ним. Иначе дуга ничего не меняет:
-			# папка била бы, пролетая на высоте головы.
-			if projectile.height > HIT_HEIGHT:
 				continue
 			var reach := projectile.radius + BODY_RADIUS
 			if projectile.position.distance_squared_to(actor.position) > reach * reach:

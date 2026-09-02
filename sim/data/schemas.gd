@@ -20,10 +20,15 @@ const STATS: Array[String] = [
 	"projectile_speed",
 	"range",
 	"shot_momentum",
+	"tumble_range",
 	"withdrawal_rate",
 ]
 
 const RARITIES: Array[String] = ["common", "uncommon", "rare", "boss"]
+
+## Повадки врагов. Закрытый список: опечатка в поведении иначе даёт врага,
+## который молча стоит на месте.
+const BEHAVIOURS: Array[String] = ["charger", "harrier", "bruiser"]
 
 ## Операции соответствуют Modifier.Op по порядку.
 const OPS: Array[String] = ["add", "mul", "set"]
@@ -90,6 +95,7 @@ const ENEMY := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
 	"base_stats": STAT_BLOCK,
+	"behaviour": {"type": TYPE_STRING, "values": BEHAVIOURS, "required": false, "default": "charger"},
 	"organ_drops": {"type": TYPE_ARRAY, "element_schema": ORGAN_DROP, "required": false, "default": []},
 	"zones": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
 	"tier": {"type": TYPE_INT, "min": 1, "max": 3, "required": false, "default": 1},

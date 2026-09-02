@@ -14,6 +14,10 @@ const Actor = preload("res://sim/actor.gd")
 const Room = preload("res://sim/room.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
+
+## Кого ставить в комнату разработчиков. Порядок задаёт и очередь по точкам
+## появления: первым встаёт опорный монстр, чтобы стенд начинался предсказуемо.
+const ROSTER: Array[String] = ["test_monster", "runner", "heavy"]
 const Schemas = preload("res://sim/data/schemas.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 
@@ -25,8 +29,10 @@ static func dev_room(seed_text: String, players: int, monsters: int) -> RunState
 
 	for i in mini(players, RunState.MAX_PLAYERS):
 		add_player(state, i, "clerk")
+	# Все три типа по кругу: комната должна проверять их вместе, поодиночке
+	# разница в повадках не видна.
 	for i in monsters:
-		add_enemy(state, "test_monster", state.room.enemy_spawn(i))
+		add_enemy(state, ROSTER[i % ROSTER.size()], state.room.enemy_spawn(i))
 
 	return state
 
@@ -59,6 +65,7 @@ static func add_enemy(state: RunState, enemy_id: String, position: Vector2) -> A
 	var record := Bestiary.enemy(enemy_id)
 	var actor := Actor.new(state.take_id(), Actor.Kind.ENEMY)
 	actor.archetype = enemy_id
+	actor.behaviour = record.get("behaviour", "charger")
 	actor.position = position
 	actor.stack.base = record.get("base_stats", {}).duplicate()
 	actor.heal_to_full()

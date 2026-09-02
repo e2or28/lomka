@@ -30,7 +30,8 @@ const ScaleReference = preload("res://game/scale_reference.gd")
 ## Персонаж собран из слоёв — см. art/player_layers.json. Монстр и папка
 ## пока заглушки из tools/make_placeholder_art.py.
 const SPRITES: Array[String] = [
-	"player_body", "player_arm_left", "player_arm_right", "player_head",
+	"player_body", "player_arm_left", "player_arm_right",
+	"player_head", "player_head_side", "player_head_back",
 	"player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",

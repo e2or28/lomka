@@ -1,12 +1,11 @@
 extends "res://tests/framework/test_case.gd"
-## Полёт снаряда: дуга и наследование скорости.
+## Полёт снаряда: прямая, кувырок и наследование скорости.
 ##
-## Оба заимствованы из Isaac и оба про ощущение боя, но проверяемая часть
-## у них строгая: дальность обязана оставаться той, что задана статом, а
-## наследование — работать симметрично в обе стороны.
+## Снаряд летит ровно до заявленной дальности, потом переворачивается и
+## проходит ещё отрезок — приём Mr. P из Brawl Stars. Обе дальности статы,
+## поэтому предмет сможет крутить их по отдельности.
 ##
-## Как это ощущается — решается на стенде. Здесь только то, что можно
-## посчитать.
+## Как это ощущается — решается на стенде. Здесь только то, что считается.
 
 const Encounter = preload("res://sim/encounter.gd")
 const SimTick = preload("res://sim/tick.gd")
@@ -15,6 +14,7 @@ const Projectile = preload("res://sim/projectile.gd")
 const Actor = preload("res://sim/actor.gd")
 const RunState = preload("res://sim/run_state.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
+const SaveGame = preload("res://sim/save/save_game.gd")
 
 const SEED := "баллистика"
 
@@ -24,10 +24,11 @@ func title() -> String:
 
 
 func _lone_shooter() -> RunState:
-	## Комната с одним игроком и врагом, убранным подальше: проверяется
-	## полёт, а не попадание.
+	## Стрелок у левой стены: обе дальности вместе длиннее половины комнаты,
+	## и из центра снаряд гас бы о стену раньше, чем выдыхался.
 	var state := Encounter.dev_room(SEED, 1, 1)
 	state.living(Actor.Kind.ENEMY)[0].position = Vector2(100000, 100000)
+	state.actor_of_slot(0).position = Vector2(state.room.bounds.position.x + 40.0, 0.0)
 	return state
 
 
@@ -44,91 +45,97 @@ func _run_up(state: RunState, move: Vector2) -> void:
 		SimTick.step(state, {0: Command.from_axes(state.tick, move, Vector2.ZERO)})
 
 
-## Дальность задана статом и обязана ей остаться: дуга — это способ
-## долететь, а не повод пролететь мимо.
-func _test_arc_keeps_the_declared_range() -> bool:
-	var state := _lone_shooter()
-	var actor := state.actor_of_slot(0)
-	var stats := actor.stack.compute()
-	var declared: float = stats["range"]
-	var start := actor.position
+func _coast(state: RunState, ticks: int) -> void:
+	for i in ticks:
+		SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
 
+
+## Снаряд проходит обе дальности: ровную и кувырком.
+func _test_flies_straight_range_then_tumbles() -> bool:
+	var state := _lone_shooter()
+	var start := state.actor_of_slot(0).position
 	var projectile := _shoot(state, Vector2.RIGHT)
 	check(projectile != null, "снаряд не появился")
 	if projectile == null:
 		return true
 
-	var travelled := 0.0
+	check(projectile.straight_range > 0.0, "ровная дальность нулевая")
+	check(projectile.tumble_range > 0.0, "кувырок не выдан — чемодан не долетит дальше")
+
+	var seen_tumbling := false
+	var furthest := 0.0
 	for i in 600:
-		SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
-		travelled = projectile.position.distance_to(start)
+		_coast(state, 1)
+		furthest = maxf(furthest, projectile.position.distance_to(start))
+		if projectile.tumbling():
+			seen_tumbling = true
 		if state.projectiles.is_empty():
 			break
 
-	check(state.projectiles.is_empty(), "снаряд не упал за десять секунд")
-	almost_eq(travelled, declared, "снаряд пролетел не свою дальность", declared * 0.06)
+	check(seen_tumbling, "снаряд ни разу не перешёл в кувырок")
+	check(state.projectiles.is_empty(), "снаряд не выдохся за десять секунд")
+	almost_eq(furthest, projectile.total_range(),
+		"снаряд прошёл не обе дальности", projectile.total_range() * 0.06)
 	return true
 
 
-## Летит по дуге, а не по прямой: поднимается, потом падает.
-func _test_projectile_rises_then_falls() -> bool:
+## Кувырок начинается ровно на заявленной дальности, не раньше.
+func _test_tumble_starts_at_the_declared_range() -> bool:
 	var state := _lone_shooter()
 	var projectile := _shoot(state, Vector2.RIGHT)
 	if projectile == null:
 		fail("снаряд не появился")
 		return true
 
-	var peak := projectile.height
-	var rising_ended := false
-	var previous := projectile.height
+	var straight := projectile.straight_range
+	var switched_at := -1.0
 	for i in 600:
-		SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
+		_coast(state, 1)
 		if state.projectiles.is_empty():
 			break
-		peak = maxf(peak, projectile.height)
-		if projectile.height < previous:
-			rising_ended = true
-		elif rising_ended:
-			fail("снаряд снова полетел вверх после падения")
+		if projectile.tumbling():
+			switched_at = projectile.travelled
 			break
-		previous = projectile.height
-
-	check(peak > Projectile.START_HEIGHT, "снаряд не поднялся выше точки броска")
-	check(rising_ended, "снаряд так и не начал падать")
-	almost_eq(projectile.height, 0.0, "снаряд остановился не на полу", 1.0)
+	check(switched_at > 0.0, "переход в кувырок не случился")
+	almost_eq(switched_at, straight, "кувырок начался не на своей дальности", straight * 0.05)
 	return true
 
 
-## Снаряд, летящий выше тела, проходит над ним. Без этого дуга была бы
-## чистой декорацией.
-func _test_high_projectile_flies_over() -> bool:
+## Падения больше нет: снаряд идёт ровно, ничего не роняя.
+func _test_no_falling() -> bool:
+	var projectile := Projectile.new()
+	check(not ("height" in projectile), "у снаряда осталась высота — падение вернулось")
+	check(not ("height_speed" in projectile), "у снаряда осталась вертикальная скорость")
+
+	var state := _lone_shooter()
+	var shot := _shoot(state, Vector2.RIGHT)
+	if shot == null:
+		fail("снаряд не появился")
+		return true
+	var line := shot.position.y
+	_coast(state, 20)
+	almost_eq(shot.position.y, line, "снаряд ушёл по вертикали при горизонтальном броске", 0.01)
+	return true
+
+
+## Кувыркающийся чемодан бьёт не слабее ровно летящего.
+func _test_tumbling_still_hits() -> bool:
 	var state := Encounter.dev_room(SEED, 1, 1)
 	var actor := state.actor_of_slot(0)
 	var enemy := state.living(Actor.Kind.ENEMY)[0]
+	enemy.position = Vector2(100000, 100000)
 
-	# Враг далеко, чтобы снаряд не погас о него на вылете
-	enemy.position = actor.position + Vector2(400, 0)
 	var projectile := _shoot(state, Vector2.RIGHT)
 	if projectile == null:
 		fail("снаряд не появился")
 		return true
+	projectile.travelled = projectile.straight_range + 1.0
+	check(projectile.tumbling(), "снаряд не в кувырке — проба построена неверно")
 
-	# Ставим снаряд на врага, но выше уровня попадания
 	var health := enemy.health
-	projectile.position = enemy.position
-	projectile.height = SimTick.HIT_HEIGHT + 20.0
-	projectile.height_speed = 0.0
-	SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
-	almost_eq(enemy.health, health, "снаряд ударил, пролетая над головой", 0.01)
-
-	# Тот же снаряд на уровне тела обязан попасть
-	if not state.projectiles.is_empty():
-		var low := state.projectiles[-1]
-		low.position = enemy.position
-		low.height = 10.0
-		low.height_speed = 0.0
-		SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
-		check(enemy.health < health, "снаряд на уровне тела не попал — проверка высоты режет всё")
+	enemy.position = projectile.position
+	_coast(state, 1)
+	check(enemy.health < health, "кувыркающийся снаряд не нанёс урона")
 	return true
 
 
@@ -139,7 +146,6 @@ func _test_momentum_carries_the_shot() -> bool:
 	if still_shot == null:
 		fail("снаряд не появился")
 		return true
-	var upright := still_shot.velocity
 
 	var running := _lone_shooter()
 	_run_up(running, Vector2.RIGHT)
@@ -148,10 +154,11 @@ func _test_momentum_carries_the_shot() -> bool:
 		fail("снаряд на бегу не появился")
 		return true
 
-	almost_eq(upright.x, 0.0, "стоя снаряд ушёл вбок", 0.01)
+	almost_eq(still_shot.velocity.x, 0.0, "стоя снаряд ушёл вбок", 0.01)
 	check(running_shot.velocity.x > 50.0,
 		"на бегу снаряд не снесло: %.1f" % running_shot.velocity.x)
-	almost_eq(running_shot.velocity.y, upright.y, "снос изменил вертикальную скорость", 0.01)
+	almost_eq(running_shot.velocity.y, still_shot.velocity.y,
+		"снос изменил вертикальную скорость", 0.01)
 	return true
 
 
@@ -172,12 +179,9 @@ func _test_momentum_is_symmetric() -> bool:
 	return true
 
 
-## Коэффициент — стат, значит предмет сможет его крутить.
 func _test_momentum_is_a_stat() -> bool:
 	var state := _lone_shooter()
 	var actor := state.actor_of_slot(0)
-	# Снимаем то, что положило оружие, и ставим свой коэффициент нулём.
-	# Остальные статы оружия возвращаем: без них стрелять нечем.
 	actor.stack.remove_source(Arsenal.source_of(actor.weapon_id))
 	actor.stack.base["damage"] = 12.0
 	actor.stack.base["fire_rate"] = 3.5
@@ -194,24 +198,20 @@ func _test_momentum_is_a_stat() -> bool:
 	return true
 
 
-func _test_arc_survives_a_save() -> bool:
-	var SaveGame = preload("res://sim/save/save_game.gd")
+func _test_flight_survives_a_save() -> bool:
 	var state := _lone_shooter()
 	var projectile := _shoot(state, Vector2.RIGHT)
 	if projectile == null:
 		fail("снаряд не появился")
 		return true
-	for i in 20:
-		SimTick.step(state, {0: Command.from_axes(state.tick, Vector2.ZERO, Vector2.ZERO)})
+	_coast(state, 20)
 
 	var loaded = SaveGame.from_bytes(SaveGame.to_bytes(state))
 	check(loaded != null, "забег со снарядом в полёте не загрузился")
-	if loaded == null:
+	if loaded == null or loaded.projectiles.is_empty():
 		return true
-	eq(loaded.projectiles.size(), state.projectiles.size(), "снаряд в полёте потерян")
-	if not loaded.projectiles.is_empty():
-		almost_eq(loaded.projectiles[0].height, state.projectiles[0].height,
-			"высота снаряда не пережила сейв", 1e-6)
-		almost_eq(loaded.projectiles[0].height_speed, state.projectiles[0].height_speed,
-			"вертикальная скорость не пережила сейв", 1e-6)
+	almost_eq(loaded.projectiles[0].travelled, state.projectiles[0].travelled,
+		"пройденный путь не пережил сейв", 1e-6)
+	almost_eq(loaded.projectiles[0].tumble_range, state.projectiles[0].tumble_range,
+		"дальность кувырка не пережила сейв", 1e-6)
 	return true

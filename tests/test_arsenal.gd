@@ -141,7 +141,7 @@ func _test_equipping_twice_does_not_stack() -> bool:
 	Arsenal.equip(actor, Arsenal.DEFAULT_WEAPON)
 	Arsenal.equip(actor, Arsenal.DEFAULT_WEAPON)
 	almost_eq(actor.stack.compute()["damage"], once, "повторная выдача сложила урон дважды")
-	eq(actor.stack.size(), 5, "повторная выдача наплодила модификаторов")
+	eq(actor.stack.size(), 6, "повторная выдача наплодила модификаторов")
 	return true
 
 

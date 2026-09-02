@@ -246,3 +246,32 @@ func _test_snap_aim_keeps_zero_zero() -> bool:
 	var free := Vector2(1.0, 0.15).normalized()
 	eq(Pose.snap_aim(free, 0), free, "при нуле направлений прицел всё равно притянулся")
 	return true
+
+
+## Голова по прицелу — приём Isaac: тело занято своим делом, голова
+## показывает, куда летят снаряды.
+func _test_head_follows_the_aim() -> bool:
+	eq(Pose.head_layer(Vector2.DOWN), Pose.HEAD_FRONT, "прицел вниз даёт не лицо")
+	eq(Pose.head_layer(Vector2.UP), Pose.HEAD_BACK, "прицел вверх даёт не затылок")
+	eq(Pose.head_layer(Vector2.RIGHT), Pose.HEAD_SIDE, "прицел вбок даёт не профиль")
+	eq(Pose.head_layer(Vector2.LEFT), Pose.HEAD_SIDE, "прицел влево даёт не профиль")
+	eq(Pose.head_layer(Vector2.ZERO), Pose.HEAD_FRONT, "без прицела голова не анфас")
+	return true
+
+
+## Порог по вертикали высокий намеренно: без него голова дёргалась бы
+## в профиль от косого выстрела вверх.
+func _test_diagonal_aim_shows_profile() -> bool:
+	eq(Pose.head_layer(Vector2(1, -1).normalized()), Pose.HEAD_SIDE,
+		"прицел по диагонали вверх дал затылок вместо профиля")
+	eq(Pose.head_layer(Vector2(-1, 1).normalized()), Pose.HEAD_SIDE,
+		"прицел по диагонали вниз дал лицо вместо профиля")
+	return true
+
+
+func _test_profile_head_mirrors_left() -> bool:
+	check(Pose.head_flipped(Vector2.LEFT), "профиль влево не отражается")
+	check(not Pose.head_flipped(Vector2.RIGHT), "профиль вправо отражается зря")
+	check(not Pose.head_flipped(Vector2.UP), "затылок отражается")
+	check(not Pose.head_flipped(Vector2.DOWN), "лицо отражается")
+	return true

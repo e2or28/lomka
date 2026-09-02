@@ -24,6 +24,9 @@ var slot: int = -1
 ## у безымянных тел вроде манекена на стенде.
 var archetype: String = ""
 
+## Как себя ведёт. Пустая строка у игрока: им управляет человек.
+var behaviour: String = ""
+
 var position: Vector2 = Vector2.ZERO
 var velocity: Vector2 = Vector2.ZERO
 var aim: Vector2 = Vector2.RIGHT
@@ -80,6 +83,7 @@ func to_dict() -> Dictionary:
 		"aim": aim,
 		"alive": alive,
 		"archetype": archetype,
+		"behaviour": behaviour,
 		"cooldown": cooldown,
 		"health": health,
 		"id": id,
@@ -98,6 +102,7 @@ static func from_dict(data: Dictionary):
 	actor.aim = data.get("aim", Vector2.RIGHT)
 	actor.alive = bool(data.get("alive", true))
 	actor.archetype = data.get("archetype", "")
+	actor.behaviour = data.get("behaviour", "")
 	actor.cooldown = float(data.get("cooldown", 0.0))
 	actor.health = float(data.get("health", 0.0))
 	actor.invulnerable = float(data.get("invulnerable", 0.0))

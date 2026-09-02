@@ -1,28 +1,19 @@
 extends RefCounted
-## Снаряд. У офисного работника это папка, вылетающая из чемодана.
+## Снаряд: чемодан, брошенный служащим.
 ##
-## Снаряд — список поведений, а не набор флагов: правило 4 требует, чтобы
-## синергии складывались композицией. Пока поведение одно — пробитие, — но
-## наведение, яд и расщепление лягут сюда же списком, а не ветвлением
-## «если предмет A и предмет B».
+## Летит по прямой, на своей высоте — падения нет. Долетев до заявленной
+## дальности, не гаснет, а переворачивается через себя и проходит ещё
+## отрезок: приём взят у Mr. P из Brawl Stars, где чемодан кувыркается и
+## доезжает дальше точки броска.
 ##
-## Два заимствования из Isaac, оба про ощущение боя:
+## Что это даёт механически: у оружия появляется две дальности — надёжная,
+## на которой снаряд летит ровно, и добавочная, куда он доберётся кувырком.
+## Обе статы, поэтому предмет сможет крутить их по отдельности.
 ##
-## Первое — снаряд наследует часть скорости бросающего. Бежишь вправо и
-## кидаешь вверх, папка уходит вверх-вправо. Отсюда разница между стрельбой
-## стоя и на бегу, упреждение и осмысленное отступление с отстрелом.
-##
-## Второе — дальность это падение, а не таймер. Папка летит по дуге и
-## шлёпается на пол. Так игроку видно, почему далёкий враг не получил урона,
-## а не «снаряд исчез в воздухе».
+## Дуга с падением здесь была и убрана намеренно: снаряд, шлёпающийся на
+## пол, обрывал атаку там, где игрок ждал продолжения.
 
-## Ускорение падения, пикселей в секунду за секунду. Не стат: дуга задаёт
-## характер оружия целиком, и крутить её предметом значило бы ломать
-## читаемость боя.
-const GRAVITY := 900.0
-
-## С какой высоты вылетает снаряд — примерно уровень руки.
-const START_HEIGHT := 46.0
+const Fnv = preload("res://sim/core/fnv.gd")
 
 var id: int = 0
 
@@ -35,25 +26,20 @@ var velocity: Vector2 = Vector2.ZERO
 var damage: float = 0.0
 var radius: float = 6.0
 
-## Высота над полом и вертикальная скорость. Пол — это ноль; коснувшись
-## его, снаряд гаснет. Заменяет прежний таймер жизни.
-var height: float = START_HEIGHT
-var height_speed: float = 0.0
+## Сколько уже пролетел и сколько ему отмерено.
+var travelled: float = 0.0
+
+## Дальность ровного полёта. Дальше начинается кувырок.
+var straight_range: float = 0.0
+
+## Сколько ещё проходит кувырком. Ноль — гаснет сразу по дальности.
+var tumble_range: float = 0.0
 
 ## Сколько тел ещё может пробить. Ноль — гаснет на первом попадании.
 var pierce: int = 0
 
 ## Кого уже задел: без этого пробивающий снаряд бьёт одно тело каждый тик.
 var hit_ids: Array[int] = []
-
-
-## Вертикальная скорость, при которой снаряд коснётся пола ровно через
-## flight_time секунд. Так дальность остаётся тем, что задано статом, а дуга
-## получается сама: z(t) = h + v*t - g*t^2/2 = 0.
-static func launch_speed(flight_time: float) -> float:
-	if flight_time <= 0.0:
-		return 0.0
-	return (GRAVITY * flight_time * flight_time * 0.5 - START_HEIGHT) / flight_time
 
 
 static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary):
@@ -73,26 +59,38 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary):
 	if momentum != 0.0:
 		projectile.velocity += owner.velocity * momentum
 
-	var range_units := float(stats.get("range", 0.0))
-	var flight := range_units / speed if speed > 0.0 else 0.0
-	projectile.height = START_HEIGHT
-	projectile.height_speed = launch_speed(flight)
+	projectile.straight_range = float(stats.get("range", 0.0))
+	projectile.tumble_range = float(stats.get("tumble_range", 0.0))
 	return projectile
 
 
-## Шаг полёта. Возвращает false, когда снаряд коснулся пола.
+func total_range() -> float:
+	return straight_range + tumble_range
+
+
+## Идёт ли сейчас кувырок. Представление рисует по этому вращение, а урон
+## остаётся тем же: кувыркающийся чемодан бьёт не слабее.
+func tumbling() -> bool:
+	return travelled >= straight_range
+
+
+## Насколько далеко зашёл кувырок, от 0 до 1. Вне кувырка — -1.
+func tumble_progress() -> float:
+	if not tumbling() or tumble_range <= 0.0:
+		return -1.0
+	return clampf((travelled - straight_range) / tumble_range, 0.0, 1.0)
+
+
+## Шаг полёта. Возвращает false, когда снаряд выдохся.
 func advance(delta: float) -> bool:
-	position += velocity * delta
-	height_speed -= GRAVITY * delta
-	height += height_speed * delta
-	if height <= 0.0:
-		height = 0.0
-		return false
-	return true
+	var step := velocity * delta
+	position += step
+	travelled += step.length()
+	return travelled < total_range()
 
 
 func expired() -> bool:
-	return height <= 0.0
+	return travelled >= total_range()
 
 
 func can_hit(actor) -> bool:
@@ -102,8 +100,6 @@ func can_hit(actor) -> bool:
 func to_dict() -> Dictionary:
 	return {
 		"damage": damage,
-		"height": height,
-		"height_speed": height_speed,
 		"hit_ids": hit_ids,
 		"id": id,
 		"owner_id": owner_id,
@@ -111,6 +107,9 @@ func to_dict() -> Dictionary:
 		"pierce": pierce,
 		"position": position,
 		"radius": radius,
+		"straight_range": straight_range,
+		"travelled": travelled,
+		"tumble_range": tumble_range,
 		"velocity": velocity,
 	}
 
@@ -118,8 +117,6 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary):
 	var projectile := new()
 	projectile.damage = float(data.get("damage", 0.0))
-	projectile.height = float(data.get("height", 0.0))
-	projectile.height_speed = float(data.get("height_speed", 0.0))
 	var ids: Array[int] = []
 	for value in data.get("hit_ids", []):
 		ids.append(int(value))
@@ -130,5 +127,8 @@ static func from_dict(data: Dictionary):
 	projectile.pierce = int(data.get("pierce", 0))
 	projectile.position = data.get("position", Vector2.ZERO)
 	projectile.radius = float(data.get("radius", 6.0))
+	projectile.straight_range = float(data.get("straight_range", 0.0))
+	projectile.travelled = float(data.get("travelled", 0.0))
+	projectile.tumble_range = float(data.get("tumble_range", 0.0))
 	projectile.velocity = data.get("velocity", Vector2.ZERO)
 	return projectile

@@ -129,13 +129,15 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var ground_at := origin + projectile.position
 	var age := float(projectile_age.get(projectile.id, 0.0))
 
-	# Высота настоящая, из симуляции: по тени видно ровно то, от чего
-	# зависит попадание.
-	_draw_projectile_shadow(ground_at, projectile.height)
+	# Кувырок в конце броска: чемодан переворачивается быстрее и слегка
+	# подскакивает. Это единственное, по чему видно, что он вошёл в
+	# добавочный отрезок дальности.
+	var tumble := projectile.tumble_progress()
+	_draw_projectile_shadow(ground_at, tumble)
 
-	var at := ground_at - Vector2(0.0, projectile.height)
+	var at := ground_at - Vector2(0.0, ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
-	var angle := ProjectilePose.rotation(age) * turn_direction
+	var angle := ProjectilePose.rotation(age, tumble) * turn_direction
 	draw_set_transform(at, angle, Vector2.ONE)
 
 	var paper: Texture2D = textures.get("folder")
@@ -155,9 +157,9 @@ func _draw_projectile(projectile: Projectile) -> void:
 ## Тень остаётся в настоящей позиции снаряда. Масштаб по Y превращает круг
 ## в плоский овал; наверху он меньше и светлее, поэтому прыжок читается даже
 ## на тёмном полу комнаты.
-func _draw_projectile_shadow(at: Vector2, height: float) -> void:
-	var scale := ProjectilePose.shadow_scale(height)
-	var alpha := ProjectilePose.shadow_alpha(height)
+func _draw_projectile_shadow(at: Vector2, tumble: float) -> void:
+	var scale := ProjectilePose.shadow_scale(tumble)
+	var alpha := ProjectilePose.shadow_alpha(tumble)
 	draw_set_transform(at, 0.0, Vector2(scale, scale * 0.32))
 	draw_circle(Vector2.ZERO, PROJECTILE_SHADOW_RADIUS, Color(0.0, 0.0, 0.0, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -255,9 +257,17 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	_draw_arm("player_arm_left", canvas, LEFT_SHOULDER, angles[0], lifts[0], tint)
 	_draw_arm("player_arm_right", canvas, RIGHT_SHOULDER, angles[1], lifts[1], tint)
 
-	var head: Texture2D = textures.get("player_head")
+	# Голова смотрит по прицелу, а не по телу: так в Isaac, и так видно,
+	# куда полетит следующая папка. Нет нужного слоя — берётся анфас.
+	var head_offset := CharacterPose.head_offset(phase, speed, breath)
+	var head: Texture2D = textures.get(CharacterPose.head_layer(actor.aim))
+	if head == null:
+		head = textures.get(CharacterPose.HEAD_FRONT)
 	if head != null:
-		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
+		if CharacterPose.head_flipped(actor.aim):
+			_draw_facing(head, canvas + head_offset, -1, tint)
+		else:
+			draw_texture(head, canvas + head_offset, tint)
 	_draw_weapon(actor, canvas, phase, speed, false, facing.get(actor.id, 1), tint)
 	return true
 

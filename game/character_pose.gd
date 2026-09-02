@@ -227,3 +227,35 @@ static func hand_position(phase: float, speed: float, profile: bool,
 		hand.y -= THROW_LIFT * swing
 		hand.x += (6.0 if throw_right else -6.0) * swing
 	return hand
+
+
+## Голова по направлению прицела — приём Isaac: тело занято своим делом,
+## а голова показывает, куда летят снаряды.
+##
+## Порог по вертикали намеренно высокий: почти любой прицел имеет
+## горизонтальную составляющую, и без порога голова дёргалась бы в профиль
+## от косого выстрела вверх.
+const HEAD_VERTICAL_BIAS := 0.72
+
+const HEAD_FRONT := "player_head"
+const HEAD_SIDE := "player_head_side"
+const HEAD_BACK := "player_head_back"
+
+
+## Какой слой головы рисовать. Прицел вниз — лицо, вверх — затылок,
+## вбок — профиль.
+static func head_layer(aim: Vector2) -> String:
+	if aim == Vector2.ZERO:
+		return HEAD_FRONT
+	var direction := aim.normalized()
+	if direction.y < -HEAD_VERTICAL_BIAS:
+		return HEAD_BACK
+	if direction.y > HEAD_VERTICAL_BIAS:
+		return HEAD_FRONT
+	return HEAD_SIDE
+
+
+## Отражать ли голову. Профиль нарисован смотрящим вправо, как и кадры
+## ходьбы, поэтому влево он рисуется зеркалом.
+static func head_flipped(aim: Vector2) -> bool:
+	return head_layer(aim) == HEAD_SIDE and aim.x < 0.0
