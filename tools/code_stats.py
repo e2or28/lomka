@@ -114,9 +114,53 @@ def collect(project: Path) -> dict:
     return {"by_dir": by_dir, "by_kind": by_kind, "files": files}
 
 
-def history(project: Path, limit: int = 40) -> list:
-    """Сколько строк было на каждом коммите. Считается по дереву коммита,
-    а не по диффам: так число совпадает с тем, что показывает обход файлов."""
+CACHE = Path(".cache") / "code_stats.json"
+
+
+def _blob_lines(project: Path, refs: list) -> dict:
+    """Сколько строк в каждом объекте. Одним процессом на весь коммит.
+
+    Раньше здесь был git show на каждый файл: тридцать коммитов по восемьдесят
+    файлов — это две с половиной тысячи запусков git и двадцать шесть секунд.
+    git cat-file --batch читает всё за один заход.
+    """
+    if not refs:
+        return {}
+    proc = subprocess.run(
+        ["git", "-C", str(project), "cat-file", "--batch"],
+        input="\n".join(refs).encode() + b"\n",
+        capture_output=True)
+
+    out = proc.stdout
+    result = {}
+    offset = 0
+    for ref in refs:
+        newline = out.find(b"\n", offset)
+        if newline < 0:
+            break
+        header = out[offset:newline].split(b" ")
+        if len(header) < 3:
+            # Объекта нет — git отвечает "<ref> missing"
+            offset = newline + 1
+            result[ref] = 0
+            continue
+        size = int(header[2])
+        body = out[newline + 1:newline + 1 + size]
+        result[ref] = body.count(b"\n")
+        offset = newline + 1 + size + 1
+    return result
+
+
+def history(project: Path, limit: int = 60) -> list:
+    """Сколько строк было на каждом коммите.
+
+    Считается по дереву коммита, а не по диффам: так число совпадает с тем,
+    что даёт обход файлов, и не копит ошибку от переименований.
+
+    Готовые коммиты кладутся в кеш: прошлое не меняется, пересчитывать его
+    при каждом запуске незачем. Без кеша дашборд нельзя было бы вешать на
+    хук — он бы стоил секунд, а не мгновения.
+    """
     try:
         log = subprocess.run(
             ["git", "-C", str(project), "log", "--format=%h\t%at\t%s",
@@ -124,37 +168,55 @@ def history(project: Path, limit: int = 40) -> list:
             capture_output=True, text=True, check=True).stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
+    if not log:
+        return []
+
+    cache_path = project / CACHE
+    cached = {}
+    if cache_path.exists():
+        try:
+            cached = json.loads(cache_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            cached = {}
 
     points = []
+    fresh = 0
     for line in log.split("\n"):
-        if not line:
-            continue
         sha, stamp, subject = line.split("\t", 2)
+        if sha in cached:
+            points.append(cached[sha])
+            continue
+
         listing = subprocess.run(
             ["git", "-C", str(project), "ls-tree", "-r", "--name-only", sha],
             capture_output=True, text=True).stdout.split("\n")
 
+        names = [n for n in listing
+                 if n and kind_of(Path(n))
+                 and not any(part in SKIP_DIRS for part in Path(n).parts)]
+        counts = _blob_lines(project, [f"{sha}:{n}" for n in names])
+
         totals = defaultdict(int)
-        for name in listing:
-            if not name or any(part in SKIP_DIRS for part in Path(name).parts):
-                continue
-            kind = kind_of(Path(name))
-            if not kind:
-                continue
-            blob = subprocess.run(
-                ["git", "-C", str(project), "show", f"{sha}:{name}"],
-                capture_output=True).stdout
-            count = blob.count(b"\n")
+        for name in names:
+            count = counts.get(f"{sha}:{name}", 0)
             group = Path(name).parts[0] if len(Path(name).parts) > 1 else "."
             totals[group] += count
             totals["всего"] += count
 
-        points.append({
+        point = {
             "sha": sha,
             "date": datetime.fromtimestamp(int(stamp)).strftime("%d.%m %H:%M"),
             "subject": subject,
             "totals": dict(totals),
-        })
+        }
+        cached[sha] = point
+        points.append(point)
+        fresh += 1
+
+    if fresh:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(cached, ensure_ascii=False),
+                              encoding="utf-8")
     return points
 
 
