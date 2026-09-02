@@ -15,6 +15,7 @@ const Room = preload("res://sim/room.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
+const Arsenal = preload("res://sim/arsenal.gd")
 
 
 ## Комната разработчиков: N игроков против M манекенов.
@@ -30,7 +31,8 @@ static func dev_room(seed_text: String, players: int, monsters: int) -> RunState
 	return state
 
 
-static func add_player(state: RunState, slot_index: int, character_id: String) -> Actor:
+static func add_player(state: RunState, slot_index: int, character_id: String,
+		weapon_id: String = Arsenal.DEFAULT_WEAPON) -> Actor:
 	var record := Bestiary.character(character_id)
 	var actor := Actor.new(state.take_id(), Actor.Kind.PLAYER)
 	actor.slot = slot_index
@@ -38,6 +40,10 @@ static func add_player(state: RunState, slot_index: int, character_id: String) -
 	actor.position = state.room.player_spawn(slot_index)
 	actor.stack.base = record.get("base_stats", {}).duplicate()
 	_apply_passive(actor, record.get("passive", []))
+	# Оружие кладёт свои модификаторы в тот же стек — до подсчёта здоровья,
+	# потому что оружие может его менять.
+	if weapon_id != "":
+		Arsenal.equip(actor, weapon_id)
 	actor.heal_to_full()
 	state.actors.append(actor)
 

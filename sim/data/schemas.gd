@@ -45,6 +45,22 @@ const ITEM := {
 	"unlocked_by_default": {"type": TYPE_BOOL, "required": false, "default": true},
 }
 
+## Оружие. Устроено как предмет и не случайно: и то и другое кладёт
+## модификаторы в стек, поэтому смена оружия и подбор предмета проходят
+## одним и тем же механизмом (правило 4).
+##
+## Боевых статов в персонаже нет — они целиком приходят от оружия. Персонаж
+## без оружия не стреляет, потому что скорострельность нулевая, а не потому
+## что где-то стоит проверка.
+const WEAPON := {
+	"id": {"type": TYPE_STRING, "id": true},
+	"name": {"type": TYPE_STRING},
+	"projectile": {"type": TYPE_STRING, "id": true},
+	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER},
+	"tags": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
+	"unlocked_by_default": {"type": TYPE_BOOL, "required": false, "default": false},
+}
+
 const ORGAN := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
@@ -80,6 +96,7 @@ const ENEMY := {
 
 const BY_KIND := {
 	"item": ITEM,
+	"weapon": WEAPON,
 	"organ": ORGAN,
 	"character": CHARACTER,
 	"enemy": ENEMY,

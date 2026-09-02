@@ -170,3 +170,32 @@ static func facing(velocity: Vector2, previous: int) -> int:
 ## с замахом, которых в профильных кадрах нет.
 static func use_walk_frames(speed: float) -> bool:
 	return speed >= WALK_THRESHOLD
+
+
+## Где кисть, в которой оружие. Координаты в холсте 128x192, найдены по
+## самим спрайтам: у слоя правой руки кисть в (84, 121), у профильной
+## стойки — в (49, 123). Пишу их сюда, а не подбираю на глаз, чтобы оружие
+## не висело в воздухе рядом с рукой.
+const HAND_FRONT := Vector2(84.0, 121.0)
+const HAND_SIDE := Vector2(49.0, 123.0)
+
+
+## Куда положить оружие. Возвращает точку в холсте.
+##
+## На бегу кисть ходит вместе с рукой, поэтому оружие качается в такт шагу:
+## неподвижный чемодан у шагающего человека читается как приклеенный.
+## На замахе оружие уходит вместе с бросающей рукой.
+static func hand_position(phase: float, speed: float, profile: bool,
+		throw: float, throw_right: bool) -> Vector2:
+	var hand := HAND_SIDE if profile else HAND_FRONT
+	if speed >= WALK_THRESHOLD:
+		hand.y += sin(phase) * ARM_LIFT
+		hand.x += cos(phase) * 1.2
+	else:
+		hand.y += -absf(sin(0.0)) * 0.0
+
+	if throw >= 0.0 and not profile:
+		var swing := _throw_swing(throw)
+		hand.y -= THROW_LIFT * swing
+		hand.x += (6.0 if throw_right else -6.0) * swing
+	return hand

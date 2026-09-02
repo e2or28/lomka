@@ -28,6 +28,10 @@ var position: Vector2 = Vector2.ZERO
 var velocity: Vector2 = Vector2.ZERO
 var aim: Vector2 = Vector2.RIGHT
 
+## Что в руках. Пустая строка — безоружен: ходит, но не стреляет.
+## Статы стрельбы приходят от оружия через стек, здесь только ссылка.
+var weapon_id: String = ""
+
 var health: float = 0.0
 var alive: bool = true
 
@@ -85,6 +89,7 @@ func to_dict() -> Dictionary:
 		"slot": slot,
 		"stack": stack.to_dict(),
 		"velocity": velocity,
+		"weapon_id": weapon_id,
 	}
 
 
@@ -100,4 +105,5 @@ static func from_dict(data: Dictionary):
 	actor.slot = int(data.get("slot", -1))
 	actor.stack = ModifierStack.from_dict(data.get("stack", {}))
 	actor.velocity = data.get("velocity", Vector2.ZERO)
+	actor.weapon_id = data.get("weapon_id", "")
 	return actor

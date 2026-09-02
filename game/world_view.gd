@@ -35,6 +35,10 @@ const PLAYER_ROOT := Vector2(64, 174)
 ## Плечи из art/player_layers.json, набор godot_128. Вокруг них вращаются
 ## руки: пивот в плече читается как мах, пивот в центре холста — как отрыв
 ## конечности.
+## Размер общего холста слоёв и кадров. Нужен, чтобы отразить точку кисти
+## вместе с отражённым кадром.
+const PLAYER_CANVAS := Vector2(128, 192)
+
 const LEFT_SHOULDER := Vector2(45, 63)
 const RIGHT_SHOULDER := Vector2(83, 63)
 
@@ -230,7 +234,9 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var frame := CharacterPose.walk_frame(phase)
 		var texture: Texture2D = textures.get("player_side_walk_%d" % (frame + 1))
 		if texture != null:
-			_draw_facing(texture, canvas, facing.get(actor.id, 1), tint)
+			var side: int = facing.get(actor.id, 1)
+			_draw_facing(texture, canvas, side, tint)
+			_draw_weapon(actor, canvas, phase, speed, true, side, tint)
 			return true
 
 	var body: Texture2D = textures.get("player_body")
@@ -254,7 +260,33 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var head: Texture2D = textures.get("player_head")
 	if head != null:
 		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
+	_draw_weapon(actor, canvas, phase, speed, false, facing.get(actor.id, 1), tint)
 	return true
+
+
+## Оружие в руке. Рисуется последним: оно перед телом, а не за ним.
+##
+## Спрайт берётся по идентификатору оружия из симуляции, поэтому смена
+## оружия меняет картинку сама — здесь нет ни одного разветвления по видам.
+## Нет спрайта — ничего не рисуется, и это правильнее заглушки: пустая рука
+## заметна, а чужой прямоугольник принимают за настоящее оружие.
+func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
+		profile: bool, side: int, tint: Color) -> void:
+	if actor.weapon_id == "":
+		return
+	var texture: Texture2D = textures.get(actor.weapon_id)
+	if texture == null:
+		return
+
+	var stats := actor.stack.compute()
+	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
+	var hand := CharacterPose.hand_position(phase, speed, profile, throw, actor.aim.x >= 0.0)
+	if profile and side > 0:
+		# Кадр отражён — вместе с ним переезжает и рука
+		hand.x = PLAYER_CANVAS.x - hand.x
+
+	var size := texture.get_size()
+	draw_texture(texture, canvas + hand - size * 0.5, tint)
 
 
 ## Кадр с учётом стороны. Профильные кадры нарисованы лицом вправо, поэтому

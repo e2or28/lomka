@@ -17,7 +17,7 @@ const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_2.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_3.bin"
 
 
 func title() -> String:
@@ -59,7 +59,9 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 	eq(loaded.slots[0].character_id, "clerk", "персонаж первого слота прочитался не тот")
 	eq(loaded.actor_of_slot(0).position, Vector2(128.5, -64.25), "позиция тела прочиталась не та")
 	eq(loaded.actor_of_slot(0).velocity, Vector2(-12.0, 3.5), "скорость тела прочиталась не та")
-	eq(loaded.actor_of_slot(0).stack.size(), 3, "модификаторы прочитались не все")
+	# Три от предметов плюс четыре от чемодана
+	eq(loaded.actor_of_slot(0).stack.size(), 7, "модификаторы прочитались не все")
+	eq(loaded.actor_of_slot(0).weapon_id, "suitcase", "оружие в руках прочиталось не то")
 	eq(loaded.slots[1].downed, true, "признак падения прочитался не тот")
 	eq(loaded.living(Actor.Kind.ENEMY).size(), 2, "враги прочитались не все")
 	eq(loaded.projectiles.size(), 1, "снаряд в полёте потерян")
@@ -69,7 +71,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 ## Отпечаток эталона зафиксирован числом. Если он поехал, а байты совпали —
 ## значит поехал сам state_hash, и все сверки хоста с клиентом врут.
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), -2830059960163233632,
+	eq(ReferenceRun.build().state_hash(), 1484635602419044144,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

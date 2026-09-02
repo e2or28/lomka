@@ -34,7 +34,7 @@ const SPRITES: Array[String] = [
 	"player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
-	"monster", "folder",
+	"monster", "folder", "suitcase",
 ]
 
 const SEED := "стенд"
