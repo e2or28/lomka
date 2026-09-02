@@ -1,6 +1,6 @@
 extends "res://tests/framework/test_case.gd"
-## Класс: поведение. Второе и третье оружие придут вместе с предметами M1 и
-## перепишут половину ожиданий — это обычная работа, а не поломка.
+## Класс: поведение. Третье и четвёртое оружие придут вместе с предметами M1
+## и перепишут половину ожиданий — это обычная работа, а не поломка.
 ##
 ## Оружие: выдать, сменить, снять.
 ##
@@ -19,8 +19,8 @@ const Modifier = preload("res://sim/core/modifier.gd")
 const SimTick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")
 
-## Второе оружие существует только в тесте: доказать, что механизм работает,
-## можно и не заводя контент, которого ещё нет в игре.
+## Оружие, существующее только в тесте: механизм проверяется на записи,
+## которой нет в реестре, — иначе тест начнёт падать от правок баланса.
 const CROWBAR := {
 	"id": "crowbar",
 	"name": "Монтировка",
@@ -157,4 +157,42 @@ func _test_unknown_weapon_is_refused() -> bool:
 	check(not Arsenal.equip(actor, "plazmomet"), "несуществующее оружие выдалось")
 	eq(actor.weapon_id, Arsenal.DEFAULT_WEAPON, "неудачная выдача сменила оружие в руках")
 	almost_eq(actor.stack.compute()["damage"], before, "неудачная выдача изменила статы")
+	return true
+
+
+## Кольт — первое оружие в игре, которое не бросают. Проверяется не баланс,
+## а то, что он отличается от чемодана по всем осям, по которым оружие
+## вообще может отличаться: иначе второй ствол — это первый под другим
+## именем, и механизм смены ничего не доказывает.
+func _test_colt_is_a_different_weapon_entirely() -> bool:
+	var state := Encounter.dev_room("оружие", 1, 1)
+	var actor := state.actor_of_slot(0)
+	var suitcase := actor.stack.compute()
+
+	check(Arsenal.equip(actor, "colt"), "кольт не выдался")
+	var colt := actor.stack.compute()
+
+	eq(Arsenal.projectile_of(actor), "bullet", "из кольта летят не пули")
+	check(colt["damage"] > suitcase["damage"], "кольт бьёт не сильнее чемодана")
+	check(colt["fire_rate"] < suitcase["fire_rate"], "кольт стреляет не реже чемодана")
+	check(colt["projectile_speed"] > suitcase["projectile_speed"],
+		"пуля летит не быстрее папки")
+	check(colt["shot_momentum"] < suitcase["shot_momentum"],
+		"пуля наследует скорость стрелка наравне с папкой")
+	return true
+
+
+## Кувырок — свойство чемодана, а не мира. Стат остаётся в стеке от прежнего
+## оружия, если снять его источник неаккуратно, и тогда пуля докатывается
+## лишние двести пикселей, кувыркаясь в воздухе. Ошибка тихая: ни падения,
+## ни ошибки в логе, просто дальность больше заявленной.
+func _test_swapping_to_the_colt_leaves_no_tumble() -> bool:
+	var state := Encounter.dev_room("оружие", 1, 1)
+	var actor := state.actor_of_slot(0)
+	almost_eq(actor.stack.compute().get("tumble_range", 0.0), 220.0,
+		"у чемодана пропал кувырок")
+
+	check(Arsenal.equip(actor, "colt"), "кольт не выдался")
+	almost_eq(actor.stack.compute().get("tumble_range", 0.0), 0.0,
+		"после смены на кольт остался кувырок чемодана")
 	return true

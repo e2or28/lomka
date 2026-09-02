@@ -150,6 +150,31 @@ static func walk_frame(phase: float) -> int:
 	return clampi(int(wrapped / TAU * WALK_FRAMES), 0, WALK_FRAMES - 1)
 
 
+## Имена кадра ходьбы для того, что в руках, — от предпочтительного к
+## запасному. Представление берёт первый, для которого нашёлся файл.
+##
+## Своя ходьба нужна не всякому оружию, а тому, которое меняет хват: с
+## чемоданом руки висят вдоль тела, с кольтом вынесены вперёд, и одними
+## кадрами это не отрисовать. Оружие без своего набора просто ходит базовым,
+## поэтому новый ствол не обязан приходить с семью кадрами.
+##
+## Список, а не готовое имя: наличие файла — вопрос к art/, а не к позе,
+## и проверять его чистая функция не может. Зато может назвать оба варианта
+## в правильном порядке, и это ровно то, что проверяется тестом.
+static func walk_frame_names(weapon_id: String, frame: int) -> PackedStringArray:
+	var base := "player_side_walk_%d" % (frame + 1)
+	if weapon_id == "":
+		return PackedStringArray([base])
+	return PackedStringArray(["player_%s_walk_%d" % [weapon_id, frame + 1], base])
+
+
+## То же для стойки: с оружием в руках стоят иначе, чем с пустыми.
+static func stand_names(weapon_id: String) -> PackedStringArray:
+	if weapon_id == "":
+		return PackedStringArray(["player_side_stand"])
+	return PackedStringArray(["player_%s_stand" % weapon_id, "player_side_stand"])
+
+
 ## Куда персонаж повёрнут: +1 вправо, -1 влево.
 ##
 ## Профильные кадры нарисованы лицом ВПРАВО — это проверено по спрайту, а не
@@ -207,6 +232,38 @@ static func use_walk_frames(speed: float) -> bool:
 const HAND_FRONT := Vector2(84.0, 121.0)
 const HAND_SIDE := Vector2(49.0, 123.0)
 
+## То же для кадров, где оружие держат наизготовку двумя руками: кисти
+## вынесены вперёд и подняты к груди. Найдено по самим кадрам ходьбы с
+## кольтом — кисть там в (76, 95), а не у бедра.
+##
+## Отдельная точка, а не поправка к прежней: это не поза руки, а другой
+## рисунок. Оружие, для которого нарисован свой набор кадров, держат в этой
+## точке; остальные — в прежней.
+const HAND_SIDE_AIMED := Vector2(52.0, 95.0)
+
+
+## Где у спрайта оружия рукоять — та точка, которой оно ложится в кисть.
+## Координаты внутри самого спрайта оружия, найдены по нему же: у кольта
+## рукоять в (4, 6) при размере 19x12.
+##
+## Без этого оружие приходится совмещать с кистью центром картинки, и в
+## ладони оказывается ствол, а рукоять висит в воздухе. Чемодана здесь нет
+## намеренно: он почти симметричен, центр ему годится, и трогать уже
+## подобранную посадку незачем.
+const WEAPON_GRIP := {
+	"colt": Vector2(4.0, 6.0),
+}
+
+
+## Смещение от точки кисти до левого верхнего угла спрайта оружия.
+static func weapon_offset(weapon_id: String, size: Vector2, mirrored: bool) -> Vector2:
+	if not WEAPON_GRIP.has(weapon_id):
+		return size * 0.5
+	var grip: Vector2 = WEAPON_GRIP[weapon_id]
+	# Отражённый спрайт держат за ту же рукоять, но она переехала на другую
+	# сторону холста вместе с рисунком.
+	return Vector2(size.x - grip.x, grip.y) if mirrored else grip
+
 
 ## Куда положить оружие. Возвращает точку в холсте.
 ##
@@ -214,8 +271,10 @@ const HAND_SIDE := Vector2(49.0, 123.0)
 ## неподвижный чемодан у шагающего человека читается как приклеенный.
 ## На замахе оружие уходит вместе с бросающей рукой.
 static func hand_position(phase: float, speed: float, profile: bool,
-		throw: float, throw_right: bool) -> Vector2:
-	var hand := HAND_SIDE if profile else HAND_FRONT
+		throw: float, throw_right: bool, aimed: bool = false) -> Vector2:
+	var hand := HAND_FRONT
+	if profile:
+		hand = HAND_SIDE_AIMED if aimed else HAND_SIDE
 	if speed >= WALK_THRESHOLD:
 		hand.y += sin(phase) * ARM_LIFT
 		hand.x += cos(phase) * 1.2

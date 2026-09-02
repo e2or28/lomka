@@ -17,6 +17,12 @@ const Fnv = preload("res://sim/core/fnv.gd")
 
 var id: int = 0
 
+## Чем стреляли: папка из чемодана, пуля из кольта. Приходит из записи
+## оружия и дальше ни на что в бою не влияет — по нему представление
+## выбирает, что нарисовать. Держится в снаряде, а не выводится из владельца:
+## оружие в руках сменится, а уже летящая папка обязана остаться папкой.
+var kind: String = ""
+
 ## Кто бросил. Снаряд не бьёт своего владельца и своих по типу.
 var owner_id: int = 0
 var owner_kind: int = 0
@@ -42,9 +48,11 @@ var pierce: int = 0
 var hit_ids: Array[int] = []
 
 
-static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary):
+static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
+		p_kind: String = ""):
 	var projectile := new()
 	projectile.id = p_id
+	projectile.kind = p_kind
 	projectile.owner_id = owner.id
 	projectile.owner_kind = int(owner.kind)
 	projectile.position = owner.position
@@ -102,6 +110,7 @@ func to_dict() -> Dictionary:
 		"damage": damage,
 		"hit_ids": hit_ids,
 		"id": id,
+		"kind": kind,
 		"owner_id": owner_id,
 		"owner_kind": owner_kind,
 		"pierce": pierce,
@@ -122,6 +131,7 @@ static func from_dict(data: Dictionary):
 		ids.append(int(value))
 	projectile.hit_ids = ids
 	projectile.id = int(data.get("id", 0))
+	projectile.kind = data.get("kind", "")
 	projectile.owner_id = int(data.get("owner_id", 0))
 	projectile.owner_kind = int(data.get("owner_kind", 0))
 	projectile.pierce = int(data.get("pierce", 0))

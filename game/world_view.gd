@@ -137,10 +137,15 @@ func _draw_projectile(projectile: Projectile) -> void:
 
 	var at := ground_at - Vector2(0.0, ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
-	var angle := ProjectilePose.rotation(age, tumble) * turn_direction
+
+	# Вращается то, что бросают, а не то, чем стреляют: у снаряда без
+	# кувырка вращения нет вовсе. Иначе пуля крутилась бы в полёте волчком.
+	var angle := 0.0
+	if projectile.tumble_range > 0.0:
+		angle = ProjectilePose.rotation(age, tumble) * turn_direction
 	draw_set_transform(at, angle, Vector2.ONE)
 
-	var paper: Texture2D = textures.get("folder")
+	var paper: Texture2D = textures.get(projectile.kind)
 	if paper != null:
 		var size := paper.get_size()
 		draw_texture(paper, -size * 0.5)
@@ -232,16 +237,20 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	# из слоёв: там работают ноги, которых в слоях нет вовсе.
 	if CharacterPose.use_walk_frames(speed):
 		var frame := CharacterPose.walk_frame(phase)
-		var texture: Texture2D = textures.get("player_side_walk_%d" % (frame + 1))
-		if texture != null:
+		var names := CharacterPose.walk_frame_names(actor.weapon_id, frame)
+		var chosen := _first_name(names)
+		if chosen != "":
 			var side: int = facing.get(actor.id, 1)
-			_draw_facing(texture, canvas, side, tint)
-			_draw_weapon(actor, canvas, phase, speed, true, side, tint)
+			_draw_facing(textures[chosen], canvas, side, tint)
+			# Кадры, нарисованные под это оружие, держат его наизготовку —
+			# и кисть у них не там, где у базовой ходьбы.
+			_draw_weapon(actor, canvas, phase, speed, true, side, tint,
+				chosen == names[0] and names.size() > 1)
 			return true
 
 	var body: Texture2D = textures.get("player_body")
 	if body == null:
-		var standing: Texture2D = textures.get("player_side_stand")
+		var standing := _first_texture(CharacterPose.stand_names(actor.weapon_id))
 		if standing == null:
 			return false
 		_draw_facing(standing, canvas, facing.get(actor.id, 1), tint)
@@ -264,6 +273,21 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	return true
 
 
+## Первое имя из списка, для которого нашлась текстура, или пустая строка.
+## Список приходит от позы: она называет, что предпочтительнее, а здесь
+## решается, что есть на диске.
+func _first_name(names: PackedStringArray) -> String:
+	for name in names:
+		if textures.get(name) != null:
+			return name
+	return ""
+
+
+func _first_texture(names: PackedStringArray) -> Texture2D:
+	var name := _first_name(names)
+	return textures[name] if name != "" else null
+
+
 ## Оружие в руке. Рисуется последним: оно перед телом, а не за ним.
 ##
 ## Спрайт берётся по идентификатору оружия из симуляции, поэтому смена
@@ -271,7 +295,7 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 ## Нет спрайта — ничего не рисуется, и это правильнее заглушки: пустая рука
 ## заметна, а чужой прямоугольник принимают за настоящее оружие.
 func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
-		profile: bool, side: int, tint: Color) -> void:
+		profile: bool, side: int, tint: Color, aimed: bool = false) -> void:
 	if actor.weapon_id == "":
 		return
 	var texture: Texture2D = textures.get(actor.weapon_id)
@@ -280,13 +304,24 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 
 	var stats := actor.stack.compute()
 	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
-	var hand := CharacterPose.hand_position(phase, speed, profile, throw, actor.aim.x >= 0.0)
+	var hand := CharacterPose.hand_position(phase, speed, profile, throw,
+		actor.aim.x >= 0.0, aimed)
 	if profile and side > 0:
 		# Кадр отражён — вместе с ним переезжает и рука
 		hand.x = PLAYER_CANVAS.x - hand.x
 
+	# Оружие отражается вместе с персонажем: неотражённый кольт у идущего
+	# влево смотрел бы стволом назад.
 	var size := texture.get_size()
-	draw_texture(texture, canvas + hand - size * 0.5, tint)
+	var mirrored := profile and side < 0
+	var offset := CharacterPose.weapon_offset(actor.weapon_id, size, mirrored)
+	if mirrored:
+		draw_set_transform(canvas + hand - Vector2(size.x - offset.x, offset.y)
+			+ Vector2(size.x, 0.0), 0.0, Vector2(-1.0, 1.0))
+		draw_texture(texture, Vector2.ZERO, tint)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	draw_texture(texture, canvas + hand - offset, tint)
 
 
 ## Кадр с учётом стороны. Профильные кадры нарисованы лицом вправо, поэтому

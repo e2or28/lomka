@@ -185,4 +185,31 @@ func _test_flight_survives_a_save() -> bool:
 		"пройденный путь не пережил сейв", 1e-6)
 	almost_eq(loaded.projectiles[0].tumble_range, state.projectiles[0].tumble_range,
 		"дальность кувырка не пережила сейв", 1e-6)
+	eq(loaded.projectiles[0].kind, state.projectiles[0].kind,
+		"вид снаряда не пережил сейв — после загрузки папка нарисуется пулей")
+	return true
+
+
+## Снаряд помнит, чем его выпустили. Не ради красоты: вид приходит из записи
+## оружия и остаётся в снаряде, а не читается у владельца — иначе смена
+## оружия в полёте превратила бы уже брошенную папку в пулю.
+func _test_shot_carries_the_weapon_projectile() -> bool:
+	var state := Arena.shooting_range(SEED)
+	var folder := Arena.shoot(state, Vector2.RIGHT)
+	if folder == null:
+		fail("папка не полетела")
+		return true
+	eq(folder.kind, "folder", "из чемодана вылетела не папка")
+
+	var actor := state.actor_of_slot(0)
+	check(Arsenal.equip(actor, "colt"), "кольт не выдался")
+	eq(folder.kind, "folder", "уже летящая папка сменила вид вместе с оружием")
+
+	Arena.coast(state, 60)
+	var bullet := Arena.shoot(state, Vector2.RIGHT)
+	if bullet == null:
+		fail("пуля не полетела")
+		return true
+	eq(bullet.kind, "bullet", "из кольта вылетела не пуля")
+	almost_eq(bullet.tumble_range, 0.0, "пуля кувыркается")
 	return true

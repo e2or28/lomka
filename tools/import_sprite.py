@@ -95,8 +95,42 @@ def detect_step(image: np.ndarray, mask: np.ndarray) -> float:
     return float(np.median(useful))
 
 
-def content_mask(image: np.ndarray) -> np.ndarray:
-    """Что здесь рисунок, а что фон. Фоном считается цвет левого верхнего угла."""
+def decode_rgba(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Картинка -> (rgb, alpha). Альфа читается всегда, даже когда её нет:
+    у непрозрачного PNG она приедет сплошными единицами и ничего не испортит.
+
+    Читать без альфы нельзя. Прозрачный пиксель, прочитанный как rgb,
+    становится чёрным, фоном объявляется чёрный — и вместе с фоном из
+    спрайта вырезается всё тёмное, что в нём нарисовано.
+    """
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", str(path)],
+        capture_output=True, text=True, check=True)
+    width, height = (int(v) for v in probe.stdout.strip().split("x"))
+
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-f", "rawvideo",
+         "-pix_fmt", "rgba", "-"],
+        capture_output=True, check=True).stdout
+    pixels = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)
+    return pixels[:, :, :3], pixels[:, :, 3]
+
+
+def has_alpha(alpha: np.ndarray) -> bool:
+    """Осмысленная ли прозрачность, или канал формальный."""
+    return bool((alpha < 50).mean() > 0.01)
+
+
+def content_mask(image: np.ndarray, alpha: np.ndarray = None) -> np.ndarray:
+    """Что здесь рисунок, а что фон.
+
+    Готовая альфа берётся как есть: художник уже ответил на этот вопрос,
+    и угадывать поверх его ответа незачем. Без неё фоном считается цвет
+    левого верхнего угла.
+    """
+    if alpha is not None and has_alpha(alpha):
+        return alpha > 128
     background = image[0, 0].astype(np.int16)
     distance = np.abs(image.astype(np.int16) - background).sum(axis=2)
     return distance > BACKGROUND_TOLERANCE
@@ -205,14 +239,16 @@ def main() -> int:
         print(f"нет файла: {args.source}", file=sys.stderr)
         return 1
 
-    image = decode(args.source)
-    mask = content_mask(image)
+    image, alpha = decode_rgba(args.source)
+    mask = content_mask(image, alpha)
     step = args.step or detect_step(image, mask)
 
     sprite = downsample(image, mask, step, whole_canvas=args.no_trim)
     if args.keep_bg:
         sprite[:, :, 3] = 255
-    else:
+    elif not has_alpha(alpha):
+        # Крошку по контуру счищать нужно только там, где силуэт вырезан
+        # из фона: у спрайта с готовой альфой края чистые по определению.
         sprite = despeckle(sprite, image[0, 0].astype(np.int16))
     if not args.no_trim:
         sprite = trim(sprite)

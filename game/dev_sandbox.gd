@@ -18,6 +18,7 @@ const Command = preload("res://sim/input/command.gd")
 const CommandLog = preload("res://sim/input/command_log.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const Actor = preload("res://sim/actor.gd")
+const Arsenal = preload("res://sim/arsenal.gd")
 const InputReader = preload("res://game/input_reader.gd")
 const InputMapDef = preload("res://tools/input_map.gd")
 const WorldView = preload("res://game/world_view.gd")
@@ -35,7 +36,13 @@ const SPRITES: Array[String] = [
 	"player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
-	"monster", "folder", "suitcase",
+	# Ходьба с кольтом: другой хват, поэтому свой набор кадров, а не тот же
+	# с подрисованным стволом. Выбирается по оружию в руках, см.
+	# CharacterPose.walk_frame_names.
+	"player_colt_stand",
+	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
+	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
+	"monster", "folder", "suitcase", "colt",
 ]
 
 const SEED := "стенд"
@@ -213,10 +220,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_TAB:
 			_active_slots = _active_slots % RunState.MAX_PLAYERS + 1
 			_reset()
+		KEY_Q:
+			_next_weapon()
 		KEY_R:
 			_reset()
 		KEY_ESCAPE:
 			get_tree().quit()
+
+
+## Перебрать оружие по кругу на всех живых игроках.
+##
+## Нужно затем же, зачем ползунки статов: увидеть руками, что смена оружия
+## меняет и бой, и картинку. Порядок берётся из реестра, а не задаётся
+## здесь списком, — иначе третий ствол приедет в игру и не появится на
+## стенде, где его как раз и надо щупать.
+func _next_weapon() -> void:
+	var ids := Arsenal.WEAPONS.keys()
+	ids.sort()
+	if ids.is_empty():
+		return
+
+	var note := PackedStringArray()
+	for actor in _state.living(Actor.Kind.PLAYER):
+		var index := ids.find(actor.weapon_id)
+		var next: String = ids[(index + 1) % ids.size()]
+		if Arsenal.equip(actor, next):
+			note.append(Arsenal.weapon(next).get("name", next))
+	if not note.is_empty():
+		_art_note = "оружие: " + ", ".join(note)
+		_art_note_left = 2.0
 
 
 func _reload_art() -> void:

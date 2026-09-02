@@ -17,6 +17,7 @@ const CommandLog = preload("res://sim/input/command_log.gd")
 const Command = preload("res://sim/input/command.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
+const Arsenal = preload("res://sim/arsenal.gd")
 
 ## Шаг фиксирован: 60 тиков в секунду, как в project.godot. Плавающий шаг
 ## сделал бы сверку состояния между хостом и клиентом невоспроизводимой.
@@ -183,7 +184,8 @@ static func _fire(state: RunState, actor, stats: Dictionary) -> void:
 		return
 
 	state.projectiles.append(
-		Projectile.spawn(state.take_id(), actor, actor.aim, stats))
+		Projectile.spawn(state.take_id(), actor, actor.aim, stats,
+			Arsenal.projectile_of(actor)))
 	actor.cooldown = 1.0 / rate
 
 

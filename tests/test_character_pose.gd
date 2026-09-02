@@ -249,3 +249,66 @@ func _test_snap_aim_keeps_zero_zero() -> bool:
 	var free := Vector2(1.0, 0.15).normalized()
 	eq(Pose.snap_aim(free, 0), free, "при нуле направлений прицел всё равно притянулся")
 	return true
+
+
+## Набор кадров ходьбы выбирается по тому, что в руках: с чемоданом руки
+## висят вдоль тела, с кольтом вынесены вперёд, и одним набором это не
+## нарисовать.
+##
+## Проверяется порядок, а не наличие файлов: своё оружие идёт первым,
+## базовый набор — запасным. Оружие, которому своих кадров не нарисовали,
+## обязано ходить базовым, иначе персонаж с ним пропадёт с экрана.
+func _test_walk_frames_follow_the_weapon() -> bool:
+	var colt := Pose.walk_frame_names("colt", 2)
+	eq(colt.size(), 2, "у оружия со своим набором нет запасного варианта")
+	eq(colt[0], "player_colt_walk_3", "свой набор кадров назван не так")
+	eq(colt[1], "player_side_walk_3", "запасным набором оказался не базовый")
+
+	var bare := Pose.walk_frame_names("", 2)
+	eq(bare.size(), 1, "у безоружного набор кадров не один")
+	eq(bare[0], "player_side_walk_3", "безоружный ходит не базовым набором")
+	return true
+
+
+func _test_stand_frame_follows_the_weapon() -> bool:
+	var colt := Pose.stand_names("colt")
+	eq(colt[0], "player_colt_stand", "стойка с кольтом названа не так")
+	eq(colt[1], "player_side_stand", "запасной стойкой оказалась не базовая")
+	eq(Pose.stand_names("")[0], "player_side_stand", "безоружный стоит не базовой стойкой")
+	return true
+
+
+## Номер кадра в имени человеческий, с единицы: файлы на диске называются
+## player_side_walk_1..6, а внутри кадры считаются с нуля. Промах на единицу
+## здесь означает, что первый кадр цикла никогда не покажется, а последний
+## не найдётся.
+func _test_frame_numbering_starts_at_one() -> bool:
+	eq(Pose.walk_frame_names("colt", 0)[0], "player_colt_walk_1", "первый кадр назван не так")
+	eq(Pose.walk_frame_names("colt", Pose.WALK_FRAMES - 1)[0], "player_colt_walk_6",
+		"последний кадр назван не так")
+	return true
+
+
+## Оружие ложится в кисть рукоятью, а не центром картинки. Центр годится
+## только симметричному чемодану; у кольта он приходится на затвор, и в
+## ладони оказывается ствол.
+func _test_weapon_hangs_by_its_grip() -> bool:
+	var size := Vector2(19.0, 12.0)
+	eq(Pose.weapon_offset("colt", size, false), Vector2(4.0, 6.0),
+		"кольт совмещается с кистью не рукоятью")
+	eq(Pose.weapon_offset("suitcase", size, false), size * 0.5,
+		"оружие без заданной рукояти перестало совмещаться по центру")
+	return true
+
+
+## Отражённый спрайт держат за ту же рукоять — но она переехала на другую
+## сторону холста вместе с рисунком. Забыть это значит получить оружие,
+## которое при развороте прыгает на ширину ствола.
+func _test_mirrored_grip_moves_with_the_sprite() -> bool:
+	var size := Vector2(19.0, 12.0)
+	var straight := Pose.weapon_offset("colt", size, false)
+	var mirrored := Pose.weapon_offset("colt", size, true)
+	almost_eq(straight.x + mirrored.x, size.x,
+		"зеркальная рукоять не симметрична исходной")
+	almost_eq(straight.y, mirrored.y, "рукоять при отражении переехала по высоте")
+	return true
