@@ -74,10 +74,37 @@ if [ -f art/player.png ]; then
     iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/icon.icns"
 fi
 
+# Снять расширенные атрибуты. macOS вешает на созданные файлы пометки
+# происхождения, и Finder из-за них может отказаться открывать бандл,
+# хотя из терминала тот же бандл запускается.
+xattr -cr "$APP" 2>/dev/null || true
+
+# Ad-hoc подпись. Сертификата у нас нет и не будет: нотаризация требует
+# Apple Developer Program, а он отложен до после релиза (docs/DECISIONS.md).
+# Ad-hoc не проходит spctl, но делает бандл цельным с точки зрения системы
+# и снимает часть отказов Finder. Для локальных запусков этого хватает —
+# так и записано в docs/SETUP.md.
+codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+
 # Сбросить кэш иконок Finder, иначе он покажет прежнюю
 touch "$APP"
 
+# Запасной вариант на случай, если Finder всё равно упрётся. Обычный
+# скрипт: Терминал исполняет его без разговоров про подпись, ценой
+# открытого окна Терминала рядом с игрой.
+CMD="$HOME/Desktop/$APP_NAME.command"
+cat > "$CMD" <<CMDEOF
+#!/bin/bash
+# Собран tools/make_desktop_launcher.sh — правки здесь сотрёт пересборка.
+# Запасной запуск на случай, если Finder не открывает $APP_NAME.app.
+cd "$PROJECT_DIR" || exit 1
+exec "$GODOT" --path "$PROJECT_DIR"
+CMDEOF
+chmod +x "$CMD"
+xattr -cr "$CMD" 2>/dev/null || true
+
 echo "Ярлык собран: $APP"
+echo "Запасной:     $CMD"
 echo "  движок:  $GODOT"
 echo "  проект:  $PROJECT_DIR"
 echo "  иконка:  $([ -f "$APP/Contents/Resources/icon.icns" ] && echo "из art/player.png" || echo "стандартная")"
