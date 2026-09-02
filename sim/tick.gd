@@ -42,6 +42,10 @@ const HIT_INVULNERABILITY := 0.4
 ## Насколько близко враг должен подойти, чтобы ударить касанием.
 const TOUCH_RANGE := 40.0
 
+## Выше этой высоты снаряд проходит над телом, не задевая. Без этого дуга
+## была бы чистой декорацией: папка била бы, пролетая на уровне головы.
+const HIT_HEIGHT := 60.0
+
 
 static func step(state: RunState, commands: Dictionary) -> void:
 	_drive_players(state, commands)
@@ -134,13 +138,17 @@ static func _move_bodies(state: RunState) -> void:
 
 
 static func _fire(state: RunState, actor, stats: Dictionary) -> void:
+	# Оружия нет или оно ничего не бросает — стрелять нечем.
+	# Проверяется по статам, а не по готовому снаряду: снаряд, который сразу
+	# лежит на полу, всё равно не нужен.
 	var rate := float(stats.get("fire_rate", 0.0))
-	if rate <= 0.0:
+	var speed := float(stats.get("projectile_speed", 0.0))
+	var reach := float(stats.get("range", 0.0))
+	if rate <= 0.0 or speed <= 0.0 or reach <= 0.0:
 		return
-	var projectile: Projectile = Projectile.spawn(state.take_id(), actor, actor.aim, stats)
-	if projectile.life <= 0.0:
-		return
-	state.projectiles.append(projectile)
+
+	state.projectiles.append(
+		Projectile.spawn(state.take_id(), actor, actor.aim, stats))
 	actor.cooldown = 1.0 / rate
 
 
@@ -150,8 +158,7 @@ static func _fire(state: RunState, actor, stats: Dictionary) -> void:
 static func _fly_projectiles(state: RunState) -> void:
 	var surviving: Array[Projectile] = []
 	for projectile in state.projectiles:
-		projectile.position += projectile.velocity * DELTA
-		projectile.life -= DELTA
+		var flying := projectile.advance(DELTA)
 
 		if not state.room.contains(projectile.position):
 			continue
@@ -159,6 +166,10 @@ static func _fly_projectiles(state: RunState) -> void:
 		var spent := false
 		for actor in state.actors:
 			if not projectile.can_hit(actor):
+				continue
+			# Снаряд выше тела проходит над ним. Иначе дуга ничего не меняет:
+			# папка била бы, пролетая на высоте головы.
+			if projectile.height > HIT_HEIGHT:
 				continue
 			var reach := projectile.radius + BODY_RADIUS
 			if projectile.position.distance_squared_to(actor.position) > reach * reach:
@@ -173,7 +184,7 @@ static func _fly_projectiles(state: RunState) -> void:
 				break
 			projectile.pierce -= 1
 
-		if not spent and not projectile.expired():
+		if not spent and flying:
 			surviving.append(projectile)
 	state.projectiles = surviving
 

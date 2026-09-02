@@ -78,7 +78,7 @@ func _test_played_run_roundtrip() -> bool:
 	eq(loaded.slots[0].character_id, "clerk", "выбранный персонаж потерян")
 	eq(loaded.actor_of_slot(0).stack.compute(), state.actor_of_slot(0).stack.compute(),
 		"стек модификаторов посчитался иначе")
-	eq(loaded.actor_of_slot(0).stack.size(), 7, "модификаторы потеряны")
+	eq(loaded.actor_of_slot(0).stack.size(), 8, "модификаторы потеряны")
 	eq(loaded.actor_of_slot(0).weapon_id, "suitcase", "оружие в руках потеряно")
 	eq(loaded.actors.size(), state.actors.size(), "тела потеряны")
 	eq(loaded.living(Actor.Kind.ENEMY).size(), 2, "враги потеряны")

@@ -1,45 +1,73 @@
 extends "res://tests/framework/test_case.gd"
-## Прыжок метательного портфеля — чистая математика представления.
+## Вид летящей папки: переворот и тень.
 ##
-## Положение столкновения остаётся в sim/: здесь проверяются только высота,
-## один полный оборот и тень, которые видит игрок.
+## Дуга отсюда ушла. Раньше высота была декорацией: симуляция двигала снаряд
+## по прямой, а представление подрисовывало прыжок. Теперь снаряд правда
+## поднимается и падает, и от высоты зависит, попадёт он или пройдёт над
+## головой — проверяется это в tests/test_ballistics.gd.
+##
+## Здесь осталось то, что действительно ни на что не влияет.
 
-const Pose = preload("res://game/projectile_pose.gd")
+const ProjectilePose = preload("res://game/projectile_pose.gd")
 
 
 func title() -> String:
-	return "поза снаряда"
+	return "вид снаряда"
 
 
-func _test_progress_is_clamped_to_one_flight() -> bool:
-	almost_eq(Pose.progress(-1.0, 2.0), 0.0, "отрицательный возраст дал прогресс", 1e-6)
-	almost_eq(Pose.progress(1.0, 2.0), 0.5, "середина полёта посчиталась неверно", 1e-6)
-	almost_eq(Pose.progress(3.0, 2.0), 1.0, "после конца начался второй полёт", 1e-6)
-	almost_eq(Pose.progress(1.0, 0.0), 1.0, "нулевая длительность не завершила полёт", 1e-6)
+## Переворот считается от возраста, а не от доли пути: короткий бросок
+## должен крутиться так же, как длинный, иначе оружие малой дальности
+## выглядит вялым.
+func _test_spin_speed_does_not_depend_on_range() -> bool:
+	var quarter := ProjectilePose.rotation(ProjectilePose.SPIN_PERIOD * 0.25)
+	almost_eq(quarter, TAU * 0.25, "четверть оборота за четверть периода не набралась", 1e-5)
+
+	almost_eq(ProjectilePose.rotation(0.0), 0.0, "переворот начинается не с нуля", 1e-6)
+	almost_eq(ProjectilePose.rotation(ProjectilePose.SPIN_PERIOD), 0.0,
+		"за полный период не набрался ровно один оборот", 1e-5)
 	return true
 
 
-func _test_jump_is_one_symmetric_arc() -> bool:
-	almost_eq(Pose.lift(0.0), 0.0, "портфель поднят в момент броска", 1e-6)
-	almost_eq(Pose.lift(0.5), Pose.JUMP_HEIGHT, "в середине не достигнута вершина", 1e-6)
-	almost_eq(Pose.lift(1.0), 0.0, "портфель не приземлился в конце", 1e-6)
-	almost_eq(Pose.lift(0.25), Pose.lift(0.75), "дуга несимметрична", 1e-6)
+func _test_spin_keeps_turning() -> bool:
+	var seen_high := false
+	var out_of_range := 0
+	for step in 40:
+		var angle := ProjectilePose.rotation(step * 0.05)
+		if angle < 0.0 or angle >= TAU + 1e-6:
+			out_of_range += 1
+		if angle > TAU * 0.75:
+			seen_high = true
+	eq(out_of_range, 0, "угол переворота вышел за оборот")
+	check(seen_high, "папка не доходит до конца оборота")
 	return true
 
 
-func _test_rotation_is_exactly_one_turn() -> bool:
-	almost_eq(Pose.rotation(0.0), 0.0, "портфель повёрнут до броска", 1e-6)
-	almost_eq(Pose.rotation(0.5), PI, "в середине нет половины оборота", 1e-6)
-	almost_eq(Pose.rotation(1.0), TAU, "за полёт не сделан полный оборот", 1e-6)
-	almost_eq(Pose.rotation(2.0), TAU, "после приземления начался второй оборот", 1e-6)
+## Тень читается по настоящей высоте: по ней игрок понимает, пройдёт
+## снаряд над врагом или заденет.
+func _test_shadow_follows_real_height() -> bool:
+	var ground_scale := ProjectilePose.shadow_scale(0.0)
+	var air_scale := ProjectilePose.shadow_scale(ProjectilePose.SHADOW_FULL_HEIGHT)
+	check(air_scale < ground_scale, "тень наверху не уменьшилась")
+	almost_eq(ground_scale, 1.0, "тень на полу не в полный размер", 1e-6)
+
+	var ground_alpha := ProjectilePose.shadow_alpha(0.0)
+	var air_alpha := ProjectilePose.shadow_alpha(ProjectilePose.SHADOW_FULL_HEIGHT)
+	check(air_alpha < ground_alpha, "тень наверху не побледнела")
 	return true
 
 
-func _test_shadow_shrinks_at_the_top() -> bool:
-	almost_eq(Pose.shadow_scale(0.0), 1.0, "тень сжата на земле", 1e-6)
-	almost_eq(Pose.shadow_scale(0.5), Pose.SHADOW_MIN_SCALE,
-		"тень не сжалась в вершине", 1e-6)
-	almost_eq(Pose.shadow_scale(1.0), 1.0, "тень не вернулась при посадке", 1e-6)
-	check(Pose.shadow_alpha(0.5) < Pose.shadow_alpha(0.0),
-		"тень не стала светлее при подъёме")
+func _test_shadow_is_monotonic_and_bounded() -> bool:
+	var previous := ProjectilePose.shadow_scale(0.0)
+	var grew := 0
+	for step in 40:
+		var height := step * 5.0
+		var scale := ProjectilePose.shadow_scale(height)
+		if scale > previous + 1e-6:
+			grew += 1
+		previous = scale
+	eq(grew, 0, "тень росла при подъёме снаряда")
+
+	almost_eq(ProjectilePose.shadow_scale(10000.0), ProjectilePose.SHADOW_MIN_SCALE,
+		"тень уменьшается без предела", 1e-6)
+	check(ProjectilePose.shadow_alpha(10000.0) > 0.0, "тень исчезла совсем")
 	return true

@@ -19,6 +19,7 @@ const STATS: Array[String] = [
 	"move_speed",
 	"projectile_speed",
 	"range",
+	"shot_momentum",
 	"withdrawal_rate",
 ]
 

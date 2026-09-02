@@ -187,3 +187,60 @@ func _test_profile_only_while_moving() -> bool:
 	check(not Pose.use_walk_frames(Pose.WALK_THRESHOLD - 1.0),
 		"дрожание ниже порога включает ходьбу")
 	return true
+
+
+## Прицел важнее движения. Служащий, кидающий папки влево на бегу вправо,
+## читался как ошибка отрисовки — это заимствование из Isaac, где голова
+## смотрит на цель, пока тело бежит своей дорогой.
+func _test_aim_wins_over_movement_while_firing() -> bool:
+	eq(Pose.aiming_facing(Vector2.LEFT, Vector2(300, 0), true, 1), -1,
+		"стреляя влево на бегу вправо, персонаж смотрит вправо")
+	eq(Pose.aiming_facing(Vector2.RIGHT, Vector2(-300, 0), true, -1), 1,
+		"стреляя вправо на бегу влево, персонаж смотрит влево")
+	return true
+
+
+func _test_movement_decides_when_not_firing() -> bool:
+	eq(Pose.aiming_facing(Vector2.LEFT, Vector2(300, 0), false, -1), 1,
+		"без стрельбы направление берётся не от движения")
+	eq(Pose.aiming_facing(Vector2.ZERO, Vector2.ZERO, false, -1), -1,
+		"в покое направление не сохранилось")
+	return true
+
+
+## Прицел строго вверх не должен разворачивать тело: горизонтальной
+## составляющей нет, и любой выбор был бы дёрганьем.
+func _test_vertical_aim_does_not_turn_the_body() -> bool:
+	eq(Pose.aiming_facing(Vector2.UP, Vector2.ZERO, true, 1), 1,
+		"прицел вверх развернул тело")
+	eq(Pose.aiming_facing(Vector2.DOWN, Vector2.ZERO, true, -1), -1,
+		"прицел вниз развернул тело")
+	return true
+
+
+## Восемь направлений, как в Isaac. Режим для пробы: свободный угол
+## записан в docs/DECISIONS.md и остаётся основным.
+func _test_snap_aim_quantises_to_eight() -> bool:
+	var snapped := Pose.snap_aim(Vector2(1.0, 0.15).normalized(), 8)
+	almost_eq(snapped.angle(), 0.0, "почти горизонтальный прицел не притянулся к оси", 1e-5)
+
+	var diagonal := Pose.snap_aim(Vector2(1.0, 0.9).normalized(), 8)
+	almost_eq(diagonal.angle(), PI / 4.0, "прицел под 45 градусов не притянулся к диагонали", 1e-5)
+
+	var seen := {}
+	for step in 64:
+		var angle := TAU * step / 64.0
+		var result := Pose.snap_aim(Vector2.RIGHT.rotated(angle), 8)
+		# Угол приводится к [0, TAU): иначе -PI и +PI посчитаются двумя
+		# направлениями, хотя это одно и то же.
+		seen[snappedf(fposmod(result.angle(), TAU), 0.0001)] = true
+		almost_eq(result.length(), 1.0, "притянутый прицел не единичной длины", 1e-5)
+	eq(seen.size(), 8, "получилось не восемь направлений")
+	return true
+
+
+func _test_snap_aim_is_off_by_default() -> bool:
+	var free := Vector2(1.0, 0.15).normalized()
+	eq(Pose.snap_aim(free, 0), free, "при нуле направлений прицел всё равно притянулся")
+	eq(Pose.snap_aim(Vector2.ZERO, 8), Vector2.ZERO, "нулевой прицел превратился в направление")
+	return true

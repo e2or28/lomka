@@ -99,6 +99,13 @@ func _physics_process(_delta: float) -> void:
 	SimTick.step(_state, commands)
 	_watch_drift(commands)
 
+	# Представлению нужно знать, кто стреляет: по этому оно доворачивает
+	# тело к прицелу. Симуляция об этом не спрашивается и не меняется.
+	for i in _active_slots:
+		var slot := _state.slots[i]
+		if commands.has(i) and slot.actor_id >= 0:
+			_view.firing[slot.actor_id] = commands[i].pressed(Command.BTN_FIRE)
+
 
 ## Мышью целится только первый слот и только пока правый стик отпущен.
 func _mouse_aim(slot_index: int) -> Vector2:
@@ -172,6 +179,9 @@ func _readout() -> String:
 			stats.get("damage", 0.0), stats.get("fire_rate", 0.0),
 			stats.get("range", 0.0), stats.get("move_speed", 0.0)])
 
+	lines.append("прицел: %s   (F2 переключить)" % (
+		"свободный угол" if InputReader.aim_directions == 0
+		else "%d направлений, как в Isaac" % InputReader.aim_directions))
 	lines.append("")
 	for line in InputReader.diagnostics(0):
 		lines.append(line)
@@ -207,6 +217,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F1:
 			_scale_ref.enabled = not _scale_ref.enabled
 			_scale_ref.queue_redraw()
+		KEY_F2:
+			# Свободный угол против восьми направлений, как в Isaac.
+			# Решение записано в DECISIONS.md, поэтому это проба, а не замена.
+			InputReader.aim_directions = 0 if InputReader.aim_directions > 0 else 8
 		KEY_F3:
 			_overlay.visible = not _overlay.visible
 		KEY_F5:

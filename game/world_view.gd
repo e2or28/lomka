@@ -63,8 +63,11 @@ var textures: Dictionary = {}
 ## влияют, и раздувать сейв.
 var stride_phase: Dictionary = {}
 var facing: Dictionary = {}
+
+## Кто сейчас жмёт на огонь. Ставится стендом: симуляция про представление
+## ничего не знает и знать не должна.
+var firing: Dictionary = {}
 var projectile_age: Dictionary = {}
-var projectile_duration: Dictionary = {}
 var breath := 0.0
 
 ## Какое состояние сейчас обслуживают локальные фазы. После сброса комнаты
@@ -81,7 +84,6 @@ func advance(delta: float) -> void:
 		stride_phase.clear()
 		facing.clear()
 		projectile_age.clear()
-		projectile_duration.clear()
 	if state == null:
 		return
 
@@ -90,22 +92,19 @@ func advance(delta: float) -> void:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
-		facing[actor.id] = CharacterPose.facing(actor.velocity, facing.get(actor.id, 1))
+		facing[actor.id] = CharacterPose.aiming_facing(
+			actor.aim, actor.velocity, bool(firing.get(actor.id, false)),
+			facing.get(actor.id, 1))
 
 	var live_projectiles := {}
 	for projectile in state.projectiles:
 		live_projectiles[projectile.id] = true
-		if not projectile_age.has(projectile.id):
-			projectile_age[projectile.id] = 0.0
-			projectile_duration[projectile.id] = maxf(projectile.life, delta)
-		else:
-			projectile_age[projectile.id] = float(projectile_age[projectile.id]) + delta
+		projectile_age[projectile.id] = float(projectile_age.get(projectile.id, 0.0)) + delta
 
 	for id in projectile_age.keys():
 		if live_projectiles.has(id):
 			continue
 		projectile_age.erase(id)
-		projectile_duration.erase(id)
 
 
 func _draw() -> void:
@@ -129,15 +128,14 @@ func _draw_room() -> void:
 func _draw_projectile(projectile: Projectile) -> void:
 	var ground_at := origin + projectile.position
 	var age := float(projectile_age.get(projectile.id, 0.0))
-	var duration := float(projectile_duration.get(
-		projectile.id, maxf(projectile.life, 1.0 / 60.0)))
-	var progress := ProjectilePose.progress(age, duration)
 
-	_draw_projectile_shadow(ground_at, progress)
+	# Высота настоящая, из симуляции: по тени видно ровно то, от чего
+	# зависит попадание.
+	_draw_projectile_shadow(ground_at, projectile.height)
 
-	var at := ground_at - Vector2(0.0, ProjectilePose.lift(progress))
+	var at := ground_at - Vector2(0.0, projectile.height)
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
-	var angle := ProjectilePose.rotation(progress) * turn_direction
+	var angle := ProjectilePose.rotation(age) * turn_direction
 	draw_set_transform(at, angle, Vector2.ONE)
 
 	var paper: Texture2D = textures.get("folder")
@@ -157,9 +155,9 @@ func _draw_projectile(projectile: Projectile) -> void:
 ## Тень остаётся в настоящей позиции снаряда. Масштаб по Y превращает круг
 ## в плоский овал; наверху он меньше и светлее, поэтому прыжок читается даже
 ## на тёмном полу комнаты.
-func _draw_projectile_shadow(at: Vector2, progress: float) -> void:
-	var scale := ProjectilePose.shadow_scale(progress)
-	var alpha := ProjectilePose.shadow_alpha(progress)
+func _draw_projectile_shadow(at: Vector2, height: float) -> void:
+	var scale := ProjectilePose.shadow_scale(height)
+	var alpha := ProjectilePose.shadow_alpha(height)
 	draw_set_transform(at, 0.0, Vector2(scale, scale * 0.32))
 	draw_circle(Vector2.ZERO, PROJECTILE_SHADOW_RADIUS, Color(0.0, 0.0, 0.0, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

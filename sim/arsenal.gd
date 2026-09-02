@@ -27,6 +27,9 @@ const SUITCASE := {
 		{"stat": "fire_rate", "op": "add", "value": 3.5},
 		{"stat": "projectile_speed", "op": "add", "value": 620.0},
 		{"stat": "range", "op": "add", "value": 620.0},
+		# Часть скорости бросающего переходит папке: заимствовано из Isaac,
+		# даёт разницу между броском стоя и на бегу. Число подбирается руками.
+		{"stat": "shot_momentum", "op": "add", "value": 0.35},
 	],
 	"tags": ["office", "starter"],
 	"unlocked_by_default": true,

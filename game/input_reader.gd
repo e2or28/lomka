@@ -7,6 +7,7 @@ extends RefCounted
 
 const Command = preload("res://sim/input/command.gd")
 const InputMapDef = preload("res://tools/input_map.gd")
+const CharacterPose = preload("res://game/character_pose.gd")
 
 ## Круговая мёртвая зона стика.
 ##
@@ -23,6 +24,12 @@ const InputMapDef = preload("res://tools/input_map.gd")
 ## Это же лечит дрейф стика: тело, ползущее в одну сторону при отпущенном
 ## геймпаде, — почти всегда изношенный потенциометр, а не ошибка в коде.
 const STICK_DEADZONE := 0.22
+
+## Во сколько направлений притягивать прицел. Ноль — свободный угол,
+## как записано в решениях. Восемь — как в Isaac: четыре стороны плюс
+## диагонали. Переключается в стенде клавишей F2, чтобы можно было
+## попробовать оба, а не спорить о них на бумаге.
+static var aim_directions := 0
 
 ## Движковая зона оставлена почти нулевой намеренно: круговую зону нельзя
 ## посчитать по уже обрезанным осям. Значение в карте ввода служит только
@@ -68,6 +75,8 @@ static func read(player: int, tick: int, mouse_aim: Vector2 = Vector2.ZERO):
 		_axis(player, "aim_up", "aim_down")))
 	if aim == Vector2.ZERO:
 		aim = mouse_aim
+	if aim_directions > 0:
+		aim = CharacterPose.snap_aim(aim, aim_directions)
 
 	var buttons := 0
 	if _held(player, "fire"):
