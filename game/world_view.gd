@@ -86,7 +86,7 @@ func advance(delta: float) -> void:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
-		facing[actor.id] = CharacterPose.facing(actor.velocity, facing.get(actor.id, -1))
+		facing[actor.id] = CharacterPose.facing(actor.velocity, facing.get(actor.id, 1))
 
 	var live_projectiles := {}
 	for projectile in state.projectiles:
@@ -230,7 +230,7 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var frame := CharacterPose.walk_frame(phase)
 		var texture: Texture2D = textures.get("player_side_walk_%d" % (frame + 1))
 		if texture != null:
-			_draw_facing(texture, canvas, facing.get(actor.id, -1), tint)
+			_draw_facing(texture, canvas, facing.get(actor.id, 1), tint)
 			return true
 
 	var body: Texture2D = textures.get("player_body")
@@ -238,7 +238,7 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var standing: Texture2D = textures.get("player_side_stand")
 		if standing == null:
 			return false
-		_draw_facing(standing, canvas, facing.get(actor.id, -1), tint)
+		_draw_facing(standing, canvas, facing.get(actor.id, 1), tint)
 		return true
 
 	var stats := actor.stack.compute()
@@ -257,11 +257,11 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	return true
 
 
-## Кадр с учётом стороны. Профильные кадры нарисованы лицом влево, поэтому
-## движение вправо рисуется отражением по вертикальной оси холста — иначе
-## персонаж пятился бы задом наперёд.
+## Кадр с учётом стороны. Профильные кадры нарисованы лицом вправо, поэтому
+## отражается движение ВЛЕВО. Проверено по спрайту тестом «направление
+## взгляда»: перепутанная сторона означает персонажа, идущего спиной вперёд.
 func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -> void:
-	if side <= 0:
+	if side >= 0:
 		draw_texture(texture, canvas, tint)
 		return
 	var width := texture.get_size().x
