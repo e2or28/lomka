@@ -337,6 +337,10 @@ def render(data: dict, points: list, project: Path) -> str:
 
     return f"""<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
+<!-- Страница перечитывает себя раз в минуту: файл пересобирается post-commit
+     хуком, и открытая вкладка должна подхватывать новые числа сама, иначе
+     это не мониторинг, а снимок. -->
+<meta http-equiv="refresh" content="60">
 <title>Ломка — код</title>
 <style>
   :root {{
@@ -422,7 +426,8 @@ def render(data: dict, points: list, project: Path) -> str:
   {file_rows()}
 </table>
 
-<footer>Пересобрать: <code>tools/code_stats.sh</code></footer>
+<footer>Обновляется сам после каждого коммита · страница перечитывается раз
+в минуту · вручную: <code>tools/code_stats.sh</code></footer>
 </body></html>"""
 
 
