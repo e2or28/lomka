@@ -1,0 +1,32 @@
+{
+  "format_version": 1,
+  "coordinate_origin": "top_left",
+  "layer_order_back_to_front": [
+    "body",
+    "arms",
+    "head"
+  ],
+  "sets": {
+    "godot_128": {
+      "canvas_size": [128, 192],
+      "character_root": [64, 174],
+      "head_pivot": [64, 69],
+      "left_arm_pivot": [45, 63],
+      "right_arm_pivot": [83, 63]
+    },
+    "godot_256": {
+      "canvas_size": [256, 384],
+      "character_root": [128, 348],
+      "head_pivot": [128, 138],
+      "left_arm_pivot": [90, 126],
+      "right_arm_pivot": [166, 126]
+    },
+    "source_1024": {
+      "canvas_size": [1024, 1536],
+      "character_root": [512, 1392],
+      "head_pivot": [512, 552],
+      "left_arm_pivot": [360, 504],
+      "right_arm_pivot": [664, 504]
+    }
+  }
+}

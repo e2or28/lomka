@@ -27,7 +27,11 @@ const ScaleReference = preload("res://game/scale_reference.gd")
 
 ## Спрайты, которые стенд ищет в art/. Нет файла — рисуется заглушка.
 ## Положи PNG с таким именем и нажми F5.
-const SPRITES: Array[String] = ["player", "monster", "folder"]
+## Персонаж собран из слоёв — см. art/player_layers.json. Монстр и папка
+## пока заглушки из tools/make_placeholder_art.py.
+const SPRITES: Array[String] = [
+	"player_body", "player_arms", "player_head", "monster", "folder",
+]
 
 const SEED := "стенд"
 const MONSTERS := 3

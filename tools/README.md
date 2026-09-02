@@ -32,6 +32,9 @@
 | Команда | Что делает |
 |---|---|
 | `python3 tools/import_sprite.py ВХОД ВЫХОД` | Растянутая картинка → спрайт в нативном разрешении: находит сетку апскейла, вырезает фон, чистит крошку JPEG. `--height N`, `--step S`, `--keep-bg` |
+| `python3 tools/make_placeholder_art.py` | Пересобрать заглушки `monster.png` и `folder.png` из пиксельных карт |
+| `python3 tools/make_icon.py art/player.png ФАЙЛ` | Квадратная иконка из спрайта |
+| `tools/make_desktop_launcher.sh [имя]` | Ярлык на рабочем столе: запуск игры двойным кликом |
 
 Зависимостей нет, кроме `ffmpeg` и `numpy`. Pillow на этой машине не
 ставится — системный Python защищён PEP 668, и ломать его ради одной задачи

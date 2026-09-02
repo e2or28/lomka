@@ -13,8 +13,19 @@ const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const RunState = preload("res://sim/run_state.gd")
 
-const BODY := Vector2(24, 28)
-const PROJECTILE := Vector2(14, 11)
+const BODY := Vector2(32, 40)
+const PROJECTILE := Vector2(18, 14)
+
+## Персонаж собирается из слоёв: корпус, руки, голова. Порядок от заднего
+## к переднему задан в art/player_layers.json и менять его нельзя — руки
+## обязаны лежать поверх корпуса, но под головой.
+##
+## Слои нарисованы на общем холсте 128x192 с общей системой координат,
+## поэтому кладутся друг на друга без подгонки. Якорь — character_root
+## оттуда же: это точка под ногами, а не центр холста. Совмещать надо её
+## с положением тела в симуляции, иначе персонаж будет плавать над полом.
+const PLAYER_LAYERS: Array[String] = ["player_body", "player_arms", "player_head"]
+const PLAYER_ROOT := Vector2(64, 174)
 
 const SLOT_COLORS: Array[Color] = [
 	Color(0.45, 0.85, 0.55),
@@ -73,12 +84,8 @@ func _draw_actor(actor: Actor) -> void:
 	elif downed:
 		color = color.darkened(0.5)
 
-	var sprite: Texture2D = textures.get("player" if is_player else "monster")
-	if sprite != null and actor.alive:
-		var size := sprite.get_size()
-		draw_texture_rect(sprite, Rect2(at - size * 0.5, size), false,
-			Color.WHITE if not downed else Color(0.55, 0.55, 0.6))
-	else:
+	var tint := Color.WHITE if not downed else Color(0.55, 0.55, 0.6)
+	if not _draw_sprite(actor, at, tint):
 		var box := Rect2(at - BODY * 0.5, BODY)
 		draw_rect(box, color, true)
 		draw_rect(box, color.lightened(0.35), false, 1.0)
@@ -92,22 +99,63 @@ func _draw_actor(actor: Actor) -> void:
 	_draw_health(actor, at, color)
 
 	if actor.aim != Vector2.ZERO and not downed:
-		draw_line(at, at + actor.aim.normalized() * 26.0, Color(1, 1, 1, 0.4), 2.0)
+		var from := at - Vector2(0, _sprite_height(actor) * 0.45)
+		draw_line(from, from + actor.aim.normalized() * 40.0, Color(1, 1, 1, 0.4), 2.0)
 
 	if actor.invulnerable > 0.0:
-		draw_arc(at, 20.0, 0, TAU, 20, Color(1, 1, 1, 0.35), 1.5)
+		draw_arc(at, 26.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
 
 	if is_player:
-		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -BODY.y * 0.5 - 14),
+		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 16.0),
 			"p%d" % (actor.slot + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.7))
+
+
+## Спрайт тела. Возвращает false, если рисовать нечем — тогда вызывающий
+## код кладёт заглушку.
+func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
+	if not actor.alive:
+		return false
+
+	if actor.kind == Actor.Kind.PLAYER:
+		var drawn := false
+		for layer in PLAYER_LAYERS:
+			var texture: Texture2D = textures.get(layer)
+			if texture == null:
+				continue
+			draw_texture(texture, at - PLAYER_ROOT, tint)
+			drawn = true
+		return drawn
+
+	var sprite: Texture2D = textures.get("monster")
+	if sprite == null:
+		return false
+	# Враг тоже стоит на полу: якорь по низу спрайта, а не по центру
+	var size := sprite.get_size()
+	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
+	return true
 
 
 func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	var maximum: float = actor.max_health()
 	if maximum <= 0.0:
 		return
-	var width := 28.0
-	var top := at + Vector2(-width * 0.5, -BODY.y * 0.5 - 8)
+	var width := 34.0
+	var top := at + Vector2(-width * 0.5, -_sprite_height(actor) - 10.0)
 	draw_rect(Rect2(top, Vector2(width, 3)), Color(0, 0, 0, 0.6), true)
 	var share := clampf(actor.health / maximum, 0.0, 1.0)
 	draw_rect(Rect2(top, Vector2(width * share, 3)), color.lightened(0.2), true)
+
+
+## Высота спрайта над полом — по ней ставятся полоска здоровья и подпись.
+## Заглушка ниже настоящего тела, и без этого подписи прыгали бы, стоит
+## положить в art/ новый файл.
+func _sprite_height(actor: Actor) -> float:
+	if actor.kind == Actor.Kind.PLAYER:
+		var head: Texture2D = textures.get("player_body")
+		if head != null:
+			return PLAYER_ROOT.y - 15.0
+	else:
+		var sprite: Texture2D = textures.get("monster")
+		if sprite != null:
+			return sprite.get_size().y
+	return BODY.y
