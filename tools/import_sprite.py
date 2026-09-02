@@ -20,6 +20,11 @@
   --height N   ужать до N пикселей высотой (после обрезки полей)
   --step S     задать шаг сетки вручную, если автоопределение промахнулось
   --keep-bg    не вырезать фон
+  --no-trim    не обрезать поля, оставить весь холст
+
+Для кадров анимации обрезать поля нельзя: каждый кадр обрежется по-своему,
+и персонаж запрыгает. Кадры импортируются с --no-trim, а общая рамка
+подбирается по всем кадрам сразу — этим занимается tools/import_frames.py.
 """
 
 import argparse
@@ -97,13 +102,22 @@ def content_mask(image: np.ndarray) -> np.ndarray:
     return distance > BACKGROUND_TOLERANCE
 
 
-def downsample(image: np.ndarray, mask: np.ndarray, step: float) -> np.ndarray:
+def downsample(image: np.ndarray, mask: np.ndarray, step: float,
+               whole_canvas: bool = False) -> np.ndarray:
     """Одна ячейка сетки -> один пиксель. Медиана центра, а не среднее по
-    ячейке: среднее смешивает цвета на границах и даёт кайму."""
-    rows = np.where(mask.any(axis=1))[0]
-    columns = np.where(mask.any(axis=0))[0]
-    top, bottom = int(rows[0]), int(rows[-1]) + 1
-    left, right = int(columns[0]), int(columns[-1]) + 1
+    ячейке: среднее смешивает цвета на границах и даёт кайму.
+
+    whole_canvas берёт весь холст, а не рамку содержимого: для кадров
+    анимации важно, чтобы у всех кадров была общая система координат.
+    """
+    if whole_canvas:
+        top, left = 0, 0
+        bottom, right = image.shape[0], image.shape[1]
+    else:
+        rows = np.where(mask.any(axis=1))[0]
+        columns = np.where(mask.any(axis=0))[0]
+        top, bottom = int(rows[0]), int(rows[-1]) + 1
+        left, right = int(columns[0]), int(columns[-1]) + 1
 
     out_h = max(int(round((bottom - top) / step)), 1)
     out_w = max(int(round((right - left) / step)), 1)
@@ -184,6 +198,7 @@ def main() -> int:
     parser.add_argument("--height", type=int, default=0)
     parser.add_argument("--step", type=float, default=0.0)
     parser.add_argument("--keep-bg", action="store_true")
+    parser.add_argument("--no-trim", action="store_true")
     args = parser.parse_args()
 
     if not args.source.exists():
@@ -194,12 +209,13 @@ def main() -> int:
     mask = content_mask(image)
     step = args.step or detect_step(image, mask)
 
-    sprite = downsample(image, mask, step)
+    sprite = downsample(image, mask, step, whole_canvas=args.no_trim)
     if args.keep_bg:
         sprite[:, :, 3] = 255
     else:
         sprite = despeckle(sprite, image[0, 0].astype(np.int16))
-    sprite = trim(sprite)
+    if not args.no_trim:
+        sprite = trim(sprite)
 
     detected = f"{sprite.shape[1]}x{sprite.shape[0]}"
     if args.height:

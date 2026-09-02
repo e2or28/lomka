@@ -56,6 +56,7 @@ var textures: Dictionary = {}
 ## их в симуляцию значило бы гонять по сети данные, которые ни на что не
 ## влияют, и раздувать сейв.
 var stride_phase: Dictionary = {}
+var facing: Dictionary = {}
 var breath := 0.0
 
 
@@ -70,6 +71,7 @@ func advance(delta: float) -> void:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
+		facing[actor.id] = CharacterPose.facing(actor.velocity, facing.get(actor.id, -1))
 
 
 func _draw() -> void:
@@ -163,13 +165,27 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 ## в art/player_layers.json и менять его нельзя: руки обязаны лежать поверх
 ## корпуса, но под головой.
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
-	var body: Texture2D = textures.get("player_body")
-	if body == null:
-		return false
-
 	var canvas := at - PLAYER_ROOT
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
+
+	# В движении — нарисованные профильные кадры, они живее любой сборки
+	# из слоёв: там работают ноги, которых в слоях нет вовсе.
+	if CharacterPose.use_walk_frames(speed):
+		var frame := CharacterPose.walk_frame(phase)
+		var texture: Texture2D = textures.get("player_side_walk_%d" % (frame + 1))
+		if texture != null:
+			_draw_facing(texture, canvas, facing.get(actor.id, -1), tint)
+			return true
+
+	var body: Texture2D = textures.get("player_body")
+	if body == null:
+		var standing: Texture2D = textures.get("player_side_stand")
+		if standing == null:
+			return false
+		_draw_facing(standing, canvas, facing.get(actor.id, -1), tint)
+		return true
+
 	var stats := actor.stack.compute()
 	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
 	var throw_right := actor.aim.x >= 0.0
@@ -184,6 +200,19 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if head != null:
 		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
 	return true
+
+
+## Кадр с учётом стороны. Профильные кадры нарисованы лицом влево, поэтому
+## движение вправо рисуется отражением по вертикальной оси холста — иначе
+## персонаж пятился бы задом наперёд.
+func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -> void:
+	if side <= 0:
+		draw_texture(texture, canvas, tint)
+		return
+	var width := texture.get_size().x
+	draw_set_transform(canvas + Vector2(width, 0.0), 0.0, Vector2(-1.0, 1.0))
+	draw_texture(texture, Vector2.ZERO, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## Рука поворачивается вокруг плеча. Холст у всех слоёв общий, поэтому

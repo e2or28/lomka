@@ -53,6 +53,10 @@ const THROW_LIFT := 7.0
 ## Ниже этой скорости считаем, что персонаж стоит.
 const WALK_THRESHOLD := 12.0
 
+## Кадров в цикле ходьбы. Профильные кадры нарисованы человеком: шесть
+## положений на два шага.
+const WALK_FRAMES := 6
+
 
 ## Насколько продвинулась фаза шага за кадр. Фаза считается от пройденного
 ## пути, а не от времени: тогда медленный шаг остаётся шагом, а не
@@ -137,3 +141,28 @@ static func arm_lift(phase: float, speed: float, throw: float, throw_right: bool
 		else:
 			left = lift
 	return [left, right]
+
+
+## Номер кадра ходьбы по фазе шага. Кадры нарисованы, а не собраны из слоёв,
+## поэтому здесь только выбор — ни поворотов, ни смещений.
+static func walk_frame(phase: float) -> int:
+	var wrapped := fposmod(phase, TAU)
+	return clampi(int(wrapped / TAU * WALK_FRAMES), 0, WALK_FRAMES - 1)
+
+
+## Куда персонаж повёрнут. Профильные кадры нарисованы лицом влево, поэтому
+## движение вправо рисуется зеркалом.
+##
+## При вертикальном движении и в покое направление сохраняется: иначе
+## персонаж разворачивался бы на месте от любого дрожания стика.
+static func facing(velocity: Vector2, previous: int) -> int:
+	if absf(velocity.x) < WALK_THRESHOLD:
+		return previous
+	return 1 if velocity.x > 0.0 else -1
+
+
+## Профиль или анфас. В движении персонаж идёт боком — под это нарисованы
+## кадры. Стоя он смотрит на игрока: так читается лицо, и работают дыхание
+## с замахом, которых в профильных кадрах нет.
+static func use_walk_frames(speed: float) -> bool:
+	return speed >= WALK_THRESHOLD

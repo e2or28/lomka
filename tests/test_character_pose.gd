@@ -140,3 +140,50 @@ func _test_head_lags_behind_the_body() -> bool:
 			differs = true
 	check(differs, "голова повторяет корпус в точности — шея не читается")
 	return true
+
+
+## Кадры ходьбы нарисованы человеком: шесть положений на два шага.
+## Здесь проверяется только выбор кадра и стороны — как это выглядит,
+## решается глазами.
+func _test_walk_frame_covers_the_whole_cycle() -> bool:
+	var seen := {}
+	for step in 60:
+		seen[Pose.walk_frame(TAU * step / 60.0)] = true
+	eq(seen.size(), Pose.WALK_FRAMES, "цикл ходьбы использует не все кадры")
+
+	var out_of_range := 0
+	for step in 200:
+		var frame := Pose.walk_frame(TAU * step / 37.0)
+		if frame < 0 or frame >= Pose.WALK_FRAMES:
+			out_of_range += 1
+	eq(out_of_range, 0, "номер кадра вышел за набор")
+	return true
+
+
+func _test_walk_frame_advances_in_order() -> bool:
+	eq(Pose.walk_frame(0.0), 0, "цикл начинается не с первого кадра")
+	check(Pose.walk_frame(TAU * 0.5) > Pose.walk_frame(TAU * 0.1),
+		"кадры идут не по порядку")
+	eq(Pose.walk_frame(TAU - 0.001), Pose.WALK_FRAMES - 1, "последний кадр не достигается")
+	return true
+
+
+## Профильные кадры нарисованы лицом влево. Направление держится, пока
+## персонаж не пошёл в другую сторону: иначе он разворачивался бы на месте
+## от дрожания стика.
+func _test_facing_holds_until_direction_changes() -> bool:
+	eq(Pose.facing(Vector2(200, 0), -1), 1, "движение вправо не развернуло")
+	eq(Pose.facing(Vector2(-200, 0), 1), -1, "движение влево не развернуло")
+	eq(Pose.facing(Vector2(0, 200), 1), 1, "вертикальное движение сбросило направление")
+	eq(Pose.facing(Vector2.ZERO, -1), -1, "остановка сбросила направление")
+	eq(Pose.facing(Vector2(Pose.WALK_THRESHOLD - 1.0, 0), 1), 1,
+		"дрожание ниже порога развернуло персонажа")
+	return true
+
+
+func _test_profile_only_while_moving() -> bool:
+	check(Pose.use_walk_frames(WALK), "в движении не берутся кадры ходьбы")
+	check(not Pose.use_walk_frames(0.0), "в покое берутся кадры ходьбы вместо анфаса")
+	check(not Pose.use_walk_frames(Pose.WALK_THRESHOLD - 1.0),
+		"дрожание ниже порога включает ходьбу")
+	return true
