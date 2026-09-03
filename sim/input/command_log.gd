@@ -21,8 +21,7 @@ func record(slot_index: int, command: Command) -> void:
 	last_tick = maxi(last_tick, command.tick)
 
 
-## Команды одного тика. Отсутствующий слот означает «ничего не нажимал»,
-## а не «пропусти тик»: симуляция обязана идти вперёд в любом случае.
+## Отсутствующий слот значит «ничего не нажимал», а не «пропусти тик».
 func frame(tick: int) -> Dictionary:
 	return _frames.get(tick, {})
 

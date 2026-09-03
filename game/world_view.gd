@@ -1,13 +1,12 @@
 extends Node2D
 ## Всё состояние забега на экране: комната, тела, снаряды.
 ##
-## Один узел с одним _draw вместо пула узлов на каждое тело. Причина —
-## снаряды: их десятки, они рождаются и гаснут каждую секунду, и держать
-## под них живые узлы значит писать пул с переиспользованием ради картинки,
-## которую всё равно перерисовывают целиком.
+## Один узел с одним _draw вместо пула узлов на каждое тело: снаряды рождаются
+## и гаснут каждую секунду десятками, и держать под них живые узлы значило бы
+## писать пул ради картинки, которую всё равно перерисовывают целиком.
 ##
-## Знает о симуляции ровно одно: где что стоит. Обратной связи нет,
-## решений не принимает (правила 1 и 2). Удаляется целиком без последствий.
+## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
+## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
@@ -19,36 +18,22 @@ const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
 const PROJECTILE_SHADOW_RADIUS := 10.0
 
-## Персонаж собирается из слоёв: корпус, руки, голова. Порядок от заднего
-## к переднему задан в art/player_layers.json и менять его нельзя — руки
-## обязаны лежать поверх корпуса, но под головой.
-##
-## Слои нарисованы на общем холсте 128x192 с общей системой координат,
-## поэтому кладутся друг на друга без подгонки. Якорь — character_root
-## оттуда же: это точка под ногами, а не центр холста. Совмещать надо её
-## с положением тела в симуляции, иначе персонаж будет плавать над полом.
-## Руки взяты отдельными слоями, а не общим: махать ими на бегу можно только
-## поодиночке. Проверено, что arm_left и arm_right складываются в прежний
-## общий слой пиксель-в-пиксель, а вся сборка совпадает с мастером.
+## Слои нарисованы на общем холсте с общей системой координат — кладутся
+## друг на друга без подгонки. Якорь — character_root из art/player_layers.json,
+## точка под ногами, а не центр холста. Проверено, что arm_left и arm_right
+## складываются в прежний общий слой пиксель-в-пиксель.
 const PLAYER_ROOT := Vector2(64, 174)
 
-## Плечи из art/player_layers.json, набор godot_128. Вокруг них вращаются
-## руки: пивот в плече читается как мах, пивот в центре холста — как отрыв
-## конечности.
-## Размер общего холста слоёв и кадров. Нужен, чтобы отразить точку кисти
-## вместе с отражённым кадром.
+## Общий холст слоёв и кадров — нужен, чтобы отразить точку кисти вместе
+## с отражённым кадром.
 const PLAYER_CANVAS := Vector2(128, 192)
 
+## Плечи из art/player_layers.json. Пивот в плече читается как мах.
 const LEFT_SHOULDER := Vector2(45, 63)
 const RIGHT_SHOULDER := Vector2(83, 63)
 
-## Сколько нарисованной стены лежит слева и сверху от игровой зоны.
-##
-## Фон комнаты нарисован вместе со стенами, а Room.bounds — это только пол,
-## по которому ходят. Совместить их надо точно: разъедется на десяток
-## пикселей, и персонаж упрётся в невидимую стену посреди нарисованного
-## пола. Число печатает tools/import_room.py при импорте комнаты; менять
-## его руками нельзя — только вместе с картинкой.
+## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
+## только вместе с картинкой.
 const ROOM_INSET := Vector2(89, 98)
 
 const SLOT_COLORS: Array[Color] = [
@@ -64,28 +49,21 @@ var state: RunState = null
 var origin := Vector2.ZERO
 var textures: Dictionary = {}
 
-## Фаза шага на каждое тело и общий счётчик для дыхания.
-##
-## Живут в представлении, а не в состоянии забега: от них ничего не зависит,
-## попадание считается по положению тела, а не по нарисованной руке. Класть
-## их в симуляцию значило бы гонять по сети данные, которые ни на что не
-## влияют, и раздувать сейв.
+## В представлении, а не в состоянии забега: попадание считается по
+## положению тела, а не по нарисованной руке, и гонять фазу шага по сети
+## незачем.
 var stride_phase: Dictionary = {}
 var facing: Dictionary = {}
 
-## Кто сейчас жмёт на огонь. Ставится стендом: симуляция про представление
-## ничего не знает и знать не должна.
+## Ставится стендом: симуляция про представление не знает.
 var firing: Dictionary = {}
 var projectile_age: Dictionary = {}
 var breath := 0.0
 
-## Какое состояние сейчас обслуживают локальные фазы. После сброса комнаты
-## идентификаторы начинаются заново, поэтому старые фазы надо забыть.
 var _animation_state: RunState = null
 
 
-## Двигать фазы. Вызывается стендом каждый кадр — здесь, а не в _draw,
-## потому что _draw может вызываться чаще или реже кадра.
+## Здесь, а не в _draw: _draw может вызываться чаще или реже кадра.
 func advance(delta: float) -> void:
 	breath += delta
 	if state != _animation_state:
@@ -129,8 +107,6 @@ func _draw() -> void:
 func _draw_room() -> void:
 	var rect := Rect2(origin + state.room.bounds.position, state.room.bounds.size)
 
-	# Нарисованная комната садится по полу, а не по холсту: стены выходят
-	# за игровую зону, и это правильно — в них упираются, по ним не ходят.
 	var background: Texture2D = textures.get("room_start")
 	if background != null:
 		draw_texture(background, rect.position - ROOM_INSET)
@@ -140,23 +116,18 @@ func _draw_room() -> void:
 	draw_rect(rect, Color(0.35, 0.33, 0.38), false, 2.0)
 
 
-## A4-портфель делает один прыжок и один полный переворот за полёт. Всё это
-## только рисунок: позиция столкновения остаётся там, где её считает sim/.
 func _draw_projectile(projectile: Projectile) -> void:
 	var ground_at := origin + projectile.position
 	var age := float(projectile_age.get(projectile.id, 0.0))
 
-	# Кувырок в конце броска: чемодан переворачивается быстрее и слегка
-	# подскакивает. Это единственное, по чему видно, что он вошёл в
-	# добавочный отрезок дальности.
 	var tumble := projectile.tumble_progress()
 	_draw_projectile_shadow(ground_at, tumble)
 
 	var at := ground_at - Vector2(0.0, ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
 
-	# Вращается то, что бросают, а не то, чем стреляют: у снаряда без
-	# кувырка вращения нет вовсе. Иначе пуля крутилась бы в полёте волчком.
+	# Вращается то, что бросают: снаряд без кувырка не крутится вовсе,
+	# иначе пуля вертелась бы в полёте волчком.
 	var angle := 0.0
 	if projectile.tumble_range > 0.0:
 		angle = ProjectilePose.rotation(age, tumble) * turn_direction
@@ -176,9 +147,6 @@ func _draw_projectile(projectile: Projectile) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## Тень остаётся в настоящей позиции снаряда. Масштаб по Y превращает круг
-## в плоский овал; наверху он меньше и светлее, поэтому прыжок читается даже
-## на тёмном полу комнаты.
 func _draw_projectile_shadow(at: Vector2, tumble: float) -> void:
 	var scale := ProjectilePose.shadow_scale(tumble)
 	var alpha := ProjectilePose.shadow_alpha(tumble)
@@ -205,7 +173,7 @@ func _draw_actor(actor: Actor) -> void:
 		draw_rect(box, color.lightened(0.35), false, 1.0)
 
 	if not actor.alive:
-		# Труп остаётся: над ним делается харвест органов
+		# Труп остаётся на экране: над ним делается харвест органов.
 		draw_line(at + Vector2(-10, -8), at + Vector2(10, 8), color.lightened(0.3), 2.0)
 		draw_line(at + Vector2(-10, 8), at + Vector2(10, -8), color.lightened(0.3), 2.0)
 		return
@@ -224,8 +192,6 @@ func _draw_actor(actor: Actor) -> void:
 			"p%d" % (actor.slot + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.7))
 
 
-## Спрайт тела. Возвращает false, если рисовать нечем — тогда вызывающий
-## код кладёт заглушку.
 func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if not actor.alive:
 		return false
@@ -236,22 +202,18 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var sprite: Texture2D = textures.get("monster")
 	if sprite == null:
 		return false
-	# Враг тоже стоит на полу: якорь по низу спрайта, а не по центру
 	var size := sprite.get_size()
 	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
 	return true
 
 
-## Персонаж послойно, с позой. Порядок от заднего к переднему задан
-## в art/player_layers.json и менять его нельзя: руки обязаны лежать поверх
-## корпуса, но под головой.
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var canvas := at - PLAYER_ROOT
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
 
-	# В движении — нарисованные профильные кадры, они живее любой сборки
-	# из слоёв: там работают ноги, которых в слоях нет вовсе.
+	# Нарисованные кадры вместо сборки из слоёв: в них работают ноги,
+	# которых в слоях нет вовсе.
 	if CharacterPose.use_walk_frames(speed):
 		var frame := CharacterPose.walk_frame(phase)
 		var names := CharacterPose.walk_frame_names(actor.weapon_id, frame)
@@ -259,8 +221,6 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 		if chosen != "":
 			var side: int = facing.get(actor.id, 1)
 			_draw_facing(textures[chosen], canvas, side, tint)
-			# Кадры, нарисованные под это оружие, держат его наизготовку —
-			# и кисть у них не там, где у базовой ходьбы.
 			_draw_weapon(actor, canvas, phase, speed, true, side, tint,
 				chosen == names[0] and names.size() > 1)
 			return true
@@ -290,9 +250,6 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	return true
 
 
-## Первое имя из списка, для которого нашлась текстура, или пустая строка.
-## Список приходит от позы: она называет, что предпочтительнее, а здесь
-## решается, что есть на диске.
 func _first_name(names: PackedStringArray) -> String:
 	for name in names:
 		if textures.get(name) != null:
@@ -305,12 +262,9 @@ func _first_texture(names: PackedStringArray) -> Texture2D:
 	return textures[name] if name != "" else null
 
 
-## Оружие в руке. Рисуется последним: оно перед телом, а не за ним.
-##
-## Спрайт берётся по идентификатору оружия из симуляции, поэтому смена
-## оружия меняет картинку сама — здесь нет ни одного разветвления по видам.
-## Нет спрайта — ничего не рисуется, и это правильнее заглушки: пустая рука
-## заметна, а чужой прямоугольник принимают за настоящее оружие.
+## Спрайт берётся по идентификатору оружия — здесь нет ни одного
+## разветвления по видам. Нет спрайта — ничего не рисуется, это правильнее
+## заглушки: чужой прямоугольник приняли бы за настоящее оружие.
 func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 		profile: bool, side: int, tint: Color, aimed: bool = false) -> void:
 	if actor.weapon_id == "":
@@ -324,11 +278,10 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 	var hand := CharacterPose.hand_position(phase, speed, profile, throw,
 		actor.aim.x >= 0.0, aimed)
 	if profile and side > 0:
-		# Кадр отражён — вместе с ним переезжает и рука
 		hand.x = PLAYER_CANVAS.x - hand.x
 
-	# Оружие отражается вместе с персонажем: неотражённый кольт у идущего
-	# влево смотрел бы стволом назад.
+	# Оружие отражается вместе с персонажем: иначе кольт у идущего влево
+	# смотрел бы стволом назад.
 	var size := texture.get_size()
 	var mirrored := profile and side < 0
 	var offset := CharacterPose.weapon_offset(actor.weapon_id, size, mirrored)
@@ -341,9 +294,8 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 	draw_texture(texture, canvas + hand - offset, tint)
 
 
-## Кадр с учётом стороны. Профильные кадры нарисованы лицом вправо, поэтому
-## отражается движение ВЛЕВО. Проверено по спрайту тестом «направление
-## взгляда»: перепутанная сторона означает персонажа, идущего спиной вперёд.
+## Профильные кадры нарисованы лицом вправо, поэтому отражается движение
+## влево. Проверено тестом «направление взгляда».
 func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -> void:
 	if side >= 0:
 		draw_texture(texture, canvas, tint)
@@ -354,9 +306,8 @@ func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## Рука поворачивается вокруг плеча. Холст у всех слоёв общий, поэтому
-## смещать текстуру не нужно — достаточно поставить начало координат в
-## плечо и нарисовать слой со сдвигом на минус плечо.
+## Холст у слоёв общий, поэтому вместо смещения текстуры начало координат
+## ставится в плечо, и слой рисуется со сдвигом на минус плечо.
 func _draw_arm(layer: String, canvas: Vector2, shoulder: Vector2,
 		angle: float, lift: float, tint: Color) -> void:
 	var texture: Texture2D = textures.get(layer)
@@ -382,9 +333,6 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	draw_rect(Rect2(top, Vector2(width * share, 3)), color.lightened(0.2), true)
 
 
-## Высота спрайта над полом — по ней ставятся полоска здоровья и подпись.
-## Заглушка ниже настоящего тела, и без этого подписи прыгали бы, стоит
-## положить в art/ новый файл.
 func _sprite_height(actor: Actor) -> float:
 	if actor.kind == Actor.Kind.PLAYER:
 		var head: Texture2D = textures.get("player_body")

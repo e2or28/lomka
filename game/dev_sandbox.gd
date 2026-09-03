@@ -1,15 +1,10 @@
 extends Node2D
-## Стенд разработчика. Это не игра, а окно в симуляцию, чтобы её можно было
-## щупать руками.
+## Стенд разработчика: окно в симуляцию, а не игра. Логики боя здесь нет ни
+## строки — она в sim/ и проверяется тестами без окна.
 ##
-## Сейчас в нём комната разработчиков: служащий кидается папками с
-## документами в манекенов. Логики боя здесь нет ни строки — она в sim/ и
-## проверяется тестами без окна. Здесь только чтение ввода, отрисовка и
-## ползунки.
-##
-## Правило 2 соблюдается буквально: снизу вверх связь есть, сверху вниз —
-## только команды. Удалить каталог game/ целиком можно в любой момент,
-## tools/test.sh останется зелёным.
+## Правило 2 буквально: снизу вверх связь есть, сверху вниз — только
+## команды. Удалить game/ целиком можно в любой момент, tools/test.sh
+## останется зелёным.
 
 const RunState = preload("res://sim/run_state.gd")
 const SimTick = preload("res://sim/tick.gd")
@@ -26,24 +21,17 @@ const ArtLibrary = preload("res://game/art_library.gd")
 const DebugOverlay = preload("res://game/debug_overlay.gd")
 const ScaleReference = preload("res://game/scale_reference.gd")
 
-## Спрайты, которые стенд ищет в art/. Нет файла — рисуется заглушка.
-## Положи PNG с таким именем и нажми F5.
-## Персонаж собран из слоёв — см. art/player_layers.json. Монстр и папка
-## пока заглушки из tools/make_placeholder_art.py.
+## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми F5.
 const SPRITES: Array[String] = [
 	"player_body", "player_arm_left", "player_arm_right",
 	"player_head",
 	"player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
-	# Ходьба с кольтом: другой хват, поэтому свой набор кадров, а не тот же
-	# с подрисованным стволом. Выбирается по оружию в руках, см.
-	# CharacterPose.walk_frame_names.
 	"player_colt_stand",
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
 	"monster", "folder", "suitcase", "colt",
-	# Фон комнаты. Садится по полу, а не по холсту — см. WorldView.ROOM_INSET.
 	"room_start",
 ]
 
@@ -62,7 +50,6 @@ var _origin := Vector2.ZERO
 var _art_note := ""
 var _art_note_left := 0.0
 
-## Куда тело едет само, когда ничего не нажато. Ноль — норма.
 var _drift := Vector2.ZERO
 var _idle_ticks := 0
 
@@ -99,7 +86,6 @@ func _recenter() -> void:
 	_scale_ref.queue_redraw()
 
 
-## Симуляция идёт фиксированным шагом, представление — как получится.
 func _physics_process(_delta: float) -> void:
 	var commands := {}
 	for i in _active_slots:
@@ -109,8 +95,6 @@ func _physics_process(_delta: float) -> void:
 	SimTick.step(_state, commands)
 	_watch_drift(commands)
 
-	# Представлению нужно знать, кто стреляет: по этому оно доворачивает
-	# тело к прицелу. Симуляция об этом не спрашивается и не меняется.
 	for i in _active_slots:
 		var slot := _state.slots[i]
 		if commands.has(i) and slot.actor_id >= 0:
@@ -118,8 +102,8 @@ func _physics_process(_delta: float) -> void:
 
 
 
-## Тело, ползущее при отпущенном вводе, — почти всегда изношенный стик,
-## а не ошибка в коде. Стенд обязан показать это прямо, а не заставлять гадать.
+## Ползёт при отпущенном вводе почти всегда изношенный стик, а не ошибка
+## в коде — стенд показывает это прямо, а не заставляет гадать.
 func _watch_drift(commands: Dictionary) -> void:
 	if not commands.has(0):
 		return
@@ -209,7 +193,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 
-	# По физической позиции, а не по символу: на кириллице keycode нулевой.
+	# На кириллице event.keycode нулевой — см. «Ловушки» в CLAUDE.md.
 	var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 	match code:
 		KEY_F1:
@@ -230,12 +214,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_tree().quit()
 
 
-## Перебрать оружие по кругу на всех живых игроках.
-##
-## Нужно затем же, зачем ползунки статов: увидеть руками, что смена оружия
-## меняет и бой, и картинку. Порядок берётся из реестра, а не задаётся
-## здесь списком, — иначе третий ствол приедет в игру и не появится на
-## стенде, где его как раз и надо щупать.
+## Порядок берётся из реестра: третий ствол должен появиться на стенде сам,
+## не дожидаясь правки списком здесь.
 func _next_weapon() -> void:
 	var ids := Arsenal.WEAPONS.keys()
 	ids.sort()

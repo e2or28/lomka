@@ -2,11 +2,8 @@ extends "res://tests/framework/test_case.gd"
 ## Класс: инвариант. Правило 5 нерушимо: валидатор, который что-то
 ## пропускает, хуже отсутствующего.
 ##
-## Схемы контента. Правило 5: валидатор обязан падать на любом расхождении.
-##
-## Смысл проверок ниже — не в том, что верные данные проходят, а в том, что
-## неверные не проходят. Схема, которая всё принимает, хуже её отсутствия:
-## она создаёт ощущение проверки.
+## Схемы контента. Смысл проверок ниже — не в том, что верные данные
+## проходят, а в том, что неверные не проходят.
 
 const Schema = preload("res://sim/data/schema.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
@@ -49,8 +46,6 @@ const GOOD_ORGAN := {
 
 func title() -> String:
 	return "схемы контента"
-
-
 
 
 func _test_good_content_passes() -> bool:
@@ -96,8 +91,6 @@ func _test_wrong_type_fails() -> bool:
 	return true
 
 
-## Закрытый список статов — единственная защита от опечатки, которая иначе
-## заводит стат, который никто не читает.
 func _test_unknown_stat_fails() -> bool:
 	var bad := _with(GOOD_CHARACTER, {"base_stats": {"helth": 100.0}})
 	has_error(Schemas.validate("character", bad), "неизвестный ключ", "опечатка в имени стата проехала")
@@ -139,8 +132,6 @@ func _test_range_checked() -> bool:
 	return true
 
 
-## В данных 1 и 1.0 — одно и то же число. Схема не должна на этом падать,
-## иначе редактировать таблицы руками невозможно.
 func _test_int_accepted_as_float() -> bool:
 	var whole := _with(GOOD_ITEM, {"modifiers": [{"stat": "damage", "op": "add", "value": 2}]})
 	no_errors(Schemas.validate("item", whole), "целое значение модификатора не прошло")

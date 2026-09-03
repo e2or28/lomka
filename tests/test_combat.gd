@@ -1,13 +1,8 @@
 extends "res://tests/framework/test_case.gd"
 ## Бой: стрельба, урон, падение, зачистка комнаты.
 ##
-## Класс: поведение. Правила ниже меняются вместе с игрой, и переписать их
-## вслед за замыслом — обычная работа, а не поломка.
-##
-## Всё здесь — симуляция без единого узла, поэтому проверяется без окна.
-## Ощущение боя этим не измеряется и измеряться не может: скорострельность,
-## разлёт и вес попадания подбираются руками на стенде. Тесты стерегут
-## правила, а не вкус.
+## Класс: поведение. Ощущение боя этим не измеряется: скорострельность,
+## разлёт и вес попадания подбираются руками на стенде.
 
 const Arena = preload("res://tests/framework/arena.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
@@ -19,8 +14,6 @@ func title() -> String:
 	return "бой"
 
 
-## Данные врагов и персонажей идут через тот же валидатор, что и остальной
-## контент. Опечатка в имени стата иначе всплывёт пустым уроном в бою.
 func _test_bestiary_matches_schema() -> bool:
 	no_errors(Bestiary.validate_all(), "записи бестиария не прошли схему")
 	return true
@@ -48,7 +41,6 @@ func _test_firing_spawns_projectile_and_respects_rate() -> bool:
 	Arena.hold(state, 1, Vector2.ZERO, Vector2.RIGHT, Arena.FIRE)
 	eq(state.projectiles.size(), 1, "выстрел не породил снаряд")
 
-	# Ещё половина периода перезарядки — второго снаряда быть не должно
 	Arena.hold(state, int(30.0 / rate), Vector2.ZERO, Vector2.RIGHT, Arena.FIRE)
 	eq(state.projectiles.size(), 1, "скорострельность не ограничивает стрельбу")
 	return true
@@ -58,7 +50,6 @@ func _test_projectile_kills_enemy() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	var enemy := Arena.enemies(state)[0]
 	var player := state.actor_of_slot(0)
-	# Поставить врага прямо перед стволом, чтобы не гоняться за ним
 	enemy.position = player.position + Vector2(80, 0)
 
 	var before := enemy.health
@@ -70,8 +61,6 @@ func _test_projectile_kills_enemy() -> bool:
 	return true
 
 
-## Труп остаётся в мире: над ним делается харвест органов, это записано
-## в docs/DECISIONS.md. Убирать тела нельзя.
 func _test_corpse_stays() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	var enemy := Arena.enemies(state)[0]
@@ -94,8 +83,6 @@ func _test_projectile_spares_the_shooter() -> bool:
 	return true
 
 
-## Снаряд не летит вечно: дальность считается из range и скорости, поэтому
-## предмет на дальность будет работать сам.
 func _test_projectile_expires() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	Arena.enemies(state)[0].position = Arena.FAR_AWAY
@@ -109,7 +96,6 @@ func _test_projectile_expires() -> bool:
 	return true
 
 
-## Игрок не умирает, а падает — модель Soul Knight из docs/DECISIONS.md.
 func _test_player_goes_down_not_dead() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	var player := state.actor_of_slot(0)
@@ -125,8 +111,6 @@ func _test_player_goes_down_not_dead() -> bool:
 	return true
 
 
-## Кадры неуязвимости задают темп ударов. Без них враг вплотную снимает
-## урон каждый тик и убивает за треть секунды.
 func _test_invulnerability_paces_touch_damage() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	var player := state.actor_of_slot(0)
@@ -143,8 +127,6 @@ func _test_invulnerability_paces_touch_damage() -> bool:
 	return true
 
 
-## Враги не добивают упавшего: его поднимают товарищи, и добивание сделало
-## бы подъём невозможным.
 func _test_enemies_ignore_the_downed() -> bool:
 	var state := Arena.room(SEED, 2, 1)
 	state.slots[0].downed = true

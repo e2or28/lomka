@@ -13,7 +13,6 @@ extends RefCounted
 
 const Fnv = preload("res://sim/core/fnv.gd")
 
-## Подсистемы, перечисленные в docs/PLAN.md, правило 3.
 const LOOT_PLACEMENT := "loot_placement"
 const ORGAN_DROP := "organ_drop"
 const AI_SPREAD := "ai_spread"
@@ -48,8 +47,6 @@ func _init(seed_text: String = "", extra: Array[String] = []) -> void:
 		_streams[name] = rng
 
 
-## Сид конкретного потока. Детерминирован от сида забега и имени, ни от чего
-## больше — в том числе не от порядка создания потоков.
 func stream_seed(name: String) -> int:
 	return Fnv.hash_string(run_seed + "/" + name)
 
@@ -62,8 +59,8 @@ func has(name: String) -> bool:
 	return _streams.has(name)
 
 
-## Поток по имени. Незаявленное имя — ошибка проекта, а не повод завести
-## новый генератор на лету.
+## Незаявленное имя — ошибка проекта, а не повод завести новый генератор
+## на лету.
 func stream(name: String) -> RandomNumberGenerator:
 	if not _streams.has(name):
 		push_error("Неизвестный поток случайности: '%s'. Заявленные: %s" % [name, ", ".join(_names)])
@@ -72,15 +69,13 @@ func stream(name: String) -> RandomNumberGenerator:
 	return _streams[name]
 
 
-## Вернуть все потоки в начальное положение, не меняя сид забега.
 func reset() -> void:
 	for name in _names:
 		var rng: RandomNumberGenerator = _streams[name]
 		rng.seed = stream_seed(name)
 
 
-## Позиции потоков. Правило 8: сохранить случайность — записать позиции,
-## а не состояние мира.
+## Записываются позиции потоков, а не состояние мира (правило 8).
 func to_dict() -> Dictionary:
 	var states := {}
 	for name in _names:

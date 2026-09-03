@@ -3,15 +3,6 @@ extends "res://tests/framework/test_case.gd"
 ## форму зоны, а не конкретные числа.
 ##
 ## Круговая мёртвая зона стика.
-##
-## Твин-стик — ядро игры (docs/DECISIONS.md), и всё, что стоит между рукой
-## и скоростью тела, влияет на ощущение управления напрямую. Поосевая зона
-## движка образует квадрат: по диагонали порог ниже, чем по прямой, а на
-## переходе через порог ось прыгает с нуля сразу на порог.
-##
-## Здесь проверяется, что зона круглая, что остаток растянут обратно на весь
-## диапазон (у порога скорость начинается с нуля, а не с рывка) и что
-## клавиатуру фильтр не трогает.
 
 const InputReader = preload("res://game/input_reader.gd")
 
@@ -30,11 +21,9 @@ func _test_below_zone_is_zero() -> bool:
 	return true
 
 
-## Зона круглая, а не квадратная: по диагонали порог такой же, как по прямой.
-## Иначе изношенный стик, тянущий в угол, проезжает фильтр.
 func _test_zone_is_round_not_square() -> bool:
-	# 0.6 по каждой оси даёт длину DZ*0.85 — внутри круга, но снаружи
-	# был бы квадрат со стороной DZ: ровно та разница, которую ловим.
+	# DZ*0.6 по каждой оси даёт длину DZ*0.85 — внутри круга, но снаружи
+	# был бы квадрат со стороной DZ.
 	var corner := Vector2(DZ * 0.6, DZ * 0.6)
 	check(corner.length() < DZ, "проба построена неверно: угол должен быть внутри круга")
 	eq(InputReader.apply_deadzone(corner), Vector2.ZERO,
@@ -47,8 +36,6 @@ func _test_zone_is_round_not_square() -> bool:
 	return true
 
 
-## Главное свойство: сразу за порогом скорость начинается с нуля, а не
-## прыгает на величину порога. Иначе малый наклон стика даёт рывок.
 func _test_no_jump_at_the_threshold() -> bool:
 	var just_over := InputReader.apply_deadzone(Vector2(DZ + 0.001, 0))
 	check(just_over.length() < 0.01,
@@ -71,8 +58,6 @@ func _test_direction_survives() -> bool:
 	return true
 
 
-## Клавиатура даёт единицу по оси и корень из двух по диагонали. Фильтр не
-## должен ни резать её, ни делать диагональ быстрее прямой.
 func _test_keyboard_is_untouched() -> bool:
 	eq(InputReader.apply_deadzone(Vector2(1, 0)), Vector2(1, 0), "клавиша срезана фильтром")
 	eq(InputReader.apply_deadzone(Vector2(-1, 0)), Vector2(-1, 0), "клавиша влево срезана фильтром")
@@ -82,7 +67,6 @@ func _test_keyboard_is_untouched() -> bool:
 	return true
 
 
-## Чем сильнее наклон, тем быстрее — без провалов и ступенек.
 func _test_monotonic() -> bool:
 	var dips := PackedStringArray()
 	var previous := 0.0
@@ -98,9 +82,6 @@ func _test_monotonic() -> bool:
 	return true
 
 
-## Прицеливание после решения от 2 сентября 2026: свободного угла нет,
-## только восемь направлений. Проверяется на самой константе, потому что
-## промах здесь означает вернувшийся свободный угол.
 func _test_aiming_has_no_free_angle() -> bool:
 	eq(InputReader.AIM_DIRECTIONS, 8,
 		"число направлений прицела разошлось с решением из DECISIONS.md")

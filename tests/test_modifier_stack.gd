@@ -1,13 +1,9 @@
 extends "res://tests/framework/test_case.gd"
-## Класс: инвариант. Правило 4 записано в docs/PLAN.md как нерушимое, и
-## порядок фаз здесь — его определение.
+## Класс: инвариант. Правило 4 нерушимо, порядок фаз здесь — его определение.
 ##
-## Стек модификаторов. Правило 4 из docs/PLAN.md.
-##
-## Проверяется главное свойство: порядок применения задаётся фазой (ADD, MUL,
-## SET), а не тем, в каком порядке предметы попали в стек. Без этого один и
-## тот же набор предметов даёт у хоста и клиента разные статы — и забег
-## расходится не сразу, а к третьей зоне.
+## Стек модификаторов: порядок применения задаётся фазой (ADD, MUL, SET),
+## а не тем, в каком порядке предметы попали в стек — иначе один и тот же
+## набор предметов даёт у хоста и клиента разные статы.
 
 const ModifierStack = preload("res://sim/core/modifier_stack.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
@@ -19,17 +15,13 @@ func title() -> String:
 	return "стек модификаторов"
 
 
-
-
 func _test_phases_before_insertion_order() -> bool:
-	# Множитель положен первым, прибавка второй. Если бы применялось в
-	# порядке добавления, вышло бы 10*2+5 = 25.
+	# В порядке добавления вышло бы 10*2+5 = 25.
 	var stack := ModifierStack.new(BASE)
 	stack.add(Modifier.make("damage", Modifier.Op.MUL, 2.0, "item:a"))
 	stack.add(Modifier.make("damage", Modifier.Op.ADD, 5.0, "item:b"))
 	almost_eq(stack.compute()["damage"], 30.0, "MUL применился раньше ADD")
 
-	# Тот же набор в обратном порядке добавления — тот же итог.
 	var mirror := ModifierStack.new(BASE)
 	mirror.add(Modifier.make("damage", Modifier.Op.ADD, 5.0, "item:b"))
 	mirror.add(Modifier.make("damage", Modifier.Op.MUL, 2.0, "item:a"))
@@ -75,8 +67,6 @@ func _test_unknown_stat_starts_from_zero() -> bool:
 	return true
 
 
-## Одинаково собранный стек обязан давать побитово одинаковый результат:
-## на этом держится сверка состояния между хостом и клиентом.
 func _test_repeatable() -> bool:
 	var a := ModifierStack.new(BASE)
 	var b := ModifierStack.new(BASE)
@@ -101,7 +91,6 @@ func _test_roundtrip() -> bool:
 	eq(restored.compute(), stack.compute(), "восстановленный стек считает иначе")
 	eq(restored.size(), 3, "модификаторы потерялись")
 
-	# Порядок обязан пережить загрузку: новый модификатор ложится после всех.
 	restored.add(Modifier.make("damage", Modifier.Op.ADD, 1.0, "item:n", "mn"))
 	stack.add(Modifier.make("damage", Modifier.Op.ADD, 1.0, "item:n", "mn"))
 	eq(restored.to_dict(), stack.to_dict(), "нумерация модификаторов после загрузки поехала")

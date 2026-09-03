@@ -1,15 +1,8 @@
 extends "res://tests/framework/test_case.gd"
 ## Полёт снаряда: прямая, кувырок и наследование скорости.
 ##
-## Класс: поведение. Правила ниже меняются вместе с игрой — предмет на
-## дальность или на снос перепишет половину ожиданий, и это нормально.
-## Инвариантов, которые держат кооп, здесь нет, кроме последней пробы.
-##
-## Снаряд летит ровно до заявленной дальности, потом переворачивается и
-## проходит ещё отрезок — приём Mr. P из Brawl Stars. Обе дальности статы,
-## поэтому предмет сможет крутить их по отдельности.
-##
-## Как это ощущается — решается на стенде. Здесь только то, что считается.
+## Класс: поведение, кроме последней пробы — она инвариант.
+## Как это ощущается решается на стенде; здесь только то, что считается.
 
 const Arena = preload("res://tests/framework/arena.gd")
 const Projectile = preload("res://sim/projectile.gd")
@@ -23,7 +16,6 @@ func title() -> String:
 	return "полёт снаряда"
 
 
-## Снаряд проходит обе дальности: ровную и кувырком.
 func _test_flies_straight_range_then_tumbles() -> bool:
 	var state := Arena.shooting_range(SEED)
 	var start := state.actor_of_slot(0).position
@@ -52,7 +44,6 @@ func _test_flies_straight_range_then_tumbles() -> bool:
 	return true
 
 
-## Кувырок начинается ровно на заявленной дальности, не раньше.
 func _test_tumble_starts_at_the_declared_range() -> bool:
 	var state := Arena.shooting_range(SEED)
 	var projectile := Arena.shoot(state, Vector2.RIGHT)
@@ -74,8 +65,6 @@ func _test_tumble_starts_at_the_declared_range() -> bool:
 	return true
 
 
-## Снаряд идёт по прямой линии броска, ничего не роняя: падения в этой игре
-## нет, оно отменено решением от 2 сентября 2026.
 func _test_flies_level() -> bool:
 	var state := Arena.shooting_range(SEED)
 	var shot := Arena.shoot(state, Vector2.RIGHT)
@@ -88,7 +77,6 @@ func _test_flies_level() -> bool:
 	return true
 
 
-## Кувыркающийся чемодан бьёт не слабее ровно летящего.
 func _test_tumbling_still_hits() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	var enemy := Arena.enemies(state)[0]
@@ -108,7 +96,6 @@ func _test_tumbling_still_hits() -> bool:
 	return true
 
 
-## Наследование скорости: бросок на бегу сносит снаряд в сторону движения.
 func _test_momentum_carries_the_shot() -> bool:
 	var still := Arena.shooting_range(SEED)
 	var still_shot := Arena.shoot(still, Vector2.UP)
@@ -167,8 +154,7 @@ func _test_momentum_is_a_stat() -> bool:
 	return true
 
 
-## Класс: инвариант. Снаряд в полёте — часть состояния, и правило 8 требует
-## от него переживать сейв целиком.
+## Класс: инвариант — правило 8 требует от снаряда в полёте переживать сейв.
 func _test_flight_survives_a_save() -> bool:
 	var state := Arena.shooting_range(SEED)
 	var projectile := Arena.shoot(state, Vector2.RIGHT)
@@ -190,9 +176,6 @@ func _test_flight_survives_a_save() -> bool:
 	return true
 
 
-## Снаряд помнит, чем его выпустили. Не ради красоты: вид приходит из записи
-## оружия и остаётся в снаряде, а не читается у владельца — иначе смена
-## оружия в полёте превратила бы уже брошенную папку в пулю.
 func _test_shot_carries_the_weapon_projectile() -> bool:
 	var state := Arena.shooting_range(SEED)
 	var folder := Arena.shoot(state, Vector2.RIGHT)

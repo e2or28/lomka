@@ -1,13 +1,9 @@
 extends "res://tests/framework/test_case.gd"
-## Класс: инвариант. Не трогать. Свойство ниже — фундамент онлайн-коопа:
-## переписать его можно только вместе с решением о сетевой модели.
+## Класс: инвариант. Не трогать. Фундамент онлайн-коопа: переписать можно
+## только вместе с решением о сетевой модели.
 ##
-## Обязательный тест номер один. Критерий выхода M0 из docs/ROADMAP.md:
-## доказать, что вычерпывание одного потока случайности не сдвигает другой.
-##
-## Это единственная защита от класса багов, который иначе всплывёт на M2
-## рассинхроном: хост бросил лишний раз на разброс ИИ — и лут у клиента лёг
-## иначе, потому что генератор один на всех.
+## Обязательный тест номер один. Критерий выхода M0: вычерпывание одного
+## потока случайности не сдвигает другой.
 
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Fnv = preload("res://sim/core/fnv.gd")
@@ -21,8 +17,6 @@ func title() -> String:
 	return "потоки случайности"
 
 
-
-
 func _take(streams, name: String, count: int) -> Array:
 	var out: Array = []
 	var rng: RandomNumberGenerator = streams.stream(name)
@@ -31,8 +25,6 @@ func _take(streams, name: String, count: int) -> Array:
 	return out
 
 
-## FNV-1a должен давать те же числа, что и любая другая корректная
-## реализация: сид забега пересекает сеть и версии движка.
 func _test_fnv_reference_vectors() -> bool:
 	eq(Fnv.hash_string(""), -3750763034362895579, "FNV-1a от пустой строки")
 	eq(Fnv.hash_string("a"), -5808556873153909620, "FNV-1a от 'a'")
@@ -40,7 +32,6 @@ func _test_fnv_reference_vectors() -> bool:
 	return true
 
 
-## Главная проверка вехи.
 func _test_isolation() -> bool:
 	var reference := RngStreams.new(SEED)
 	var expected := _take(reference, RngStreams.ORGAN_DROP, SAMPLE)
@@ -90,9 +81,6 @@ func _test_reset() -> bool:
 	return true
 
 
-## Сид потока зависит от сида забега и имени — и больше ни от чего. Если он
-## зависел бы от порядка или числа потоков, добавление пятой подсистемы
-## сломало бы сиды всех сохранённых забегов.
 func _test_seed_independent_of_composition() -> bool:
 	var plain := RngStreams.new(SEED)
 	var extended := RngStreams.new(SEED, ["shop_stock", "room_fill"] as Array[String])

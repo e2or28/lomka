@@ -1,15 +1,9 @@
 extends "res://tests/framework/test_case.gd"
 ## Класс: инвариант. Не трогать: расхождение здесь — это рассинхрон в сети,
-## который иначе ищут по симптомам через минуту игры.
+## который иначе ищут по симптомам через минуту игры, а не на конкретном
+## тике и журнале.
 ##
 ## Реплей-детерминизм: один журнал команд из одного сида даёт один результат.
-##
-## Это заготовка под M2, сделанная на M1 сознательно. Рассинхрон в сети не
-## показывает себя сразу — он проявляется через минуту игры тем, что у
-## клиента враг стоит не там. Искать причину в этот момент невозможно.
-## Здесь же расхождение видно на конкретном тике и на конкретном журнале.
-##
-## Правило 6 (ввод — поток команд) существует ровно ради этой возможности.
 
 const RunState = preload("res://sim/run_state.gd")
 const SimTick = preload("res://sim/tick.gd")
@@ -32,8 +26,6 @@ func _make_state() -> RunState:
 	return Encounter.dev_room(SEED, 2, 2)
 
 
-## Журнал строится из потока случайности, а не из Rand-функций: сам тест
-## обязан быть воспроизводимым, иначе он краснеет через раз.
 func _make_log() -> CommandLog:
 	var journal := CommandLog.new()
 	var source := RandomNumberGenerator.new()
@@ -64,8 +56,6 @@ func _test_same_log_same_state() -> bool:
 	return true
 
 
-## Прогон по одному тику должен давать то же, что прогон целиком: иначе
-## пауза, кадр отладки или досылка команд по сети меняют результат.
 func _test_stepwise_matches_bulk() -> bool:
 	var journal := _make_log()
 
@@ -80,8 +70,6 @@ func _test_stepwise_matches_bulk() -> bool:
 	return true
 
 
-## Забег, продолженный из сейва, обязан прийти туда же, куда пришёл бы
-## непрерывный. Это то самое «бросить и продолжить в другой вечер».
 func _test_survives_save_in_the_middle() -> bool:
 	var journal := _make_log()
 	var half := TICKS / 2
@@ -105,24 +93,16 @@ func _test_survives_save_in_the_middle() -> bool:
 	return true
 
 
-## Команда квантуется в целые: аналоговый стик у двух игроков не обязан
-## давать одинаковый float, и это не должно разводить симуляцию.
 func _test_command_quantization_is_stable() -> bool:
-	# Квантование не склеивает близкий ввод — на границе шага соседние
-	# значения честно расходятся на единицу. Смысл в другом: команда состоит
-	# из целых, поэтому по сети она передаётся и сравнивается точно, а хост и
-	# клиент считают из одной и той же команды, а не из двух похожих float.
 	var a: Command = Command.from_axes(0, Vector2(0.3000001, -0.25), Vector2.ZERO)
 	var b: Command = Command.from_axes(0, Vector2(0.2999998, -0.25), Vector2.ZERO)
 	eq(a.to_dict(), b.to_dict(), "ввод, различающийся в седьмом знаке, дал разные команды")
 
-	# Разброс ограничен одним шагом даже на границе.
 	var edge_hi: Command = Command.from_axes(0, Vector2(0.5000001, 0), Vector2.ZERO)
 	var edge_lo: Command = Command.from_axes(0, Vector2(0.4999998, 0), Vector2.ZERO)
 	check(absi(edge_hi.move_x - edge_lo.move_x) <= 1,
 		"на границе шага команды разошлись больше чем на единицу")
 
-	# Одно и то же значение обязано давать одну и ту же команду всегда.
 	eq(Command.from_axes(0, Vector2(0.5000001, 0), Vector2.ZERO).to_dict(),
 		edge_hi.to_dict(), "одинаковый ввод дал разные команды")
 
@@ -154,8 +134,6 @@ func _test_log_roundtrip() -> bool:
 	return true
 
 
-## Упавший не ходит. Проверка тут, а не в тесте движения, потому что это
-## правило симуляции, а не математики.
 func _test_downed_slot_does_not_move() -> bool:
 	var state := _make_state()
 	state.slots[1].downed = true

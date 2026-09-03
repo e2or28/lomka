@@ -1,17 +1,9 @@
 extends "res://tests/framework/test_case.gd"
 ## Три типа врагов и их повадки.
 ##
-## Класс: поведение. Числа расстояний и сроков подобраны на глаз и будут
-## двигаться; проверяется различие повадок, а не конкретный шаг. Последняя
-## проба — инвариант: повадка входит в состояние и обязана пережить сейв.
-##
-## Различаться врагам положено поведением, а не числами: одинаковые по
-## повадкам противники в толпе не читаются, сколько бы у них ни было
-## разного здоровья. Поэтому проверяется именно движение, а не статы.
-##
-## Повадки детерминированы от расстояния и номера тика — случайности в них
-## нет намеренно: лишний бросок сдвинул бы поток AI_SPREAD и
-## рассинхронизировал забег.
+## Класс: поведение, кроме последней пробы — она инвариант: повадка входит
+## в состояние и обязана пережить сейв. Проверяется различие поведения,
+## а не числа расстояний и сроков — те подобраны на глаз и будут двигаться.
 
 const Arena = preload("res://tests/framework/arena.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
@@ -30,8 +22,6 @@ func _test_bestiary_matches_schema() -> bool:
 	return true
 
 
-## Повадки закрыты списком: опечатка иначе даёт врага, молча стоящего
-## на месте.
 func _test_every_enemy_declares_a_known_behaviour() -> bool:
 	var wrong := PackedStringArray()
 	for id in Bestiary.ENEMIES:
@@ -42,8 +32,6 @@ func _test_every_enemy_declares_a_known_behaviour() -> bool:
 	return true
 
 
-## Разные повадки — разное поведение. Если траектории совпадают, врагов
-## по-прежнему один, просто с тремя именами.
 func _test_behaviours_actually_differ() -> bool:
 	var tracks := {}
 	for id in Bestiary.ENEMIES:
@@ -63,8 +51,6 @@ func _test_behaviours_actually_differ() -> bool:
 	return true
 
 
-## Все трое обязаны доходить до игрока: враг, который не может ударить,
-## не враг.
 func _test_everyone_can_reach_the_player() -> bool:
 	for id in Bestiary.ENEMIES:
 		var state := Arena.duel(SEED, id, Vector2(320, 0))
@@ -76,7 +62,6 @@ func _test_everyone_can_reach_the_player() -> bool:
 	return true
 
 
-## Курьер налетает и отходит — иначе от него можно отстреливаться стоя.
 func _test_harrier_backs_off() -> bool:
 	var state := Arena.duel(SEED, "runner", Vector2(300, 0))
 	var enemy := Arena.enemies(state)[0]
@@ -96,7 +81,6 @@ func _test_harrier_backs_off() -> bool:
 	return true
 
 
-## Начальник прёт напролом и не пятится.
 func _test_bruiser_never_retreats() -> bool:
 	var state := Arena.duel(SEED, "heavy", Vector2(300, 0))
 	var enemy := Arena.enemies(state)[0]
@@ -112,7 +96,6 @@ func _test_bruiser_never_retreats() -> bool:
 	return true
 
 
-## Комната ставит всех троих: разница в повадках видна только вместе.
 func _test_room_mixes_the_roster() -> bool:
 	var state := Arena.room(SEED, 1, 3)
 	var kinds := {}

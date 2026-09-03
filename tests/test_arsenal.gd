@@ -1,16 +1,9 @@
 extends "res://tests/framework/test_case.gd"
-## Класс: поведение. Третье и четвёртое оружие придут вместе с предметами M1
-## и перепишут половину ожиданий — это обычная работа, а не поломка.
+## Класс: поведение. Третье и четвёртое оружие перепишут половину ожиданий —
+## это обычная работа, а не поломка.
 ##
-## Оружие: выдать, сменить, снять.
-##
-## Смысл теста — не в чемодане, а в том, что второе оружие не потребует ни
-## строчки нового кода в бою. Оружие кладёт модификаторы в тот же стек, что
-## и предметы, поэтому смена — это снять один источник и положить другой.
-##
-## Отдельно проверяется, что смена оружия не задевает предметы и органы:
-## это самая дорогая ошибка такого механизма — она не падает, а тихо
-## обнуляет собранный за забег стек.
+## Оружие: выдать, сменить, снять. Смысл теста — не в чемодане, а в том, что
+## второе оружие не потребует ни строчки нового кода в бою.
 
 const Arsenal = preload("res://sim/arsenal.gd")
 const Encounter = preload("res://sim/encounter.gd")
@@ -19,8 +12,6 @@ const Modifier = preload("res://sim/core/modifier.gd")
 const SimTick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")
 
-## Оружие, существующее только в тесте: механизм проверяется на записи,
-## которой нет в реестре, — иначе тест начнёт падать от правок баланса.
 const CROWBAR := {
 	"id": "crowbar",
 	"name": "Монтировка",
@@ -39,8 +30,6 @@ func title() -> String:
 
 
 func _equip_raw(actor, record: Dictionary) -> void:
-	## Ручная выдача записи, которой нет в реестре: тест проверяет механизм,
-	## а не список контента.
 	if actor.weapon_id != "":
 		actor.stack.remove_source(Arsenal.source_of(actor.weapon_id))
 	for entry in record["modifiers"]:
@@ -54,7 +43,6 @@ func _test_weapons_match_schema() -> bool:
 	return true
 
 
-## Боевые статы приходят от оружия, а не от персонажа.
 func _test_unarmed_cannot_shoot() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)
@@ -86,7 +74,6 @@ func _test_default_weapon_is_the_suitcase() -> bool:
 	return true
 
 
-## Главное свойство: сменить оружие — значит поменять числа, а не код.
 func _test_swapping_replaces_the_stats() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)
@@ -103,8 +90,6 @@ func _test_swapping_replaces_the_stats() -> bool:
 	return true
 
 
-## Самая дорогая ошибка такого механизма: смена оружия тихо сносит всё,
-## что игрок собрал за забег.
 func _test_swapping_keeps_items_and_organs() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)
@@ -135,7 +120,6 @@ func _test_unequip_removes_only_the_weapon() -> bool:
 	return true
 
 
-## Выдать одно и то же дважды — не значит получить двойной урон.
 func _test_equipping_twice_does_not_stack() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)
@@ -160,10 +144,8 @@ func _test_unknown_weapon_is_refused() -> bool:
 	return true
 
 
-## Кольт — первое оружие в игре, которое не бросают. Проверяется не баланс,
-## а то, что он отличается от чемодана по всем осям, по которым оружие
-## вообще может отличаться: иначе второй ствол — это первый под другим
-## именем, и механизм смены ничего не доказывает.
+## Проверяется не баланс, а то, что кольт отличается от чемодана по всем
+## осям, по которым оружие вообще может отличаться.
 func _test_colt_is_a_different_weapon_entirely() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)
@@ -182,10 +164,6 @@ func _test_colt_is_a_different_weapon_entirely() -> bool:
 	return true
 
 
-## Кувырок — свойство чемодана, а не мира. Стат остаётся в стеке от прежнего
-## оружия, если снять его источник неаккуратно, и тогда пуля докатывается
-## лишние двести пикселей, кувыркаясь в воздухе. Ошибка тихая: ни падения,
-## ни ошибки в логе, просто дальность больше заявленной.
 func _test_swapping_to_the_colt_leaves_no_tumble() -> bool:
 	var state := Encounter.dev_room("оружие", 1, 1)
 	var actor := state.actor_of_slot(0)

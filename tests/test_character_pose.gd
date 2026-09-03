@@ -1,16 +1,6 @@
 extends "res://tests/framework/test_case.gd"
-## Класс: поведение. Придёт настоящая анимация — ожидания уедут вместе с
-## ней. Проверяется, что поза считается, а не как именно она выглядит.
-##
-## Поза персонажа: бег, покой, бросок.
-##
-## Анимация — представление, и попадание от неё не зависит. Но «руки не
-## машут» и «персонаж дёргается на месте» видно только глазами, если поза
-## не вынесена в чистые функции. Здесь она вынесена, поэтому проверяется
-## без окна.
-##
-## Что здесь не проверяется: красиво ли. Размах, темп и вес движения
-## подбирает человек, это часть ощущения управления.
+## Класс: поведение. Придёт настоящая анимация — ожидания уедут вместе
+## с ней. Не проверяется, красиво ли: размах, темп и вес подбирает человек.
 
 const Pose = preload("res://game/character_pose.gd")
 
@@ -28,8 +18,6 @@ func _test_standing_still_does_not_swing() -> bool:
 	return true
 
 
-## Фаза считается от пройденного пути, а не от времени: иначе медленный шаг
-## превращается в семенение на месте.
 func _test_stride_follows_distance_not_time() -> bool:
 	var slow := Pose.advance_stride(0.0, 60.0, 1.0)
 	var fast := Pose.advance_stride(0.0, 120.0, 0.5)
@@ -52,8 +40,6 @@ func _test_stride_stays_in_range() -> bool:
 	return true
 
 
-## Руки в противофазе: иначе персонаж выглядит прыгающим на двух ногах,
-## а не бегущим.
 func _test_running_arms_are_opposed() -> bool:
 	var seen_left_forward := false
 	var seen_right_forward := false
@@ -78,8 +64,6 @@ func _test_swing_amplitude_is_bounded() -> bool:
 	return true
 
 
-## Бросок длится ровно столько, сколько задано, и только сразу после
-## выстрела. Иначе рука не успевает вернуться и персонаж машет непрерывно.
 func _test_throw_happens_only_right_after_the_shot() -> bool:
 	var rate := 3.5
 	var period := 1.0 / rate
@@ -105,7 +89,6 @@ func _test_throw_overrides_the_swing() -> bool:
 	return true
 
 
-## Полностью неподвижный персонаж выглядит сломанным, а не спокойным.
 func _test_idle_breathes() -> bool:
 	var lowest := 0.0
 	var highest := 0.0
@@ -119,7 +102,6 @@ func _test_idle_breathes() -> bool:
 	return true
 
 
-## Корпус подбрасывает дважды за цикл — по разу на шаг, а не на пару шагов.
 func _test_body_bobs_twice_per_cycle() -> bool:
 	var peaks := 0
 	var previous := 0.0
@@ -145,9 +127,6 @@ func _test_head_lags_behind_the_body() -> bool:
 	return true
 
 
-## Кадры ходьбы нарисованы человеком: шесть положений на два шага.
-## Здесь проверяется только выбор кадра и стороны — как это выглядит,
-## решается глазами.
 func _test_walk_frame_covers_the_whole_cycle() -> bool:
 	var seen := {}
 	for step in 60:
@@ -171,9 +150,6 @@ func _test_walk_frame_advances_in_order() -> bool:
 	return true
 
 
-## Профильные кадры нарисованы лицом влево. Направление держится, пока
-## персонаж не пошёл в другую сторону: иначе он разворачивался бы на месте
-## от дрожания стика.
 func _test_facing_holds_until_direction_changes() -> bool:
 	eq(Pose.facing(Vector2(200, 0), -1), 1, "движение вправо не развернуло")
 	eq(Pose.facing(Vector2(-200, 0), 1), -1, "движение влево не развернуло")
@@ -192,9 +168,6 @@ func _test_profile_only_while_moving() -> bool:
 	return true
 
 
-## Прицел важнее движения. Служащий, кидающий папки влево на бегу вправо,
-## читался как ошибка отрисовки — это заимствование из Isaac, где голова
-## смотрит на цель, пока тело бежит своей дорогой.
 func _test_aim_wins_over_movement_while_firing() -> bool:
 	eq(Pose.aiming_facing(Vector2.LEFT, Vector2(300, 0), true, 1), -1,
 		"стреляя влево на бегу вправо, персонаж смотрит вправо")
@@ -211,8 +184,6 @@ func _test_movement_decides_when_not_firing() -> bool:
 	return true
 
 
-## Прицел строго вверх не должен разворачивать тело: горизонтальной
-## составляющей нет, и любой выбор был бы дёрганьем.
 func _test_vertical_aim_does_not_turn_the_body() -> bool:
 	eq(Pose.aiming_facing(Vector2.UP, Vector2.ZERO, true, 1), 1,
 		"прицел вверх развернул тело")
@@ -221,8 +192,6 @@ func _test_vertical_aim_does_not_turn_the_body() -> bool:
 	return true
 
 
-## Восемь направлений, как в Isaac: четыре клавиши плюс диагональ при двух
-## нажатых. Свободный угол убран решением от 2 сентября 2026.
 func _test_snap_aim_quantises_to_eight() -> bool:
 	var snapped := Pose.snap_aim(Vector2(1.0, 0.15).normalized(), 8)
 	almost_eq(snapped.angle(), 0.0, "почти горизонтальный прицел не притянулся к оси", 1e-5)
@@ -234,16 +203,12 @@ func _test_snap_aim_quantises_to_eight() -> bool:
 	for step in 64:
 		var angle := TAU * step / 64.0
 		var result := Pose.snap_aim(Vector2.RIGHT.rotated(angle), 8)
-		# Угол приводится к [0, TAU): иначе -PI и +PI посчитаются двумя
-		# направлениями, хотя это одно и то же.
 		seen[snappedf(fposmod(result.angle(), TAU), 0.0001)] = true
 		almost_eq(result.length(), 1.0, "притянутый прицел не единичной длины", 1e-5)
 	eq(seen.size(), 8, "получилось не восемь направлений")
 	return true
 
 
-## Отпущенный прицел обязан остаться отпущенным: иначе персонаж стрелял бы
-## непрерывно, ведь стрельба теперь начинается от направления.
 func _test_snap_aim_keeps_zero_zero() -> bool:
 	eq(Pose.snap_aim(Vector2.ZERO, 8), Vector2.ZERO, "нулевой прицел превратился в направление")
 	var free := Vector2(1.0, 0.15).normalized()
@@ -251,13 +216,6 @@ func _test_snap_aim_keeps_zero_zero() -> bool:
 	return true
 
 
-## Набор кадров ходьбы выбирается по тому, что в руках: с чемоданом руки
-## висят вдоль тела, с кольтом вынесены вперёд, и одним набором это не
-## нарисовать.
-##
-## Проверяется порядок, а не наличие файлов: своё оружие идёт первым,
-## базовый набор — запасным. Оружие, которому своих кадров не нарисовали,
-## обязано ходить базовым, иначе персонаж с ним пропадёт с экрана.
 func _test_walk_frames_follow_the_weapon() -> bool:
 	var colt := Pose.walk_frame_names("colt", 2)
 	eq(colt.size(), 2, "у оружия со своим набором нет запасного варианта")
@@ -278,10 +236,8 @@ func _test_stand_frame_follows_the_weapon() -> bool:
 	return true
 
 
-## Номер кадра в имени человеческий, с единицы: файлы на диске называются
-## player_side_walk_1..6, а внутри кадры считаются с нуля. Промах на единицу
-## здесь означает, что первый кадр цикла никогда не покажется, а последний
-## не найдётся.
+## Файлы на диске называются player_side_walk_1..6, а кадры внутри
+## считаются с нуля.
 func _test_frame_numbering_starts_at_one() -> bool:
 	eq(Pose.walk_frame_names("colt", 0)[0], "player_colt_walk_1", "первый кадр назван не так")
 	eq(Pose.walk_frame_names("colt", Pose.WALK_FRAMES - 1)[0], "player_colt_walk_6",
@@ -289,9 +245,6 @@ func _test_frame_numbering_starts_at_one() -> bool:
 	return true
 
 
-## Оружие ложится в кисть рукоятью, а не центром картинки. Центр годится
-## только симметричному чемодану; у кольта он приходится на затвор, и в
-## ладони оказывается ствол.
 func _test_weapon_hangs_by_its_grip() -> bool:
 	var size := Vector2(19.0, 12.0)
 	eq(Pose.weapon_offset("colt", size, false), Vector2(4.0, 6.0),
@@ -301,9 +254,6 @@ func _test_weapon_hangs_by_its_grip() -> bool:
 	return true
 
 
-## Отражённый спрайт держат за ту же рукоять — но она переехала на другую
-## сторону холста вместе с рисунком. Забыть это значит получить оружие,
-## которое при развороте прыгает на ширину ствола.
 func _test_mirrored_grip_moves_with_the_sprite() -> bool:
 	var size := Vector2(19.0, 12.0)
 	var straight := Pose.weapon_offset("colt", size, false)

@@ -1,13 +1,9 @@
 extends RefCounted
-## Сборка комнаты: кто в ней стоит на старте.
-##
-## Отделено от тика намеренно. Тик — чистая функция от состояния и команд,
-## и если бы он умел создавать тела из воздуха, воспроизвести забег по
-## журналу команд стало бы невозможно: состав комнаты пришлось бы угадывать.
-## Здесь состав задаётся один раз, до первого тика, и дальше только меняется.
+## Сборка комнаты: кто в ней стоит на старте, отдельно от тика — тик
+## чистая функция от состояния и команд, а не создаёт тела из воздуха,
+## иначе воспроизвести забег по журналу стало бы невозможно.
 ##
 ## На M3 сюда придут таблицы спавна из data/ и поток LOOT_PLACEMENT.
-## Пока состав фиксирован — это тестовый полигон, а не игра.
 
 const RunState = preload("res://sim/run_state.gd")
 const Actor = preload("res://sim/actor.gd")
@@ -15,22 +11,17 @@ const Room = preload("res://sim/room.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
 
-## Кого ставить в комнату разработчиков. Порядок задаёт и очередь по точкам
-## появления: первым встаёт опорный монстр, чтобы стенд начинался предсказуемо.
 const ROSTER: Array[String] = ["test_monster", "runner", "heavy"]
 const Schemas = preload("res://sim/data/schemas.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 
 
-## Комната разработчиков: N игроков против M манекенов.
 static func dev_room(seed_text: String, players: int, monsters: int) -> RunState:
 	var state := RunState.new(seed_text)
 	state.room = Room.dev_room()
 
 	for i in mini(players, RunState.MAX_PLAYERS):
 		add_player(state, i, "clerk")
-	# Все три типа по кругу: комната должна проверять их вместе, поодиночке
-	# разница в повадках не видна.
 	for i in monsters:
 		add_enemy(state, ROSTER[i % ROSTER.size()], state.room.enemy_spawn(i))
 
@@ -46,8 +37,7 @@ static func add_player(state: RunState, slot_index: int, character_id: String,
 	actor.position = state.room.player_spawn(slot_index)
 	actor.stack.base = record.get("base_stats", {}).duplicate()
 	_apply_passive(actor, record.get("passive", []))
-	# Оружие кладёт свои модификаторы в тот же стек — до подсчёта здоровья,
-	# потому что оружие может его менять.
+	# До heal_to_full: оружие может менять здоровье через тот же стек.
 	if weapon_id != "":
 		Arsenal.equip(actor, weapon_id)
 	actor.heal_to_full()
@@ -73,8 +63,6 @@ static func add_enemy(state: RunState, enemy_id: String, position: Vector2) -> A
 	return actor
 
 
-## Пассивные модификаторы персонажа кладутся в стек, а не в базу: снять их
-## должно быть так же просто, как модификатор от предмета (правило 4).
 static func _apply_passive(actor: Actor, passive: Array) -> void:
 	for entry in passive:
 		var op: int = Schemas.OPS.find(entry.get("op", "add"))

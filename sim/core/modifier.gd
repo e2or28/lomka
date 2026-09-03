@@ -4,11 +4,7 @@ extends RefCounted
 ## Модификатор не пишет стат, а описывает, что с ним сделать. Кто положил —
 ## помнится в source, чтобы снять всё от предмета одним вызовом при потере.
 
-enum Op {
-	ADD,  # плоская прибавка: стат += value
-	MUL,  # множитель: стат *= value
-	SET,  # жёсткая установка: стат = value
-}
+enum Op { ADD, MUL, SET }
 
 var id: String = ""
 var source: String = ""

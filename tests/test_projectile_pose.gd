@@ -1,10 +1,8 @@
 extends "res://tests/framework/test_case.gd"
-## Вид летящей папки: переворот и тень.
+## Вид летящего снаряда: переворот и тень.
 ##
-## Класс: поведение. Ничто здесь не влияет на попадание — снаряд летит по
-## прямой, а высоты у него нет вовсе (падение отменено решением от 2 сентября
-## 2026). Это чистое представление: подсказка глазу, вошёл ли бросок в
-## добавочный отрезок. Сам полёт проверяется в tests/test_ballistics.gd.
+## Класс: поведение. Чистое представление, ничто здесь не влияет на
+## попадание. Сам полёт проверяется в tests/test_ballistics.gd.
 
 const ProjectilePose = preload("res://game/projectile_pose.gd")
 
@@ -13,9 +11,6 @@ func title() -> String:
 	return "вид снаряда"
 
 
-## Переворот считается от возраста, а не от доли пути: короткий бросок
-## должен крутиться так же, как длинный, иначе оружие малой дальности
-## выглядит вялым.
 func _test_spin_speed_does_not_depend_on_range() -> bool:
 	var quarter := ProjectilePose.rotation(ProjectilePose.SPIN_PERIOD * 0.25, -1.0)
 	almost_eq(quarter, TAU * 0.25, "четверть оборота за четверть периода не набралась", 1e-5)
@@ -26,8 +21,6 @@ func _test_spin_speed_does_not_depend_on_range() -> bool:
 	return true
 
 
-## На кувырке чемодан крутится заметно быстрее — по этому игрок и видит,
-## что бросок вошёл в добавочный отрезок.
 func _test_tumble_spins_faster() -> bool:
 	var age := ProjectilePose.SPIN_PERIOD * 0.2
 	var straight := ProjectilePose.rotation(age, -1.0)
@@ -37,7 +30,6 @@ func _test_tumble_spins_faster() -> bool:
 	return true
 
 
-## Подскок только на кувырке и только вверх.
 func _test_hop_happens_only_while_tumbling() -> bool:
 	almost_eq(ProjectilePose.hop(-1.0), 0.0, "чемодан подскакивает в ровном полёте", 1e-6)
 	almost_eq(ProjectilePose.hop(0.0), 0.0, "подскок начинается не с нуля", 1e-6)
@@ -60,9 +52,6 @@ func _test_spin_keeps_turning() -> bool:
 	return true
 
 
-## Тень отмечает кувырок: она уменьшается и бледнеет, пока чемодан идёт
-## добавочный отрезок. Высоты у снаряда нет, тень рисует не её, а фазу
-## полёта — по ней игрок читает, что бросок ещё жив.
 func _test_shadow_marks_the_tumble() -> bool:
 	almost_eq(ProjectilePose.shadow_scale(-1.0), 1.0, "в ровном полёте тень не в полный размер", 1e-6)
 	check(ProjectilePose.shadow_scale(0.5) < 1.0, "на кувырке тень не уменьшилась")
