@@ -23,7 +23,7 @@ const ScaleReference = preload("res://game/scale_reference.gd")
 
 ## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми F5.
 const SPRITES: Array[String] = [
-	"player_side_stand",
+	"player", "player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
 	"player_colt_stand",

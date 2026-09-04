@@ -57,6 +57,11 @@ var textures: Dictionary = {}
 var stride_phase: Dictionary = {}
 var facing: Dictionary = {}
 
+## Отдельно от facing: на ходу персонаж в профиль в любом случае, а анфас
+## решается только для стойки. Одним значением это не выразить — при
+## развороте к зрителю пришлось бы забыть, каким боком он шёл.
+var standing_front: Dictionary = {}
+
 ## Ставится стендом: симуляция про представление не знает.
 var firing: Dictionary = {}
 var projectile_age: Dictionary = {}
@@ -72,6 +77,7 @@ func advance(delta: float) -> void:
 		_animation_state = state
 		stride_phase.clear()
 		facing.clear()
+		standing_front.clear()
 		projectile_age.clear()
 	if state == null:
 		return
@@ -81,9 +87,12 @@ func advance(delta: float) -> void:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
+		var shooting := bool(firing.get(actor.id, false))
 		facing[actor.id] = CharacterPose.aiming_facing(
-			actor.aim, actor.velocity, bool(firing.get(actor.id, false)),
-			facing.get(actor.id, 1))
+			actor.aim, actor.velocity, shooting, facing.get(actor.id, 1))
+		standing_front[actor.id] = CharacterPose.stand_front(
+			actor.aim, actor.velocity, shooting,
+			bool(standing_front.get(actor.id, false)))
 
 	var live_projectiles := {}
 	for projectile in state.projectiles:
@@ -222,18 +231,20 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
 
-	var names := CharacterPose.stand_names(actor.weapon_id)
+	var names := CharacterPose.stand_names(
+		actor.weapon_id, bool(standing_front.get(actor.id, false)))
 	if CharacterPose.use_walk_frames(speed):
 		names = CharacterPose.walk_frame_names(actor.weapon_id, CharacterPose.walk_frame(phase))
 	var chosen := _first_name(names)
 	if chosen == "":
 		return false
 
+	# Ноль — анфас: не отражается и берёт свою точку хвата.
+	var side := 0 if chosen == CharacterPose.FRONT_STAND else int(facing.get(actor.id, 1))
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
-	var side: int = facing.get(actor.id, 1)
 	_draw_facing(textures[chosen], canvas, side, tint)
 	_draw_weapon(actor, canvas, phase, speed, side, tint,
-		chosen == names[0] and names.size() > 1)
+		actor.weapon_id != "" and chosen.contains("_%s_" % actor.weapon_id))
 	return true
 
 
@@ -257,7 +268,7 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 
 	var stats := actor.stack.compute()
 	var hand := CharacterPose.hand_position(phase, speed,
-		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)), aimed)
+		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)), side, aimed)
 	if side > 0:
 		hand.x = PLAYER_CANVAS.x - hand.x
 

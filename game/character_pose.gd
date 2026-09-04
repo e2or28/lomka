@@ -5,9 +5,9 @@ extends RefCounted
 ## Живёт в game/, а не в sim/: попадание считается по положению тела, а не
 ## по нарисованной руке, и гонять фазу шага по сети незачем.
 ##
-## Персонаж всегда в профиль — и на ходу, и в покое. Анфас из слоёв отсюда
-## убран: при остановке тело разворачивалось к зрителю, а оружие
-## перескакивало на другую точку хвата.
+## На ходу персонаж всегда в профиль: кадров ходьбы вверх и вниз в наборе
+## нет. Разворачивается он на остановке — лицом к зрителю, если последним
+## шёл по вертикали, и тем боком, которым шёл, если по горизонтали.
 
 const STRIDE := 96.0
 
@@ -73,10 +73,19 @@ static func walk_frame_names(weapon_id: String, frame: int) -> PackedStringArray
 	return PackedStringArray(["player_%s_walk_%d" % [weapon_id, frame + 1], base])
 
 
-static func stand_names(weapon_id: String) -> PackedStringArray:
-	if weapon_id == "":
-		return PackedStringArray(["player_side_stand"])
-	return PackedStringArray(["player_%s_stand" % weapon_id, "player_side_stand"])
+## Анфасная стойка лежит в art/player.png: тот же файл идёт на иконку,
+## поэтому имя у него общее, а не player_front_stand.
+const FRONT_STAND := "player"
+
+
+static func stand_names(weapon_id: String, front: bool = false) -> PackedStringArray:
+	var names := PackedStringArray()
+	if front:
+		names.append(FRONT_STAND)
+	if weapon_id != "":
+		names.append("player_%s_stand" % weapon_id)
+	names.append("player_side_stand")
+	return names
 
 
 ## Профильные кадры нарисованы лицом вправо — проверено по спрайту: кожа
@@ -96,6 +105,17 @@ static func aiming_facing(aim: Vector2, velocity: Vector2, firing: bool, previou
 	return facing(velocity, previous)
 
 
+## Лицом к зрителю персонаж встаёт после ходьбы по вертикали. Стрельба
+## вбок разворачивает его в профиль, стрельба вверх и вниз — нет: как и
+## взгляд, поза слушает прицел раньше движения.
+static func stand_front(aim: Vector2, velocity: Vector2, firing: bool, previous: bool) -> bool:
+	if firing and absf(aim.x) > 0.2:
+		return false
+	if velocity.length() < WALK_THRESHOLD:
+		return previous
+	return absf(velocity.y) > absf(velocity.x)
+
+
 static func snap_aim(aim: Vector2, directions: int) -> Vector2:
 	if aim == Vector2.ZERO or directions <= 0:
 		return aim
@@ -108,9 +128,11 @@ static func use_walk_frames(speed: float) -> bool:
 	return speed >= WALK_THRESHOLD
 
 
-## Найдены по самим спрайтам, холст 128x192. Записаны в зеркальном виде:
-## представление отражает их для взгляда вправо, см. WorldView._draw_weapon.
+## Найдены по самим спрайтам, холст 128x192. Профильные записаны в
+## зеркальном виде: представление отражает их для взгляда вправо, см.
+## WorldView._draw_weapon. Анфасная зеркалить нечего, она прямая.
 const HAND_SIDE := Vector2(49.0, 123.0)
+const HAND_FRONT := Vector2(84.0, 121.0)
 
 ## Для кадров, где оружие держат наизготовку двумя руками — другой рисунок,
 ## не поправка к прежней точке.
@@ -130,17 +152,21 @@ static func weapon_offset(weapon_id: String, size: Vector2, mirrored: bool) -> V
 	return Vector2(size.x - grip.x, grip.y) if mirrored else grip
 
 
-## Минус по x — вперёд по взгляду: точки записаны зеркально, и после
-## отражения бросок уходит вперёд в обе стороны.
+## Минус по x — вперёд по взгляду: профильные точки записаны зеркально, и
+## после отражения бросок уходит вперёд в обе стороны. Анфас руку вперёд
+## не выносит вовсе: в этой проекции движение к зрителю не нарисовать.
 static func hand_position(phase: float, speed: float, throw: float,
-		aimed: bool = false) -> Vector2:
-	var hand := HAND_SIDE_AIMED if aimed else HAND_SIDE
+		side: int, aimed: bool = false) -> Vector2:
+	var hand := HAND_FRONT
+	if side != 0:
+		hand = HAND_SIDE_AIMED if aimed else HAND_SIDE
 	if speed >= WALK_THRESHOLD:
 		hand.y += sin(phase) * HAND_BOB
 		hand.x += cos(phase) * 1.2
 
 	if throw >= 0.0:
 		var swing := _throw_swing(throw)
-		hand.x -= THROW_REACH * swing
 		hand.y -= THROW_LIFT * swing
+		if side != 0:
+			hand.x -= THROW_REACH * swing
 	return hand

@@ -153,6 +153,43 @@ func _test_stand_frame_follows_the_weapon() -> bool:
 	eq(colt[0], "player_colt_stand", "стойка с кольтом названа не так")
 	eq(colt[1], "player_side_stand", "запасной стойкой оказалась не базовая")
 	eq(Pose.stand_names("")[0], "player_side_stand", "безоружный стоит не базовой стойкой")
+
+	var front := Pose.stand_names("colt", true)
+	eq(front[0], Pose.FRONT_STAND, "анфасная стойка не встала первой")
+	eq(front[front.size() - 1], "player_side_stand",
+		"у анфаса не осталось запасной профильной стойки")
+	return true
+
+
+## После ходьбы вверх и вниз персонаж остаётся лицом к зрителю, после
+## ходьбы вбок — тем боком, которым шёл.
+func _test_vertical_walk_ends_facing_the_camera() -> bool:
+	check(Pose.stand_front(Vector2.ZERO, Vector2(0, WALK), false, false),
+		"ходьба вниз не развернула к зрителю")
+	check(Pose.stand_front(Vector2.ZERO, Vector2(0, -WALK), false, false),
+		"ходьба вверх не развернула к зрителю")
+	check(not Pose.stand_front(Vector2.ZERO, Vector2(WALK, 0), false, true),
+		"ходьба вбок оставила персонажа лицом к зрителю")
+
+	check(Pose.stand_front(Vector2.ZERO, Vector2.ZERO, false, true),
+		"остановка сбросила разворот к зрителю")
+	check(not Pose.stand_front(Vector2.ZERO, Vector2.ZERO, false, false),
+		"остановка развернула к зрителю сама по себе")
+
+	var diagonal := Vector2(WALK, WALK * 0.5)
+	check(not Pose.stand_front(Vector2.ZERO, diagonal, false, true),
+		"по диагонали победила не большая составляющая")
+	return true
+
+
+## Поза слушает прицел раньше движения — так же, как взгляд.
+func _test_side_shot_turns_the_body_from_the_camera() -> bool:
+	check(not Pose.stand_front(Vector2.LEFT, Vector2.ZERO, true, true),
+		"стрельба вбок не развернула в профиль")
+	check(Pose.stand_front(Vector2.UP, Vector2.ZERO, true, true),
+		"стрельба вверх развернула в профиль")
+	check(Pose.stand_front(Vector2.LEFT, Vector2.ZERO, false, true),
+		"прицел без выстрела развернул в профиль")
 	return true
 
 
@@ -178,15 +215,15 @@ func _test_weapon_hangs_by_its_grip() -> bool:
 ## рисовалась анфасом, а ходьба в профиль, оружие при остановке
 ## перепрыгивало на треть холста.
 func _test_hand_does_not_jump_when_walking_starts() -> bool:
-	var standing := Pose.hand_position(0.0, 0.0, -1.0)
-	var starting := Pose.hand_position(0.0, Pose.WALK_THRESHOLD, -1.0)
+	var standing := Pose.hand_position(0.0, 0.0, -1.0, -1)
+	var starting := Pose.hand_position(0.0, Pose.WALK_THRESHOLD, -1.0, -1)
 	check(standing.distance_to(starting) <= Pose.HAND_BOB + 1.5,
 		"кисть скакнула на %.1f при переходе в шаг" % standing.distance_to(starting))
 
 	var swept := 0.0
 	for step in 32:
 		swept = maxf(swept, standing.distance_to(
-			Pose.hand_position(TAU * step / 32.0, WALK, -1.0)))
+			Pose.hand_position(TAU * step / 32.0, WALK, -1.0, -1)))
 	check(swept <= Pose.HAND_BOB + 1.5, "кисть уезжает на %.1f за цикл шага" % swept)
 	return true
 
@@ -194,10 +231,15 @@ func _test_hand_does_not_jump_when_walking_starts() -> bool:
 ## Бросок уводит кисть вперёд по взгляду, а точки записаны зеркально —
 ## значит вперёд это минус по x. Перепутанный знак кладёт папку за спину.
 func _test_throw_reaches_forward() -> bool:
-	var resting := Pose.hand_position(0.0, 0.0, -1.0)
-	var thrown := Pose.hand_position(0.0, 0.0, 0.5)
+	var resting := Pose.hand_position(0.0, 0.0, -1.0, -1)
+	var thrown := Pose.hand_position(0.0, 0.0, 0.5, -1)
 	check(thrown.x < resting.x, "бросок увёл кисть назад")
 	check(thrown.y < resting.y, "бросок не приподнял кисть")
+
+	var front_rest := Pose.hand_position(0.0, 0.0, -1.0, 0)
+	var front_throw := Pose.hand_position(0.0, 0.0, 0.5, 0)
+	almost_eq(front_throw.x, front_rest.x, "анфас вынес руку вбок вместо подъёма")
+	check(front_throw.y < front_rest.y, "анфас не приподнял кисть на броске")
 	return true
 
 
