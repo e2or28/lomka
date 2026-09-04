@@ -207,6 +207,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F1:
 			_scale_ref.enabled = not _scale_ref.enabled
 			_scale_ref.queue_redraw()
+		KEY_F2:
+			_overlay.toggle_knobs()
 		KEY_F3:
 			_overlay.visible = not _overlay.visible
 			_view.show_hitboxes = _overlay.visible

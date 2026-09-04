@@ -1,9 +1,11 @@
 extends CanvasLayer
-## Отладочный оверлей: F3. Всё состояние симуляции видно прямо в игре, без
-## открытого редактора.
+## Отладочный оверлей: F3 показания, F2 ползунки. Всё состояние симуляции
+## видно прямо в игре, без открытого редактора.
 ##
 ## Ползунки правят базовые статы занятых слотов: ощущение управления
-## крутится руками, а не подбирается формулой.
+## крутится руками, а не подбирается формулой. Свёрнуты по умолчанию и на
+## своей клавише: держать их открытыми нужно минуты в час, а закрывают они
+## треть комнаты.
 
 signal stat_changed(stat: String, value: float)
 
@@ -31,19 +33,22 @@ func _ready() -> void:
 	_readout.add_theme_color_override("font_color", Color(0.85, 0.95, 0.85))
 	add_child(_readout)
 
+	_hint = Label.new()
+	_hint.position = Vector2(12, 306)
+	_hint.add_theme_font_size_override("font_size", 11)
+	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
+	_hint.text = "F1 масштаб · F2 ползунки · F3 оверлей и хитбоксы · F5 art/\n" \
+		+ "1..9 спавн монстра · 0 убрать всех · Tab слот · Q оружие · E подобрать · R сброс · Esc"
+	add_child(_hint)
+
 	_panel = VBoxContainer.new()
-	_panel.position = Vector2(12, 200)
+	_panel.position = Vector2(12, 344)
 	_panel.custom_minimum_size = Vector2(240, 0)
+	_panel.visible = false
 	add_child(_panel)
 
 	for knob in KNOBS:
 		_add_knob(knob)
-
-	_hint = Label.new()
-	_hint.add_theme_font_size_override("font_size", 11)
-	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-	_hint.text = "F1 масштаб · F3 оверлей и хитбоксы · F5 art/ · 1..9 спавн монстра · 0 убрать всех · Tab слот · Q оружие · R сброс · Esc"
-	_panel.add_child(_hint)
 
 
 func _add_knob(knob: Dictionary) -> void:
@@ -98,3 +103,7 @@ func sync_from_stats(stats: Dictionary) -> void:
 
 func set_text(text: String) -> void:
 	_readout.text = text
+
+
+func toggle_knobs() -> void:
+	_panel.visible = not _panel.visible
