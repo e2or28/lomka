@@ -8,3 +8,4 @@ build/
 .superpowers/
 .cache/
 __pycache__/
+art/_inbox/

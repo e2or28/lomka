@@ -369,6 +369,7 @@ tools/gen_project.sh         # пересобрать project.godot и карт�
 tools/gen_scenes.sh          # пересобрать сцены стенда
 tools/gen_fixture.sh         # пересобрать эталонный сейв (осознанно!)
 tools/install_hooks.sh       # поставить pre-commit хук
+tools/pull_art.sh            # забрать исходники с Google Drive Саши
 tools/code_stats.sh          # дашборд по строкам кода на рабочий стол
 python3 tools/gen_road.py    # пересобрать docs/roadmap.svg
 ```
