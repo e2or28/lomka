@@ -17,8 +17,38 @@ const KNOBS := [
 	{"stat": "friction", "label": "торможение", "min": 200.0, "max": 40000.0, "step": 100.0},
 ]
 
+## Подсказка данными: завёл действие — дописал строку, и оно сразу видно
+## на экране. Списки, которые надо синхронизировать руками с кодом, живут
+## ровно до второй правки.
+const CONTROLS := [
+	["WASD", "идти"],
+	["стрелки", "стрелять"],
+	["E", "подобрать оружие с пола"],
+]
+
+const STAND_KEYS := [
+	["1", "оверлей и хитбоксы"],
+	["2", "ползунки статов"],
+	["3", "сверка масштаба"],
+	["4", "перечитать art/"],
+	["Shift+1..9", "поставить монстра перед собой"],
+	["0", "убрать всех врагов"],
+	["Tab", "добавить слот игрока"],
+	["Q", "сменить оружие на месте"],
+	["R", "сброс комнаты"],
+	["Esc", "выход"],
+]
+
+const KEY_COLOR := Color(0.98, 0.87, 0.55)
+const TEXT_COLOR := Color(0.86, 0.88, 0.9)
+const TITLE_COLOR := Color(0.55, 0.7, 0.6)
+
+## Колонка клавиш одной ширины на оба блока: иначе описания начинаются на
+## разном отступе, потому что сетки считают ширину каждая по своим строкам.
+const KEY_COLUMN := 78.0
+
 var _readout: Label = null
-var _hint: Label = null
+var _legend: VBoxContainer = null
 var _panel: VBoxContainer = null
 var _sliders: Dictionary = {}
 var _value_labels: Dictionary = {}
@@ -33,13 +63,33 @@ func _ready() -> void:
 	_readout.add_theme_color_override("font_color", Color(0.85, 0.95, 0.85))
 	add_child(_readout)
 
-	_hint = Label.new()
-	_hint.position = Vector2(12, 306)
-	_hint.add_theme_font_size_override("font_size", 11)
-	_hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.75))
-	_hint.text = "1 оверлей и хитбоксы · 2 ползунки · 3 масштаб · 4 перечитать art/\n" \
-		+ "Shift+1..9 спавн монстра · 0 убрать всех · Tab слот · Q оружие · E подобрать · R сброс · Esc"
-	add_child(_hint)
+	# Подложка: светлый пол съедает серый текст, и подсказка перестаёт
+	# читаться ровно там, где нужна — посреди комнаты.
+	var backdrop := PanelContainer.new()
+	backdrop.set_anchors_and_offsets_preset(
+		Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE)
+	backdrop.offset_left += 12
+	backdrop.offset_right += 12
+	backdrop.offset_top -= 12
+	backdrop.offset_bottom -= 12
+	# Иначе список растёт вниз от нижнего края и уходит за экран целиком.
+	backdrop.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.05, 0.06, 0.07, 0.74)
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(10)
+	backdrop.add_theme_stylebox_override("panel", style)
+	add_child(backdrop)
+
+	_legend = VBoxContainer.new()
+	_legend.add_theme_constant_override("separation", 1)
+	backdrop.add_child(_legend)
+
+	_legend.add_child(_legend_title("УПРАВЛЕНИЕ"))
+	_legend.add_child(_legend_rows(CONTROLS))
+	_legend.add_child(_legend_title("СТЕНД"))
+	_legend.add_child(_legend_rows(STAND_KEYS))
 
 	_panel = VBoxContainer.new()
 	_panel.position = Vector2(12, 344)
@@ -49,6 +99,40 @@ func _ready() -> void:
 
 	for knob in KNOBS:
 		_add_knob(knob)
+
+
+func _legend_title(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", TITLE_COLOR)
+	# Воздух над заголовком, а не между строками: иначе блоки слипаются.
+	label.custom_minimum_size.y = 22
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	return label
+
+
+## Сеткой, а не пробелами в одной строке: шрифт не моноширинный, и
+## колонки из пробелов разъезжаются на первой же длинной клавише.
+func _legend_rows(rows: Array) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 1)
+	for row in rows:
+		var key := _legend_cell(row[0], KEY_COLOR)
+		key.custom_minimum_size.x = KEY_COLUMN
+		grid.add_child(key)
+		grid.add_child(_legend_cell(row[1], TEXT_COLOR))
+	return grid
+
+
+func _legend_cell(text: String, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 
 func _add_knob(knob: Dictionary) -> void:
