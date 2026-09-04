@@ -6,6 +6,7 @@ extends "res://tests/framework/test_case.gd"
 
 const Arena = preload("res://tests/framework/arena.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
+const Encounter = preload("res://sim/encounter.gd")
 
 const SEED := "бой"
 
@@ -16,6 +17,41 @@ func title() -> String:
 
 func _test_bestiary_matches_schema() -> bool:
 	no_errors(Bestiary.validate_all(), "записи бестиария не прошли схему")
+	return true
+
+
+## Хитбокс — круг на позиции тела, радиус приходит из бестиария. Общий
+## радиус на всех означал бы, что в Начальника попасть ровно так же
+## трудно, как в Курьера, каких бы размеров их ни нарисовали.
+func _test_hitbox_comes_from_the_bestiary() -> bool:
+	var state := Arena.solo(SEED)
+	var heavy := Encounter.add_enemy(state, "heavy", Vector2(300, 0))
+	var runner := Encounter.add_enemy(state, "runner", Vector2(-300, 0))
+
+	eq(heavy.radius, float(Bestiary.enemy("heavy")["radius"]),
+		"радиус Начальника не приехал из записи")
+	check(heavy.radius > runner.radius, "тяжёлый враг не крупнее лёгкого")
+	check(Arena.players(state)[0].radius < runner.radius,
+		"хитбокс игрока не самый узкий")
+	return true
+
+
+## Круг больше — попадание засчитывается дальше от центра. Это и есть вся
+## система: снаряд против суммы двух радиусов. Тики считаны так, чтобы
+## снаряд успел пройти мимо, а враг — не успел сойти с места.
+func _test_bigger_body_is_hit_from_further() -> bool:
+	var hit := PackedStringArray()
+	for enemy_id in ["runner", "heavy"]:
+		var state := Arena.duel(SEED, enemy_id, Vector2(34.0, 32.0))
+		var enemy := Arena.enemies(state)[0]
+		var before := enemy.health
+		Arena.shoot(state, Vector2.RIGHT)
+		Arena.coast(state, 4)
+		if enemy.health < before:
+			hit.append(enemy_id)
+
+	eq(", ".join(hit), "heavy",
+		"мимо на 32 пикселя задело не тех, кого надо: [%s]" % ", ".join(hit))
 	return true
 
 

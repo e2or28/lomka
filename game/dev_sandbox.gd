@@ -64,6 +64,7 @@ func _ready() -> void:
 	_overlay = DebugOverlay.new()
 	_overlay.stat_changed.connect(_on_stat_changed)
 	add_child(_overlay)
+	_view.show_hitboxes = _overlay.visible
 
 	_reload_art()
 	_reset()
@@ -199,6 +200,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_scale_ref.queue_redraw()
 		KEY_F3:
 			_overlay.visible = not _overlay.visible
+			_view.show_hitboxes = _overlay.visible
 		KEY_F5:
 			_reload_art()
 		KEY_TAB:

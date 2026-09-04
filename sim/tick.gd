@@ -16,16 +16,10 @@ const Arsenal = preload("res://sim/arsenal.gd")
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
 
-## Уже силуэта намеренно: спрайт 47 пикселей в плечах, хитбокс 16 — так
-## прощаются касания краем.
-const BODY_RADIUS := 16.0
-
 ## Даётся только игрокам и только от касания. У врагов период перезарядки
 ## короче этих кадров, поэтому каждый следующий снаряд продлевал бы их, и
 ## враг под плотным огнём становился бессмертным — так и было.
 const HIT_INVULNERABILITY := 0.4
-
-const TOUCH_RANGE := 40.0
 
 const HARRIER_PERIOD := 96
 const HARRIER_BACKOFF := 120.0
@@ -83,14 +77,17 @@ static func _drive_enemies(state: RunState) -> void:
 			var offset := target.position - actor.position
 			if offset != Vector2.ZERO:
 				actor.aim = offset.normalized()
-			move = _behaviour_move(actor, offset, state.tick)
+			move = _behaviour_move(actor, offset, state.tick, actor.radius + target.radius)
 		var stats := actor.stack.compute()
 		actor.velocity = Motion.step_velocity(actor.velocity, move, stats, DELTA)
 
 
 ## Случайности здесь нет намеренно: разброс должен браться из потока
 ## AI_SPREAD, а лишний бросок сдвигает поток и рассинхронизирует забег.
-static func _behaviour_move(actor, offset: Vector2, tick: int) -> Vector2:
+## reach — сумма хитбоксов: расстояние, на котором тела уже касаются.
+## Подходят враги до его половины, то есть заходя в цель наполовину: на
+## самой границе они дрожали бы, то входя в касание, то выходя.
+static func _behaviour_move(actor, offset: Vector2, tick: int, reach: float) -> Vector2:
 	var distance := offset.length()
 	if distance <= 0.001:
 		return Vector2.ZERO
@@ -101,7 +98,7 @@ static func _behaviour_move(actor, offset: Vector2, tick: int) -> Vector2:
 			var cycle := (tick % HARRIER_PERIOD) < HARRIER_PERIOD / 2
 			if distance < HARRIER_BACKOFF and not cycle:
 				return -towards
-			if distance > TOUCH_RANGE * 0.5:
+			if distance > reach * 0.5:
 				return towards
 			return Vector2.ZERO
 
@@ -109,7 +106,7 @@ static func _behaviour_move(actor, offset: Vector2, tick: int) -> Vector2:
 			return towards
 
 		_:  # charger
-			if distance > TOUCH_RANGE * 0.5:
+			if distance > reach * 0.5:
 				return towards
 			return Vector2.ZERO
 
@@ -135,7 +132,7 @@ static func _move_bodies(state: RunState) -> void:
 		if not actor.alive:
 			continue
 		actor.position = Motion.step_position(actor.position, actor.velocity, DELTA)
-		actor.position = state.room.clamp_body(actor.position, BODY_RADIUS)
+		actor.position = state.room.clamp_body(actor.position, actor.radius)
 
 
 static func _fire(state: RunState, actor, stats: Dictionary) -> void:
@@ -165,7 +162,7 @@ static func _fly_projectiles(state: RunState) -> void:
 		for actor in state.actors:
 			if not projectile.can_hit(actor):
 				continue
-			var reach := projectile.radius + BODY_RADIUS
+			var reach := projectile.radius + actor.radius
 			if projectile.position.distance_squared_to(actor.position) > reach * reach:
 				continue
 
@@ -196,7 +193,8 @@ static func _touch_damage(state: RunState) -> void:
 				continue
 			if target.invulnerable > 0.0:
 				continue
-			if enemy.position.distance_squared_to(target.position) > TOUCH_RANGE * TOUCH_RANGE:
+			var reach := enemy.radius + target.radius
+			if enemy.position.distance_squared_to(target.position) > reach * reach:
 				continue
 			if target.take_damage(damage) and target.slot >= 0:
 				_knock_down(state, target)

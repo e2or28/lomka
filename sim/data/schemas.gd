@@ -41,6 +41,12 @@ const MODIFIER := {
 
 const STAT_BLOCK := {"type": TYPE_DICTIONARY, "value_type": TYPE_FLOAT, "keys": STATS}
 
+## Радиус хитбокса. Не стат намеренно: это свойство тела, а не число
+## баланса, и читается оно в цикле попаданий, где пересборка стека на
+## каждую пару стоила бы дороже самой проверки. Значение по умолчанию —
+## в Actor.radius, здесь только проверка на осмысленность.
+const HITBOX := {"type": TYPE_FLOAT, "min": 1.0, "required": false}
+
 const ITEM := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
@@ -72,6 +78,7 @@ const CHARACTER := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
 	"base_stats": STAT_BLOCK,
+	"radius": HITBOX,
 	"start_items": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
 	"passive": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false, "default": []},
 	"skill": {"type": TYPE_STRING, "required": false, "default": ""},
@@ -88,6 +95,7 @@ const ENEMY := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
 	"base_stats": STAT_BLOCK,
+	"radius": HITBOX,
 	"behaviour": {"type": TYPE_STRING, "values": BEHAVIOURS, "required": false, "default": "charger"},
 	"organ_drops": {"type": TYPE_ARRAY, "element_schema": ORGAN_DROP, "required": false, "default": []},
 	"zones": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},

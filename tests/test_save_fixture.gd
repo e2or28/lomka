@@ -12,7 +12,7 @@ const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_7.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_8.bin"
 
 
 func title() -> String:
@@ -56,6 +56,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 	eq(loaded.actor_of_slot(0).velocity, Vector2(-12.0, 3.5), "скорость тела прочиталась не та")
 	eq(loaded.actor_of_slot(0).stack.size(), 9, "модификаторы прочитались не все")
 	eq(loaded.actor_of_slot(0).weapon_id, "suitcase", "оружие в руках прочиталось не то")
+	eq(loaded.actor_of_slot(0).radius, 16.0, "хитбокс прочитался не тот")
 	eq(loaded.slots[1].downed, true, "признак падения прочитался не тот")
 	eq(loaded.living(Actor.Kind.ENEMY).size(), 2, "враги прочитались не все")
 	eq(loaded.projectiles.size(), 1, "снаряд в полёте потерян")
@@ -63,7 +64,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 
 
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), 7175340252059213889,
+	eq(ReferenceRun.build().state_hash(), -2245958224808380483,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

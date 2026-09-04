@@ -18,6 +18,13 @@ var archetype: String = ""
 ## Пустая строка у игрока: им управляет человек.
 var behaviour: String = ""
 
+## Хитбокс — круг на позиции тела, как Entity.Size в Isaac. От кадра
+## анимации не зависит: иначе попадание перестаёт быть предсказуемым, и
+## игрок не может научиться расстоянию. Значение по умолчанию — у игрока:
+## уже силуэта намеренно, спрайт 47 пикселей в плечах, так прощаются
+## касания краем. У врагов приходит из бестиария.
+var radius: float = 16.0
+
 var position: Vector2 = Vector2.ZERO
 var velocity: Vector2 = Vector2.ZERO
 var aim: Vector2 = Vector2.RIGHT
@@ -75,6 +82,7 @@ func to_dict() -> Dictionary:
 		"invulnerable": invulnerable,
 		"kind": int(kind),
 		"position": position,
+		"radius": radius,
 		"slot": slot,
 		"stack": stack.to_dict(),
 		"velocity": velocity,
@@ -92,6 +100,7 @@ static func from_dict(data: Dictionary):
 	actor.health = float(data.get("health", 0.0))
 	actor.invulnerable = float(data.get("invulnerable", 0.0))
 	actor.position = data.get("position", Vector2.ZERO)
+	actor.radius = float(data.get("radius", actor.radius))
 	actor.slot = int(data.get("slot", -1))
 	actor.stack = ModifierStack.from_dict(data.get("stack", {}))
 	actor.velocity = data.get("velocity", Vector2.ZERO)

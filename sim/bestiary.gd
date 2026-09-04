@@ -17,6 +17,7 @@ const CLERK := {
 		"move_speed": 260.0,
 		"health": 100.0,
 	},
+	"radius": 16.0,
 	"start_items": [],
 	"skill": "",
 	"unlocked_by_default": true,
@@ -24,6 +25,11 @@ const CLERK := {
 
 ## Различаются повадкой (behaviour, разбирается в sim/tick.gd), а не только
 ## числами: одинаковые по поведению враги в толпе не читаются.
+##
+## radius — круг хитбокса. Чем тело тяжелее и медленнее, тем он больше:
+## в толстяка легче попасть и труднее от него увернуться. Числа стартовые,
+## под заглушку monster.png; с настоящими спрайтами радиус приезжает
+## вместе с каждым.
 const TEST_MONSTER := {
 	"id": "test_monster",
 	"name": "Монстр",
@@ -34,6 +40,7 @@ const TEST_MONSTER := {
 		"acceleration": 900.0,
 		"friction": 1400.0,
 	},
+	"radius": 24.0,
 	"behaviour": "charger",
 	"organ_drops": [],
 	"zones": ["dev_room"],
@@ -50,6 +57,7 @@ const RUNNER := {
 		"acceleration": 1600.0,
 		"friction": 2200.0,
 	},
+	"radius": 18.0,
 	"behaviour": "harrier",
 	"organ_drops": [],
 	"zones": ["dev_room"],
@@ -66,6 +74,7 @@ const HEAVY := {
 		"acceleration": 420.0,
 		"friction": 700.0,
 	},
+	"radius": 34.0,
 	"behaviour": "bruiser",
 	"organ_drops": [],
 	"zones": ["dev_room"],

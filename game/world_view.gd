@@ -64,6 +64,7 @@ var standing_front: Dictionary = {}
 
 ## Ставится стендом: симуляция про представление не знает.
 var firing: Dictionary = {}
+var show_hitboxes := false
 var projectile_age: Dictionary = {}
 var breath := 0.0
 
@@ -205,7 +206,12 @@ func _draw_actor(actor: Actor) -> void:
 		draw_line(from, from + actor.aim.normalized() * 40.0, Color(1, 1, 1, 0.4), 2.0)
 
 	if actor.invulnerable > 0.0:
-		draw_arc(at, 26.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
+		draw_arc(at, actor.radius + 10.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
+
+	# Круг попаданий не совпадает с силуэтом намеренно, и на глаз это не
+	# проверить: подбирать радиусы можно только видя их.
+	if show_hitboxes:
+		draw_arc(at, actor.radius, 0, TAU, 32, Color(1, 0.3, 0.3, 0.8), 1.5)
 
 	if is_player:
 		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 16.0),
