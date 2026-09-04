@@ -199,20 +199,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	# На кириллице event.keycode нулевой — см. «Ловушки» в CLAUDE.md.
 	var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
 
-	if code >= KEY_1 and code <= KEY_9:
+	# Цифры, а не F-клавиши: на ноутбуке те лежат под Fn, и одной рукой
+	# на них не попасть. Спавн ушёл под Shift, чтобы освободить ряд.
+	if code >= KEY_1 and code <= KEY_9 and event.shift_pressed:
 		_spawn_enemy(code - KEY_1)
 		return
 
 	match code:
-		KEY_F1:
-			_scale_ref.enabled = not _scale_ref.enabled
-			_scale_ref.queue_redraw()
-		KEY_F2:
-			_overlay.toggle_knobs()
-		KEY_F3:
+		KEY_1:
 			_overlay.visible = not _overlay.visible
 			_view.show_hitboxes = _overlay.visible
-		KEY_F5:
+		KEY_2:
+			_overlay.toggle_knobs()
+		KEY_3:
+			_scale_ref.enabled = not _scale_ref.enabled
+			_scale_ref.queue_redraw()
+		KEY_4:
 			_reload_art()
 		KEY_TAB:
 			_active_slots = _active_slots % RunState.MAX_PLAYERS + 1
