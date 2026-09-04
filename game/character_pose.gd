@@ -5,17 +5,12 @@ extends RefCounted
 ## Живёт в game/, а не в sim/: попадание считается по положению тела, а не
 ## по нарисованной руке, и гонять фазу шага по сети незачем.
 ##
-## Слои и точки вращения — в art/player_layers.json. Пивот руки — плечо,
-## поэтому поворот читается как мах, а не как отрыв конечности.
+## Персонаж всегда в профиль — и на ходу, и в покое. Анфас из слоёв отсюда
+## убран: при остановке тело разворачивалось к зрителю, а оружие
+## перескакивало на другую точку хвата.
 
 const STRIDE := 96.0
 
-## Мал намеренно: на двадцати градусах кисть заезжает в корпус, на плече
-## рвётся силуэт — проверено покадровой раскадровкой.
-const ARM_SWING := 0.14
-
-const ARM_LIFT := 1.8
-const BODY_BOB := 1.6
 const IDLE_BREATH := 0.6
 const IDLE_PERIOD := 2.6
 
@@ -23,8 +18,13 @@ const IDLE_PERIOD := 2.6
 ## машет непрерывно.
 const THROW_TIME := 0.18
 
-const THROW_ANGLE := 0.75
+const THROW_REACH := 6.0
 const THROW_LIFT := 7.0
+
+## Мал намеренно: на большем размахе оружие отрывается от кисти кадра,
+## под который оно подложено.
+const HAND_BOB := 1.8
+
 const WALK_THRESHOLD := 12.0
 const WALK_FRAMES := 6
 
@@ -47,57 +47,16 @@ static func throw_progress(cooldown: float, fire_rate: float) -> float:
 	return clampf(elapsed / THROW_TIME, 0.0, 1.0)
 
 
-static func body_offset(phase: float, speed: float, breath: float) -> Vector2:
-	if speed < WALK_THRESHOLD:
-		return Vector2(0.0, -absf(sin(breath * TAU / IDLE_PERIOD)) * IDLE_BREATH * 0.5)
-	return Vector2(0.0, -absf(sin(phase)) * BODY_BOB)
-
-
-static func head_offset(phase: float, speed: float, breath: float) -> Vector2:
-	if speed < WALK_THRESHOLD:
-		return Vector2(0.0, -absf(sin(breath * TAU / IDLE_PERIOD)) * IDLE_BREATH)
-	return Vector2(0.0, -absf(sin(phase - 0.4)) * BODY_BOB * 0.6)
-
-
-## На бегу руки идут в противофазе — иначе персонаж выглядит прыгающим на
-## двух ногах. Бросок перебивает мах.
-static func arm_angles(phase: float, speed: float, throw: float, throw_right: bool) -> Array:
-	var left := 0.0
-	var right := 0.0
+## На ходу дыхания нет: подъём корпуса уже нарисован в самих кадрах, и
+## второй поверх них читается как дрожь.
+static func idle_bob(speed: float, breath: float) -> Vector2:
 	if speed >= WALK_THRESHOLD:
-		left = sin(phase) * ARM_SWING
-		right = -sin(phase) * ARM_SWING
-
-	if throw >= 0.0:
-		var swing := _throw_swing(throw)
-		var forward := THROW_ANGLE * swing
-		if throw_right:
-			right = -forward
-			left = lerpf(left, forward * 0.25, swing)
-		else:
-			left = forward
-			right = lerpf(right, -forward * 0.25, swing)
-	return [left, right]
+		return Vector2.ZERO
+	return Vector2(0.0, -absf(sin(breath * TAU / IDLE_PERIOD)) * IDLE_BREATH)
 
 
 static func _throw_swing(throw: float) -> float:
 	return sin(throw * PI) if throw < 0.5 else (1.0 - throw) * 2.0
-
-
-static func arm_lift(phase: float, speed: float, throw: float, throw_right: bool) -> Array:
-	var left := 0.0
-	var right := 0.0
-	if speed >= WALK_THRESHOLD:
-		left = -sin(phase) * ARM_LIFT
-		right = sin(phase) * ARM_LIFT
-
-	if throw >= 0.0:
-		var lift := -THROW_LIFT * _throw_swing(throw)
-		if throw_right:
-			right = lift
-		else:
-			left = lift
-	return [left, right]
 
 
 static func walk_frame(phase: float) -> int:
@@ -149,15 +108,15 @@ static func use_walk_frames(speed: float) -> bool:
 	return speed >= WALK_THRESHOLD
 
 
-## Найдены по самим спрайтам, холст 128x192.
-const HAND_FRONT := Vector2(84.0, 121.0)
+## Найдены по самим спрайтам, холст 128x192. Записаны в зеркальном виде:
+## представление отражает их для взгляда вправо, см. WorldView._draw_weapon.
 const HAND_SIDE := Vector2(49.0, 123.0)
 
 ## Для кадров, где оружие держат наизготовку двумя руками — другой рисунок,
 ## не поправка к прежней точке.
 const HAND_SIDE_AIMED := Vector2(52.0, 95.0)
 
-## Точка на самом спрайте оружия, которой оно ложится в кисть. Без нeё
+## Точка на самом спрайте оружия, которой оно ложится в кисть. Без неё
 ## совмещение идёт центром картинки, и в ладони оказывается ствол.
 const WEAPON_GRIP := {
 	"colt": Vector2(4.0, 6.0),
@@ -171,17 +130,17 @@ static func weapon_offset(weapon_id: String, size: Vector2, mirrored: bool) -> V
 	return Vector2(size.x - grip.x, grip.y) if mirrored else grip
 
 
-static func hand_position(phase: float, speed: float, profile: bool,
-		throw: float, throw_right: bool, aimed: bool = false) -> Vector2:
-	var hand := HAND_FRONT
-	if profile:
-		hand = HAND_SIDE_AIMED if aimed else HAND_SIDE
+## Минус по x — вперёд по взгляду: точки записаны зеркально, и после
+## отражения бросок уходит вперёд в обе стороны.
+static func hand_position(phase: float, speed: float, throw: float,
+		aimed: bool = false) -> Vector2:
+	var hand := HAND_SIDE_AIMED if aimed else HAND_SIDE
 	if speed >= WALK_THRESHOLD:
-		hand.y += sin(phase) * ARM_LIFT
+		hand.y += sin(phase) * HAND_BOB
 		hand.x += cos(phase) * 1.2
 
-	if throw >= 0.0 and not profile:
+	if throw >= 0.0:
 		var swing := _throw_swing(throw)
+		hand.x -= THROW_REACH * swing
 		hand.y -= THROW_LIFT * swing
-		hand.x += (6.0 if throw_right else -6.0) * swing
 	return hand

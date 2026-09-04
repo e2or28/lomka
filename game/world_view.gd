@@ -18,19 +18,21 @@ const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
 const PROJECTILE_SHADOW_RADIUS := 10.0
 
-## Слои нарисованы на общем холсте с общей системой координат — кладутся
-## друг на друга без подгонки. Якорь — character_root из art/player_layers.json,
-## точка под ногами, а не центр холста. Проверено, что arm_left и arm_right
-## складываются в прежний общий слой пиксель-в-пиксель.
+## Якорь кадров — character_root из art/player_layers.json, точка под
+## ногами, а не центр холста.
 const PLAYER_ROOT := Vector2(64, 174)
 
-## Общий холст слоёв и кадров — нужен, чтобы отразить точку кисти вместе
+## Общий холст кадров — нужен, чтобы отразить точку кисти вместе
 ## с отражённым кадром.
 const PLAYER_CANVAS := Vector2(128, 192)
 
-## Плечи из art/player_layers.json. Пивот в плече читается как мах.
-const LEFT_SHOULDER := Vector2(45, 63)
-const RIGHT_SHOULDER := Vector2(83, 63)
+## Рост фигуры на кадре: значение по умолчанию у tools/import_frames.py,
+## под которое приведён весь набор.
+const PLAYER_HEIGHT := 156.0
+
+## Снаряд вылетает из кисти, а не из-под ног: симуляция считает всё на полу,
+## высота живёт только здесь. Тень остаётся внизу и показывает её.
+const PROJECTILE_FLIGHT := PLAYER_ROOT.y - CharacterPose.HAND_SIDE.y
 
 ## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
 ## только вместе с картинкой.
@@ -123,7 +125,7 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var tumble := projectile.tumble_progress()
 	_draw_projectile_shadow(ground_at, tumble)
 
-	var at := ground_at - Vector2(0.0, ProjectilePose.hop(tumble))
+	var at := ground_at - Vector2(0.0, PROJECTILE_FLIGHT + ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
 
 	# Вращается то, что бросают: снаряд без кувырка не крутится вовсе,
@@ -208,45 +210,21 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 
 
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
-	var canvas := at - PLAYER_ROOT
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
 
-	# Нарисованные кадры вместо сборки из слоёв: в них работают ноги,
-	# которых в слоях нет вовсе.
+	var names := CharacterPose.stand_names(actor.weapon_id)
 	if CharacterPose.use_walk_frames(speed):
-		var frame := CharacterPose.walk_frame(phase)
-		var names := CharacterPose.walk_frame_names(actor.weapon_id, frame)
-		var chosen := _first_name(names)
-		if chosen != "":
-			var side: int = facing.get(actor.id, 1)
-			_draw_facing(textures[chosen], canvas, side, tint)
-			_draw_weapon(actor, canvas, phase, speed, true, side, tint,
-				chosen == names[0] and names.size() > 1)
-			return true
+		names = CharacterPose.walk_frame_names(actor.weapon_id, CharacterPose.walk_frame(phase))
+	var chosen := _first_name(names)
+	if chosen == "":
+		return false
 
-	var body: Texture2D = textures.get("player_body")
-	if body == null:
-		var standing := _first_texture(CharacterPose.stand_names(actor.weapon_id))
-		if standing == null:
-			return false
-		_draw_facing(standing, canvas, facing.get(actor.id, 1), tint)
-		return true
-
-	var stats := actor.stack.compute()
-	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
-	var throw_right := actor.aim.x >= 0.0
-	var angles := CharacterPose.arm_angles(phase, speed, throw, throw_right)
-	var lifts := CharacterPose.arm_lift(phase, speed, throw, throw_right)
-
-	draw_texture(body, canvas + CharacterPose.body_offset(phase, speed, breath), tint)
-	_draw_arm("player_arm_left", canvas, LEFT_SHOULDER, angles[0], lifts[0], tint)
-	_draw_arm("player_arm_right", canvas, RIGHT_SHOULDER, angles[1], lifts[1], tint)
-
-	var head: Texture2D = textures.get("player_head")
-	if head != null:
-		draw_texture(head, canvas + CharacterPose.head_offset(phase, speed, breath), tint)
-	_draw_weapon(actor, canvas, phase, speed, false, facing.get(actor.id, 1), tint)
+	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
+	var side: int = facing.get(actor.id, 1)
+	_draw_facing(textures[chosen], canvas, side, tint)
+	_draw_weapon(actor, canvas, phase, speed, side, tint,
+		chosen == names[0] and names.size() > 1)
 	return true
 
 
@@ -257,16 +235,11 @@ func _first_name(names: PackedStringArray) -> String:
 	return ""
 
 
-func _first_texture(names: PackedStringArray) -> Texture2D:
-	var name := _first_name(names)
-	return textures[name] if name != "" else null
-
-
 ## Спрайт берётся по идентификатору оружия — здесь нет ни одного
 ## разветвления по видам. Нет спрайта — ничего не рисуется, это правильнее
 ## заглушки: чужой прямоугольник приняли бы за настоящее оружие.
 func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
-		profile: bool, side: int, tint: Color, aimed: bool = false) -> void:
+		side: int, tint: Color, aimed: bool) -> void:
 	if actor.weapon_id == "":
 		return
 	var texture: Texture2D = textures.get(actor.weapon_id)
@@ -274,16 +247,15 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 		return
 
 	var stats := actor.stack.compute()
-	var throw := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
-	var hand := CharacterPose.hand_position(phase, speed, profile, throw,
-		actor.aim.x >= 0.0, aimed)
-	if profile and side > 0:
+	var hand := CharacterPose.hand_position(phase, speed,
+		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)), aimed)
+	if side > 0:
 		hand.x = PLAYER_CANVAS.x - hand.x
 
 	# Оружие отражается вместе с персонажем: иначе кольт у идущего влево
 	# смотрел бы стволом назад.
 	var size := texture.get_size()
-	var mirrored := profile and side < 0
+	var mirrored := side < 0
 	var offset := CharacterPose.weapon_offset(actor.weapon_id, size, mirrored)
 	if mirrored:
 		draw_set_transform(canvas + hand - Vector2(size.x - offset.x, offset.y)
@@ -306,22 +278,6 @@ func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-## Холст у слоёв общий, поэтому вместо смещения текстуры начало координат
-## ставится в плечо, и слой рисуется со сдвигом на минус плечо.
-func _draw_arm(layer: String, canvas: Vector2, shoulder: Vector2,
-		angle: float, lift: float, tint: Color) -> void:
-	var texture: Texture2D = textures.get(layer)
-	if texture == null:
-		return
-	var at := canvas + Vector2(0.0, lift)
-	if is_zero_approx(angle):
-		draw_texture(texture, at, tint)
-		return
-	draw_set_transform(at + shoulder, angle, Vector2.ONE)
-	draw_texture(texture, -shoulder, tint)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-
 func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	var maximum: float = actor.max_health()
 	if maximum <= 0.0:
@@ -335,11 +291,6 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 
 func _sprite_height(actor: Actor) -> float:
 	if actor.kind == Actor.Kind.PLAYER:
-		var head: Texture2D = textures.get("player_body")
-		if head != null:
-			return PLAYER_ROOT.y - 15.0
-	else:
-		var sprite: Texture2D = textures.get("monster")
-		if sprite != null:
-			return sprite.get_size().y
-	return BODY.y
+		return PLAYER_HEIGHT
+	var sprite: Texture2D = textures.get("monster")
+	return sprite.get_size().y if sprite != null else BODY.y

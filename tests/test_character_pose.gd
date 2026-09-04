@@ -11,13 +11,6 @@ func title() -> String:
 	return "поза персонажа"
 
 
-func _test_standing_still_does_not_swing() -> bool:
-	var angles := Pose.arm_angles(1.2, 0.0, -1.0, true)
-	almost_eq(angles[0], 0.0, "левая рука машет на месте", 1e-6)
-	almost_eq(angles[1], 0.0, "правая рука машет на месте", 1e-6)
-	return true
-
-
 func _test_stride_follows_distance_not_time() -> bool:
 	var slow := Pose.advance_stride(0.0, 60.0, 1.0)
 	var fast := Pose.advance_stride(0.0, 120.0, 0.5)
@@ -40,30 +33,6 @@ func _test_stride_stays_in_range() -> bool:
 	return true
 
 
-func _test_running_arms_are_opposed() -> bool:
-	var seen_left_forward := false
-	var seen_right_forward := false
-	for step in 16:
-		var phase := TAU * step / 16.0
-		var angles := Pose.arm_angles(phase, WALK, -1.0, true)
-		almost_eq(angles[0], -angles[1], "руки на бегу не в противофазе", 1e-6)
-		if angles[0] > 0.1:
-			seen_left_forward = true
-		if angles[1] > 0.1:
-			seen_right_forward = true
-	check(seen_left_forward and seen_right_forward, "какая-то из рук ни разу не пошла вперёд")
-	return true
-
-
-func _test_swing_amplitude_is_bounded() -> bool:
-	var peak := 0.0
-	for step in 64:
-		var angles := Pose.arm_angles(TAU * step / 64.0, WALK, -1.0, true)
-		peak = maxf(peak, absf(angles[0]))
-	almost_eq(peak, Pose.ARM_SWING, "размах маха разошёлся с заданным", 0.01)
-	return true
-
-
 func _test_throw_happens_only_right_after_the_shot() -> bool:
 	var rate := 3.5
 	var period := 1.0 / rate
@@ -75,55 +44,6 @@ func _test_throw_happens_only_right_after_the_shot() -> bool:
 		"бросок тянется дольше отведённого")
 	eq(Pose.throw_progress(0.0, rate), -1.0, "бросок идёт при отсутствии перезарядки")
 	eq(Pose.throw_progress(period, 0.0), -1.0, "бросок идёт при нулевой скорострельности")
-	return true
-
-
-func _test_throw_overrides_the_swing() -> bool:
-	var running := Pose.arm_angles(1.0, WALK, -1.0, true)
-	var throwing := Pose.arm_angles(1.0, WALK, 0.5, true)
-	check(absf(throwing[1]) > absf(running[1]) + 0.3,
-		"бросок не перебил мах: было %.2f, стало %.2f" % [running[1], throwing[1]])
-
-	var left_throw := Pose.arm_angles(1.0, WALK, 0.5, false)
-	check(absf(left_throw[0]) > absf(running[0]) + 0.3, "левой рукой бросок не работает")
-	return true
-
-
-func _test_idle_breathes() -> bool:
-	var lowest := 0.0
-	var highest := 0.0
-	for step in 60:
-		var offset := Pose.head_offset(0.0, 0.0, Pose.IDLE_PERIOD * step / 60.0)
-		lowest = minf(lowest, offset.y)
-		highest = maxf(highest, offset.y)
-	check(highest - lowest > 0.1, "в покое голова не двигается вовсе")
-	check(highest - lowest <= Pose.IDLE_BREATH + 0.01,
-		"дыхание в покое слишком размашистое: %.2f" % (highest - lowest))
-	return true
-
-
-func _test_body_bobs_twice_per_cycle() -> bool:
-	var peaks := 0
-	var previous := 0.0
-	var current := Pose.body_offset(0.0, WALK, 0.0).y
-	for step in range(1, 121):
-		var phase := TAU * step / 120.0
-		var next := Pose.body_offset(phase, WALK, 0.0).y
-		if current < previous and current < next:
-			peaks += 1
-		previous = current
-		current = next
-	eq(peaks, 2, "корпус подбрасывает не дважды за цикл шага")
-	return true
-
-
-func _test_head_lags_behind_the_body() -> bool:
-	var differs := false
-	for step in 24:
-		var phase := TAU * step / 24.0
-		if absf(Pose.head_offset(phase, WALK, 0.0).y - Pose.body_offset(phase, WALK, 0.0).y) > 0.05:
-			differs = true
-	check(differs, "голова повторяет корпус в точности — шея не читается")
 	return true
 
 
@@ -160,9 +80,9 @@ func _test_facing_holds_until_direction_changes() -> bool:
 	return true
 
 
-func _test_profile_only_while_moving() -> bool:
+func _test_walk_frames_only_while_moving() -> bool:
 	check(Pose.use_walk_frames(WALK), "в движении не берутся кадры ходьбы")
-	check(not Pose.use_walk_frames(0.0), "в покое берутся кадры ходьбы вместо анфаса")
+	check(not Pose.use_walk_frames(0.0), "в покое берутся кадры ходьбы вместо стойки")
 	check(not Pose.use_walk_frames(Pose.WALK_THRESHOLD - 1.0),
 		"дрожание ниже порога включает ходьбу")
 	return true
@@ -251,6 +171,48 @@ func _test_weapon_hangs_by_its_grip() -> bool:
 		"кольт совмещается с кистью не рукоятью")
 	eq(Pose.weapon_offset("suitcase", size, false), size * 0.5,
 		"оружие без заданной рукояти перестало совмещаться по центру")
+	return true
+
+
+## Кисть у стойки и у первого кадра ходьбы обязана совпасть: пока стойка
+## рисовалась анфасом, а ходьба в профиль, оружие при остановке
+## перепрыгивало на треть холста.
+func _test_hand_does_not_jump_when_walking_starts() -> bool:
+	var standing := Pose.hand_position(0.0, 0.0, -1.0)
+	var starting := Pose.hand_position(0.0, Pose.WALK_THRESHOLD, -1.0)
+	check(standing.distance_to(starting) <= Pose.HAND_BOB + 1.5,
+		"кисть скакнула на %.1f при переходе в шаг" % standing.distance_to(starting))
+
+	var swept := 0.0
+	for step in 32:
+		swept = maxf(swept, standing.distance_to(
+			Pose.hand_position(TAU * step / 32.0, WALK, -1.0)))
+	check(swept <= Pose.HAND_BOB + 1.5, "кисть уезжает на %.1f за цикл шага" % swept)
+	return true
+
+
+## Бросок уводит кисть вперёд по взгляду, а точки записаны зеркально —
+## значит вперёд это минус по x. Перепутанный знак кладёт папку за спину.
+func _test_throw_reaches_forward() -> bool:
+	var resting := Pose.hand_position(0.0, 0.0, -1.0)
+	var thrown := Pose.hand_position(0.0, 0.0, 0.5)
+	check(thrown.x < resting.x, "бросок увёл кисть назад")
+	check(thrown.y < resting.y, "бросок не приподнял кисть")
+	return true
+
+
+## В покое одним кадром персонаж иначе выглядит чучелом.
+func _test_idle_breathes() -> bool:
+	var lowest := 0.0
+	var highest := 0.0
+	for step in 60:
+		var offset := Pose.idle_bob(0.0, Pose.IDLE_PERIOD * step / 60.0)
+		lowest = minf(lowest, offset.y)
+		highest = maxf(highest, offset.y)
+	check(highest - lowest > 0.1, "в покое персонаж не двигается вовсе")
+	check(highest - lowest <= Pose.IDLE_BREATH + 0.01,
+		"дыхание в покое слишком размашистое: %.2f" % (highest - lowest))
+	eq(Pose.idle_bob(WALK, 1.0), Vector2.ZERO, "дыхание накладывается на кадры ходьбы")
 	return true
 
 
