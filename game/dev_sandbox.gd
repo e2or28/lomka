@@ -79,7 +79,7 @@ func _reset() -> void:
 
 
 func _recenter() -> void:
-	_origin = get_viewport_rect().size * 0.5
+	_origin = _view.centering_origin(get_viewport_rect().size)
 	_view.origin = _origin
 	_scale_ref.queue_redraw()
 

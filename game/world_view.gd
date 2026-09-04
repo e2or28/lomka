@@ -36,7 +36,7 @@ const PROJECTILE_FLIGHT := PLAYER_ROOT.y - CharacterPose.HAND_SIDE.y
 
 ## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
 ## только вместе с картинкой.
-const ROOM_INSET := Vector2(89, 98)
+const ROOM_INSET := Vector2(91, 180)
 
 const SLOT_COLORS: Array[Color] = [
 	Color(0.45, 0.85, 0.55),
@@ -104,6 +104,15 @@ func _draw() -> void:
 		_draw_projectile(projectile)
 	for actor in state.actors:
 		_draw_actor(actor)
+
+
+## Картинка комнаты выше игровой зоны сверху, чем снизу: по центру окна
+## ставится она, а не зона, иначе верх стены с лампами уезжает за экран.
+func centering_origin(viewport: Vector2) -> Vector2:
+	var background: Texture2D = textures.get("room_start")
+	if state == null or background == null:
+		return viewport * 0.5
+	return (viewport - background.get_size()) * 0.5 + ROOM_INSET - state.room.bounds.position
 
 
 func _draw_room() -> void:

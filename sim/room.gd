@@ -6,16 +6,24 @@ extends RefCounted
 
 var bounds: Rect2 = Rect2(-320, -180, 640, 360)
 
+## Дверные косяки: торчат в комнату, и тело из них выталкивается. Двери
+## пока закрыты — на M3 прямоугольник снимется вместе с открытием прохода.
+var blockers: Array[Rect2] = []
+
 var player_spawns: Array[Vector2] = []
 var enemy_spawns: Array[Vector2] = []
 
 
-## Размер задан спрайтом, а не наоборот: персонаж нарисован высотой около
-## 127 пикселей, и ужать его до сорока нельзя — на этом размере разваливается
-## лицо. Тело занимает около пятой части высоты комнаты.
+## Размер задан спрайтом, а не наоборот: персонаж нарисован высотой 156
+## пикселей, и ужать его нельзя — на этом размере разваливается лицо.
+## Границы и косяки сняты с art/room_start.png, см. art/README.md.
 static func dev_room():
 	var room := new()
-	room.bounds = Rect2(-580, -320, 1160, 640)
+	room.bounds = Rect2(-593, -302, 1186, 604)
+	room.blockers = [
+		Rect2(-593, -115, 35, 226),
+		Rect2(559, -115, 34, 226),
+	]
 	room.player_spawns = [
 		Vector2(-70, 150), Vector2(70, 150), Vector2(-70, 240), Vector2(70, 240),
 	]
@@ -38,9 +46,36 @@ func enemy_spawn(index: int) -> Vector2:
 
 
 func clamp_body(position: Vector2, radius: float) -> Vector2:
-	return Vector2(
-		clampf(position.x, bounds.position.x + radius, bounds.end.x - radius),
-		clampf(position.y, bounds.position.y + radius, bounds.end.y - radius))
+	var limits := bounds.grow(-radius)
+	var at := Vector2(
+		clampf(position.x, limits.position.x, limits.end.x),
+		clampf(position.y, limits.position.y, limits.end.y))
+	for blocker in blockers:
+		at = _push_out(at, blocker, radius, limits)
+	return at
+
+
+## Выход выбирается ближайший из четырёх, но только тот, что остаётся
+## в комнате: косяк упирается в стену, и наружу выталкивать некуда.
+static func _push_out(at: Vector2, blocker: Rect2, radius: float, limits: Rect2) -> Vector2:
+	var grown := blocker.grow(radius)
+	if not grown.has_point(at):
+		return at
+
+	var best := at
+	var shortest := INF
+	for exit in [Vector2(grown.position.x, at.y), Vector2(grown.end.x, at.y),
+			Vector2(at.x, grown.position.y), Vector2(at.x, grown.end.y)]:
+		var point: Vector2 = exit
+		if point.x < limits.position.x or point.x > limits.end.x:
+			continue
+		if point.y < limits.position.y or point.y > limits.end.y:
+			continue
+		var distance := at.distance_squared_to(point)
+		if distance < shortest:
+			shortest = distance
+			best = point
+	return best
 
 
 func contains(position: Vector2) -> bool:
@@ -49,6 +84,7 @@ func contains(position: Vector2) -> bool:
 
 func to_dict() -> Dictionary:
 	return {
+		"blockers": blockers,
 		"bounds": bounds,
 		"enemy_spawns": enemy_spawns,
 		"player_spawns": player_spawns,
@@ -58,6 +94,10 @@ func to_dict() -> Dictionary:
 static func from_dict(data: Dictionary):
 	var room := new()
 	room.bounds = data.get("bounds", Rect2())
+	var walls: Array[Rect2] = []
+	for rect in data.get("blockers", []):
+		walls.append(rect)
+	room.blockers = walls
 	var enemies: Array[Vector2] = []
 	for point in data.get("enemy_spawns", []):
 		enemies.append(point)

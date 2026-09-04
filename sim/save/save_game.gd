@@ -12,7 +12,7 @@ extends RefCounted
 const RunState = preload("res://sim/run_state.gd")
 
 const MAGIC := "LOMKA"
-const FORMAT := 6
+const FORMAT := 7
 
 
 static func to_bytes(state: RunState) -> PackedByteArray:
