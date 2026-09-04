@@ -12,6 +12,7 @@ const Command = preload("res://sim/input/command.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
+const Pickup = preload("res://sim/pickup.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
@@ -29,6 +30,7 @@ static func step(state: RunState, commands: Dictionary) -> void:
 	_drive_players(state, commands)
 	_drive_enemies(state)
 	_move_bodies(state)
+	_take_pickups(state, commands)
 	_fly_projectiles(state)
 	_touch_damage(state)
 	_tick_timers(state)
@@ -133,6 +135,52 @@ static func _move_bodies(state: RunState) -> void:
 			continue
 		actor.position = Motion.step_position(actor.position, actor.velocity, DELTA)
 		actor.position = state.room.clamp_body(actor.position, actor.radius)
+
+
+## После перемещения тел, до полёта снарядов: подобранное оружие стреляет
+## со следующего тика, а не в тот же самый.
+static func _take_pickups(state: RunState, commands: Dictionary) -> void:
+	for slot in state.slots:
+		if not slot.occupied:
+			continue
+		var down: bool = commands.has(slot.index) \
+			and commands[slot.index].pressed(Command.BTN_INTERACT)
+		var pressed_now := down and not slot.interact_held
+		slot.interact_held = down
+		if not pressed_now or slot.downed:
+			continue
+
+		var actor := state.actor_by_id(slot.actor_id)
+		if actor != null and actor.alive:
+			_swap_weapon(state, actor)
+
+
+## Обмен, а не поглощение: прежнее оружие остаётся лежать на месте
+## подобранного, и за ним можно вернуться. Безоружный забирает предмет
+## насовсем — иначе на полу оставалась бы пустая ячейка.
+static func _swap_weapon(state: RunState, actor) -> void:
+	var nearest: Pickup = null
+	var shortest := INF
+	for pickup in state.pickups:
+		if pickup.kind != Pickup.KIND_WEAPON:
+			continue
+		var reach: float = pickup.radius + actor.radius
+		var distance := pickup.position.distance_squared_to(actor.position)
+		if distance > reach * reach or distance >= shortest:
+			continue
+		shortest = distance
+		nearest = pickup
+
+	if nearest == null:
+		return
+
+	var dropped: String = actor.weapon_id
+	if not Arsenal.equip(actor, nearest.content_id):
+		return
+	if dropped == "":
+		state.pickups.erase(nearest)
+		return
+	nearest.content_id = dropped
 
 
 static func _fire(state: RunState, actor, stats: Dictionary) -> void:

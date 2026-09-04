@@ -10,6 +10,7 @@ extends Node2D
 
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
+const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
@@ -110,6 +111,8 @@ func _draw() -> void:
 	if state == null:
 		return
 	_draw_room()
+	for pickup in state.pickups:
+		_draw_pickup(pickup)
 	for projectile in state.projectiles:
 		_draw_projectile(projectile)
 	for actor in state.actors:
@@ -137,6 +140,37 @@ func _draw_room() -> void:
 	draw_rect(rect, Color(0.35, 0.33, 0.38), false, 2.0)
 
 
+## Лежит на полу, поэтому рисуется до тел: подошедший накрывает его собой.
+## Спрайт берётся видом сверху — тот же предмет в руке нарисован сбоку.
+func _draw_pickup(pickup: Pickup) -> void:
+	var at := origin + pickup.position
+	draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
+	draw_circle(Vector2.ZERO, pickup.radius * 0.7, Color(0.0, 0.0, 0.0, 0.28))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	var sprite: Texture2D = textures.get(pickup.content_id + "_top")
+	if sprite != null:
+		draw_texture(sprite, at - sprite.get_size() * 0.5)
+	else:
+		draw_rect(Rect2(at - Vector2(9, 4), Vector2(18, 8)), PAPER_COLOR, true)
+
+	if not _within_reach(pickup):
+		return
+	draw_arc(at, pickup.radius, 0, TAU, 28, Color(1, 1, 1, 0.35), 1.5)
+	draw_string(ThemeDB.fallback_font, at + Vector2(-4, -pickup.radius - 6),
+		"E", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.85))
+
+
+func _within_reach(pickup: Pickup) -> bool:
+	for actor in state.actors:
+		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
+			continue
+		var reach: float = pickup.radius + actor.radius
+		if pickup.position.distance_squared_to(actor.position) <= reach * reach:
+			return true
+	return false
+
+
 func _draw_projectile(projectile: Projectile) -> void:
 	var ground_at := origin + projectile.position
 	var age := float(projectile_age.get(projectile.id, 0.0))
@@ -147,9 +181,9 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var at := ground_at - Vector2(0.0, PROJECTILE_FLIGHT + ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
 
-	# Вращается то, что бросают: снаряд без кувырка не крутится вовсе,
-	# иначе пуля вертелась бы в полёте волчком.
-	var angle := 0.0
+	# Вращается то, что бросают. Пуля не крутится, а летит носом вперёд:
+	# спрайт нарисован смотрящим вправо, поэтому доворачивается по скорости.
+	var angle := projectile.velocity.angle()
 	if projectile.tumble_range > 0.0:
 		angle = ProjectilePose.rotation(age, tumble) * turn_direction
 	draw_set_transform(at, angle, Vector2.ONE)
@@ -240,16 +274,19 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
 
-	var names := CharacterPose.stand_names(
-		actor.weapon_id, bool(standing_front.get(actor.id, false)))
+	var front := bool(standing_front.get(actor.id, false))
+	var names := CharacterPose.stand_names(actor.weapon_id)
 	if CharacterPose.use_walk_frames(speed):
 		names = CharacterPose.walk_frame_names(actor.weapon_id, CharacterPose.walk_frame(phase))
+		front = false
+	elif front:
+		names = CharacterPose.front_stand_names(actor.weapon_id)
 	var chosen := _first_name(names)
 	if chosen == "":
 		return false
 
-	# Ноль — анфас: не отражается и берёт свою точку хвата.
-	var side := 0 if chosen == CharacterPose.FRONT_STAND else int(facing.get(actor.id, 1))
+	# Ноль — анфас: кадр не отражается и кисть берётся анфасная.
+	var side := 0 if front else int(facing.get(actor.id, 1))
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
 	_draw_facing(textures[chosen], canvas, side, tint)
 	_draw_weapon(actor, canvas, phase, speed, side, tint,
@@ -277,7 +314,8 @@ func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
 
 	var stats := actor.stack.compute()
 	var hand := CharacterPose.hand_position(phase, speed,
-		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)), side, aimed)
+		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)),
+		side, aimed, actor.weapon_id)
 	if side > 0:
 		hand.x = PLAYER_CANVAS.x - hand.x
 

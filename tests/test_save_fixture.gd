@@ -12,7 +12,7 @@ const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_8.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_9.bin"
 
 
 func title() -> String:
@@ -64,7 +64,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 
 
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), -2245958224808380483,
+	eq(ReferenceRun.build().state_hash(), 4560519334807099604,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

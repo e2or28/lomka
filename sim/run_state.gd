@@ -9,6 +9,7 @@ const RngStreams = preload("res://sim/core/rng_streams.gd")
 const PlayerSlot = preload("res://sim/player_slot.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
+const Pickup = preload("res://sim/pickup.gd")
 const Room = preload("res://sim/room.gd")
 const Fnv = preload("res://sim/core/fnv.gd")
 
@@ -24,6 +25,7 @@ var rng: RngStreams = null
 var slots: Array[PlayerSlot] = []
 var actors: Array[Actor] = []
 var projectiles: Array[Projectile] = []
+var pickups: Array[Pickup] = []
 var room: Room = null
 
 ## Не выводится из длины массива: иначе после смерти тела номер
@@ -99,12 +101,16 @@ func to_dict() -> Dictionary:
 	var projectiles_out: Array = []
 	for projectile in projectiles:
 		projectiles_out.append(projectile.to_dict())
+	var pickups_out: Array = []
+	for pickup in pickups:
+		pickups_out.append(pickup.to_dict())
 	var slots_out: Array = []
 	for slot in slots:
 		slots_out.append(slot.to_dict())
 	return {
 		"actors": actors_out,
 		"next_id": next_id,
+		"pickups": pickups_out,
 		"projectiles": projectiles_out,
 		"rng": rng.to_dict(),
 		"room": room.to_dict(),
@@ -138,6 +144,11 @@ static func from_dict(data: Dictionary):
 	for entry in data.get("projectiles", []):
 		restored_projectiles.append(Projectile.from_dict(entry))
 	state.projectiles = restored_projectiles
+
+	var restored_pickups: Array[Pickup] = []
+	for entry in data.get("pickups", []):
+		restored_pickups.append(Pickup.from_dict(entry))
+	state.pickups = restored_pickups
 
 	var restored_slots: Array[PlayerSlot] = []
 	for entry in data.get("slots", []):

@@ -154,10 +154,31 @@ func _test_stand_frame_follows_the_weapon() -> bool:
 	eq(colt[1], "player_side_stand", "запасной стойкой оказалась не базовая")
 	eq(Pose.stand_names("")[0], "player_side_stand", "безоружный стоит не базовой стойкой")
 
-	var front := Pose.stand_names("colt", true)
-	eq(front[0], Pose.FRONT_STAND, "анфасная стойка не встала первой")
-	eq(front[front.size() - 1], "player_side_stand",
-		"у анфаса не осталось запасной профильной стойки")
+	return true
+
+
+## Анфасные имена держатся отдельным списком: представление по одному
+## тому, что имя пришло оттуда, знает, что кадр не отражается.
+func _test_front_stand_follows_the_weapon() -> bool:
+	var colt := Pose.front_stand_names("colt")
+	eq(colt[0], "player_colt_front", "анфасная стойка с кольтом названа не так")
+	eq(colt[1], Pose.FRONT_STAND, "запасной анфасной стойкой оказалась не базовая")
+	eq(Pose.front_stand_names(""), PackedStringArray([Pose.FRONT_STAND]),
+		"у безоружного анфасная стойка не одна")
+
+	for name in colt:
+		check(not name.begins_with("player_side"),
+			"в анфасный список попала профильная стойка: %s" % name)
+	return true
+
+
+## Точка хвата на анфасе своя у каждой стойки: общая уходит мимо ладони.
+func _test_front_hand_follows_the_weapon() -> bool:
+	var bare := Pose.hand_position(0.0, 0.0, -1.0, 0)
+	var colt := Pose.hand_position(0.0, 0.0, -1.0, 0, false, "colt")
+	check(bare != colt, "стойка с пистолетом берёт кисть безоружной")
+	eq(Pose.hand_position(0.0, 0.0, -1.0, 0, false, "нет такого"), bare,
+		"неизвестное оружие не откатилось к безоружной кисти")
 	return true
 
 

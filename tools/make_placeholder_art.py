@@ -34,6 +34,9 @@ PALETTE = {
     "R": (0x9A, 0x3B, 0x3B, 255),   # пасть
     "E": (0xE8, 0xE4, 0xD8, 255),   # белок глаза
     "P": (0x2C, 0x2E, 0x33, 255),   # зрачок
+    "C": (0xE6, 0xC9, 0x6E, 255),   # пуля, латунь
+    "c": (0xA8, 0x8B, 0x3E, 255),   # пуля, тень
+    "t": (0xE6, 0xC9, 0x6E, 120),   # след, полупрозрачный
 }
 
 FOLDER = """
@@ -114,6 +117,17 @@ SUITCASE = """
 """
 
 
+## Летит носом вперёд: представление доворачивает её по скорости, поэтому
+## нарисована смотрящей вправо, как и кадры персонажа.
+BULLET = """
+......###...
+..ttt##CCC#.
+.ttt#CCCCCC#
+..ttt##ccc#.
+......###...
+"""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -123,7 +137,8 @@ def main() -> int:
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
-    plan = [("folder", FOLDER, 2), ("monster", MONSTER, 4), ("suitcase", SUITCASE, 2)]
+    plan = [("folder", FOLDER, 2), ("monster", MONSTER, 4), ("suitcase", SUITCASE, 2),
+            ("bullet", BULLET, 2)]
     written = 0
     for name, art, factor in plan:
         target = args.out / f"{name}.png"

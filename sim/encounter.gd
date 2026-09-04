@@ -10,6 +10,7 @@ const Actor = preload("res://sim/actor.gd")
 const Room = preload("res://sim/room.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
+const Pickup = preload("res://sim/pickup.gd")
 
 const ROSTER: Array[String] = ["test_monster", "runner", "heavy"]
 const Schemas = preload("res://sim/data/schemas.gd")
@@ -24,6 +25,10 @@ static func dev_room(seed_text: String, players: int, monsters: int) -> RunState
 		add_player(state, i, "clerk")
 	for i in monsters:
 		add_enemy(state, ROSTER[i % ROSTER.size()], state.room.enemy_spawn(i))
+
+	# Пока лут не раскладывается по сиду (M3), кольт лежит на виду от места
+	# появления группы: без него второе оружие в игре недостижимо.
+	add_pickup(state, "colt", Vector2(180, 150))
 
 	return state
 
@@ -63,6 +68,13 @@ static func add_enemy(state: RunState, enemy_id: String, position: Vector2) -> A
 	actor.heal_to_full()
 	state.actors.append(actor)
 	return actor
+
+
+static func add_pickup(state: RunState, weapon_id: String, at: Vector2) -> Pickup:
+	# Тип не выводится: у статической фабрики его нет, см. «Ловушки» в CLAUDE.md
+	var pickup: Pickup = Pickup.weapon(state.take_id(), weapon_id, at)
+	state.pickups.append(pickup)
+	return pickup
 
 
 static func _apply_passive(actor: Actor, passive: Array) -> void:

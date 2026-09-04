@@ -73,19 +73,23 @@ static func walk_frame_names(weapon_id: String, frame: int) -> PackedStringArray
 	return PackedStringArray(["player_%s_walk_%d" % [weapon_id, frame + 1], base])
 
 
-## Анфасная стойка лежит в art/player.png: тот же файл идёт на иконку,
-## поэтому имя у него общее, а не player_front_stand.
+## Безоружная анфасная стойка лежит в art/player.png: тот же файл идёт
+## на иконку, поэтому имя у него общее, а не player_front_stand.
 const FRONT_STAND := "player"
 
 
-static func stand_names(weapon_id: String, front: bool = false) -> PackedStringArray:
-	var names := PackedStringArray()
-	if front:
-		names.append(FRONT_STAND)
-	if weapon_id != "":
-		names.append("player_%s_stand" % weapon_id)
-	names.append("player_side_stand")
-	return names
+static func stand_names(weapon_id: String) -> PackedStringArray:
+	if weapon_id == "":
+		return PackedStringArray(["player_side_stand"])
+	return PackedStringArray(["player_%s_stand" % weapon_id, "player_side_stand"])
+
+
+## Все имена здесь анфасные — представление по одному этому знает, что
+## отражать кадр не надо и кисть брать анфасную.
+static func front_stand_names(weapon_id: String) -> PackedStringArray:
+	if weapon_id == "":
+		return PackedStringArray([FRONT_STAND])
+	return PackedStringArray(["player_%s_front" % weapon_id, FRONT_STAND])
 
 
 ## Профильные кадры нарисованы лицом вправо — проверено по спрайту: кожа
@@ -130,9 +134,15 @@ static func use_walk_frames(speed: float) -> bool:
 
 ## Найдены по самим спрайтам, холст 128x192. Профильные записаны в
 ## зеркальном виде: представление отражает их для взгляда вправо, см.
-## WorldView._draw_weapon. Анфасная зеркалить нечего, она прямая.
+## WorldView._draw_weapon. Анфасные зеркалить нечего, они прямые.
 const HAND_SIDE := Vector2(49.0, 123.0)
-const HAND_FRONT := Vector2(84.0, 121.0)
+
+## Своя на каждую анфасную стойку: фигура на стойке с пистолетом нарисована
+## шире и ниже, и общая точка уходила бы мимо ладони. Ключ "" — безоружная.
+const HAND_FRONT := {
+	"": Vector2(84.0, 121.0),
+	"colt": Vector2(78.0, 118.0),
+}
 
 ## Для кадров, где оружие держат наизготовку двумя руками — другой рисунок,
 ## не поправка к прежней точке.
@@ -156,8 +166,8 @@ static func weapon_offset(weapon_id: String, size: Vector2, mirrored: bool) -> V
 ## после отражения бросок уходит вперёд в обе стороны. Анфас руку вперёд
 ## не выносит вовсе: в этой проекции движение к зрителю не нарисовать.
 static func hand_position(phase: float, speed: float, throw: float,
-		side: int, aimed: bool = false) -> Vector2:
-	var hand := HAND_FRONT
+		side: int, aimed: bool = false, weapon_id: String = "") -> Vector2:
+	var hand: Vector2 = HAND_FRONT.get(weapon_id, HAND_FRONT[""])
 	if side != 0:
 		hand = HAND_SIDE_AIMED if aimed else HAND_SIDE
 	if speed >= WALK_THRESHOLD:
