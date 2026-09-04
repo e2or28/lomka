@@ -14,6 +14,7 @@ const CommandLog = preload("res://sim/input/command_log.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const Actor = preload("res://sim/actor.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
+const Bestiary = preload("res://sim/bestiary.gd")
 const InputReader = preload("res://game/input_reader.gd")
 const InputMapDef = preload("res://tools/input_map.gd")
 const WorldView = preload("res://game/world_view.gd")
@@ -35,6 +36,9 @@ const SPRITES: Array[String] = [
 
 const SEED := "стенд"
 const MONSTERS := 3
+
+## Куда встаёт заказанный монстр: перед игроком, по направлению прицела.
+const SPAWN_REACH := 240.0
 
 var _state: RunState = null
 var _journal: CommandLog = null
@@ -194,6 +198,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# На кириллице event.keycode нулевой — см. «Ловушки» в CLAUDE.md.
 	var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+
+	if code >= KEY_1 and code <= KEY_9:
+		_spawn_enemy(code - KEY_1)
+		return
+
 	match code:
 		KEY_F1:
 			_scale_ref.enabled = not _scale_ref.enabled
@@ -208,10 +217,46 @@ func _unhandled_input(event: InputEvent) -> void:
 			_reset()
 		KEY_Q:
 			_next_weapon()
+		KEY_0:
+			_clear_enemies()
 		KEY_R:
 			_reset()
 		KEY_ESCAPE:
 			get_tree().quit()
+
+
+## Тела рождаются вне тика намеренно: тик — чистая функция от состояния и
+## команд, и спавн изнутри него сделал бы забег невоспроизводимым по
+## журналу (sim/encounter.gd). Стенд журнал не проигрывает, ему можно.
+func _spawn_enemy(index: int) -> void:
+	var ids := Bestiary.ENEMIES.keys()
+	ids.sort()
+	if index >= ids.size():
+		return
+
+	var id: String = ids[index]
+	var player := _state.actor_of_slot(0)
+	var at := _state.room.bounds.get_center()
+	if player != null:
+		at = player.position + player.aim * SPAWN_REACH
+	var enemy := Encounter.add_enemy(_state, id, at)
+	enemy.position = _state.room.clamp_body(enemy.position, enemy.radius)
+
+	_art_note = "спавн %d: %s · хитбокс %.0f" % [
+		index + 1, Bestiary.enemy(id).get("name", id), enemy.radius]
+	_art_note_left = 2.0
+
+
+## Трупы уходят вместе с живыми: пустая комната нужна, чтобы смотреть на
+## одного монстра, а R вернул бы стартовую тройку.
+func _clear_enemies() -> void:
+	var surviving: Array[Actor] = []
+	for actor in _state.actors:
+		if actor.kind != Actor.Kind.ENEMY:
+			surviving.append(actor)
+	_state.actors = surviving
+	_art_note = "врагов убрано, комната пуста"
+	_art_note_left = 2.0
 
 
 ## Порядок берётся из реестра: третий ствол должен появиться на стенде сам,

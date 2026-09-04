@@ -209,9 +209,12 @@ func _draw_actor(actor: Actor) -> void:
 		draw_arc(at, actor.radius + 10.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
 
 	# Круг попаданий не совпадает с силуэтом намеренно, и на глаз это не
-	# проверить: подбирать радиусы можно только видя их.
+	# проверить: подбирать радиусы можно только видя их. Заливка нужна,
+	# чтобы круг читался пятном на полу, а не обручем перед телом — он и
+	# есть след на полу, тело стоит НАД ним.
 	if show_hitboxes:
-		draw_arc(at, actor.radius, 0, TAU, 32, Color(1, 0.3, 0.3, 0.8), 1.5)
+		draw_circle(at, actor.radius, Color(1, 0.3, 0.3, 0.16))
+		draw_arc(at, actor.radius, 0, TAU, 32, Color(1, 0.35, 0.35, 0.9), 1.5)
 
 	if is_player:
 		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 16.0),
