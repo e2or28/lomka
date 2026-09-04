@@ -12,6 +12,11 @@
 #
 # Удалённое в Drive не печатается: пропажу файла разбирать нечего, а шум
 # от переименований был бы двойным.
+#
+# Наблюдатель на машине один. Вторая сессия Клода, запустив его же, получит
+# отказ и одну строку вместо второго потока событий: иначе два Клода
+# разбирали бы одну заливку, каждый со своей копией снимка, и могли бы
+# одновременно импортировать один набор и подраться в гите.
 set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -20,8 +25,17 @@ REMOTE="${LOMKA_DRIVE_REMOTE:-lomka}"
 FOLDER_ID="${LOMKA_DRIVE_FOLDER_ID:-12Q7Niu9iSymqNgisGmIWjBqVDOaxKAOu}"
 PERIOD="${1:-120}"
 
+LOCK="${TMPDIR:-/tmp}/lomka-watch-art.pid"
+if [ -f "$LOCK" ] && kill -0 "$(cat "$LOCK" 2>/dev/null)" 2>/dev/null; then
+	echo "DRIVE: слежение уже идёт, pid $(cat "$LOCK") — второй наблюдатель не нужен"
+	exit 0
+fi
+
 STATE="$(mktemp)"
-trap 'rm -f "$STATE" "$STATE.new"' EXIT
+echo $$ > "$LOCK"
+# Замок снимается и по обычному выходу, и по завершению сессии: брошенный
+# от убитого процесса перехватывается по мёртвому pid на следующем запуске.
+trap 'rm -f "$STATE" "$STATE.new" "$LOCK"' EXIT
 
 snapshot() {
 	rclone lsjson -R --files-only --drive-root-folder-id "$FOLDER_ID" "$REMOTE:" 2>/dev/null \
