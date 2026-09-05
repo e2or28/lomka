@@ -37,7 +37,7 @@ const PROJECTILE_FLIGHT := PLAYER_ROOT.y - CharacterPose.HAND_SIDE.y
 
 ## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
 ## только вместе с картинкой.
-const ROOM_INSET := Vector2(91, 180)
+const ROOM_INSET := Vector2(91, 210)
 
 const SLOT_COLORS: Array[Color] = [
 	Color(0.45, 0.85, 0.55),

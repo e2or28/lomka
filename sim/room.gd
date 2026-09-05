@@ -21,8 +21,8 @@ static func dev_room():
 	var room := new()
 	room.bounds = Rect2(-593, -302, 1186, 604)
 	room.blockers = [
-		Rect2(-593, -115, 35, 226),
-		Rect2(559, -115, 34, 226),
+		Rect2(-593, -267, 40, 395),
+		Rect2(546, -267, 47, 395),
 	]
 	room.player_spawns = [
 		Vector2(-70, 150), Vector2(70, 150), Vector2(-70, 240), Vector2(70, 240),

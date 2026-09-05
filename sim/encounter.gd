@@ -17,9 +17,10 @@ const Schemas = preload("res://sim/data/schemas.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 
 
-static func dev_room(seed_text: String, players: int, monsters: int) -> RunState:
+static func dev_room(seed_text: String, players: int, monsters: int,
+		layout: Room = null) -> RunState:
 	var state := RunState.new(seed_text)
-	state.room = Room.dev_room()
+	state.room = Room.dev_room() if layout == null else layout
 
 	for i in mini(players, RunState.MAX_PLAYERS):
 		add_player(state, i, "clerk")

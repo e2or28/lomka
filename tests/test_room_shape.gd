@@ -22,7 +22,7 @@ func _test_bounds_sit_on_the_drawn_floor() -> bool:
 	var room = Room.dev_room()
 	var inset := WorldView.ROOM_INSET
 	eq(Vector2(image.get_width(), image.get_height()),
-		inset + room.bounds.size + Vector2(93.0, 96.0),
+		inset + room.bounds.size + Vector2(93.0, 66.0),
 		"поля картинки вокруг игровой зоны разошлись с отступом")
 	return true
 

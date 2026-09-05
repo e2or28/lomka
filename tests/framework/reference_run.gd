@@ -11,12 +11,24 @@ const Modifier = preload("res://sim/core/modifier.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
+const Room = preload("res://sim/room.gd")
 
 const SEED := "эталон-format-2"
 
 
 static func build() -> RunState:
-	var state := Encounter.dev_room(SEED, 2, 2)
+	# Историческая геометрия фикстуры: новый фон стенда не меняет формат
+	# сохранения и не должен заставлять пересобирать эталонные байты.
+	var layout := Room.new()
+	layout.bounds = Rect2(-593, -302, 1186, 604)
+	layout.blockers = [Rect2(-593, -115, 35, 226), Rect2(559, -115, 34, 226)]
+	layout.player_spawns = [
+		Vector2(-70, 150), Vector2(70, 150), Vector2(-70, 240), Vector2(70, 240),
+	]
+	layout.enemy_spawns = [
+		Vector2(-380, -180), Vector2(380, -180), Vector2(-380, 20), Vector2(380, 20),
+	]
+	var state := Encounter.dev_room(SEED, 2, 2, layout)
 	state.zone_index = 2
 	state.tick = 4321
 
