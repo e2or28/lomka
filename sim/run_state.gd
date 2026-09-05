@@ -70,7 +70,10 @@ func living(kind: Actor.Kind) -> Array[Actor]:
 
 
 func room_cleared() -> bool:
-	return living(Actor.Kind.ENEMY).is_empty()
+	for actor in actors:
+		if actor.alive and actor.kind == Actor.Kind.ENEMY:
+			return false
+	return true
 
 
 ## В одиночку падение заканчивает забег — docs/DECISIONS.md.

@@ -48,15 +48,17 @@ fi
 # вывод типа, обращение к несуществующему методу, битый extends. Дешевле
 # любого прогона и называет файл и строку.
 checked=0
-for script in $(find sim game tools tests -name '*.gd' | sort); do
+while IFS= read -r script; do
     out="$("$GODOT" --headless --path . --check-only --script "res://$script" 2>&1)"
-    if grep -qE 'Parse Error|Compile Error' <<< "$out"; then
+    code=$?
+    if [ "$code" -ne 0 ] || grep -qE 'SCRIPT ERROR|Parse Error|Compile Error|Failed to load script' <<< "$out"; then
         echo "  $script:" >&2
-        grep -E 'Parse Error|Compile Error' <<< "$out" | sed 's/^/    /' >&2
+        echo "$out" | sed 's/^/    /' >&2
+        echo "    код возврата: $code" >&2
         fail=1
     fi
     checked=$((checked + 1))
-done
+done < <(find sim game tools tests -name '*.gd' | sort)
 
 if [ $fail -ne 0 ]; then
     echo "" >&2

@@ -10,7 +10,6 @@ const RunState = preload("res://sim/run_state.gd")
 const SimTick = preload("res://sim/tick.gd")
 const Motion = preload("res://sim/motion.gd")
 const Command = preload("res://sim/input/command.gd")
-const CommandLog = preload("res://sim/input/command_log.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const Actor = preload("res://sim/actor.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
@@ -41,7 +40,6 @@ const MONSTERS := 3
 const SPAWN_REACH := 240.0
 
 var _state: RunState = null
-var _journal: CommandLog = null
 var _view: WorldView = null
 var _art: ArtLibrary = null
 var _overlay: DebugOverlay = null
@@ -79,7 +77,6 @@ func _ready() -> void:
 
 func _reset() -> void:
 	_state = Encounter.dev_room(SEED, _active_slots, MONSTERS)
-	_journal = CommandLog.new()
 	_view.state = _state
 
 
@@ -94,7 +91,6 @@ func _physics_process(_delta: float) -> void:
 	for i in _active_slots:
 		var command: Command = InputReader.read(i, _state.tick)
 		commands[i] = command
-		_journal.record(i, command)
 	SimTick.step(_state, commands)
 	_watch_drift(commands)
 
@@ -136,7 +132,10 @@ func _process(delta: float) -> void:
 		if _art_note_left <= 0.0:
 			_art_note = ""
 
-	_overlay.set_text(_readout())
+	# Отпечаток сериализует весь мир: скрытая диагностика не должна
+	# оплачивать эту работу на каждом кадре.
+	if _overlay.visible:
+		_overlay.set_text(_readout())
 
 
 func _readout() -> String:

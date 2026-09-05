@@ -21,6 +21,11 @@ if [ $code -ne 0 ]; then
     exit $code
 fi
 
+if grep -qE 'SCRIPT ERROR|Parse Error|Compile Error|Failed to load script' <<< "$output"; then
+    echo "ТЕСТЫ С ОШИБКАМИ СКРИПТОВ: сентинел не отменяет ошибку вложенного вызова." >&2
+    exit 1
+fi
+
 if ! grep -q "ВСЕ ТЕСТЫ ПРОЙДЕНЫ" <<< "$output"; then
     echo ""
     echo "ТЕСТЫ НЕ ДОШЛИ ДО КОНЦА: движок вышел с нулём, но харнесс не отчитался." >&2

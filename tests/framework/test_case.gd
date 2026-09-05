@@ -33,7 +33,11 @@ func case_names() -> PackedStringArray:
 
 
 func run() -> void:
-	for case_name in case_names():
+	var names := case_names()
+	if names.is_empty():
+		fail("не найдено ни одного метода _test_*")
+		return
+	for case_name in names:
 		var before := checks
 		var completed: Variant = call(case_name)
 		if completed != true:

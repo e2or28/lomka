@@ -27,17 +27,20 @@ git log --format='  %C(dim)%ad%C(reset)  %s' --date=format:'%d.%m %H:%M' -12
 
 echo ""
 blue "ПРОВЕРКИ"
+failed=0
 if out="$(bash tools/test.sh 2>&1)"; then
     echo "  тесты:  $(grep -oE 'ВСЕ ТЕСТЫ ПРОЙДЕНЫ.*' <<< "$out")"
 else
+    failed=1
     echo "  тесты:  КРАСНЫЕ" >&2
-    grep -E '^  ПАДЕНИЕ|^             ·' <<< "$out" | head -8
+    printf '%s\n' "$out" | tail -15
 fi
 if out="$(bash tools/smoke.sh 120 2>&1)"; then
     echo "  стенд:  поднимается, ввод работает на трёх раскладках"
 else
+    failed=1
     echo "  стенд:  СЛОМАН" >&2
-    grep -E 'СТЕНД|СКВОЗНАЯ' <<< "$out" | head -4
+    printf '%s\n' "$out" | tail -15
 fi
 
 echo ""
@@ -49,3 +52,4 @@ blue "ЧТО ДАЛЬШЕ"
 echo "  Веха и критерий выхода — docs/ROADMAP.md"
 echo "  Принятые решения       — docs/DECISIONS.md, нарушать нельзя"
 echo "  Что сделано и осталось — раздел «Где мы сейчас» в CLAUDE.md"
+exit "$failed"

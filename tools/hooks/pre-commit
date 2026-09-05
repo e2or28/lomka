@@ -36,8 +36,6 @@ step() {
     echo "pre-commit: $title — ок"
 }
 
-step "аудит синтаксиса" bash tools/audit_syntax.sh
-step "тесты" bash tools/test.sh
-step "стенд" bash tools/smoke.sh 120
+step "проверки проекта" bash tools/check.sh
 
 exit 0
