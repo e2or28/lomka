@@ -15,9 +15,20 @@ const CharacterPose = preload("res://game/character_pose.gd")
 const STICK_DEADZONE := 0.22
 
 ## Свободный угол и диагональ убраны — docs/DECISIONS.md, 7 сентября 2026.
-## Ровно на 45 градусах побеждает вертикаль: это округление половины вверх,
-## а не выбор. Тест на диагональный ввод стережёт, что оно не поплывёт.
 const AIM_DIRECTIONS := 4
+
+const AIM_VECTORS := {
+	"aim_up": Vector2.UP,
+	"aim_down": Vector2.DOWN,
+	"aim_left": Vector2.LEFT,
+	"aim_right": Vector2.RIGHT,
+}
+
+## Порядок зажатых направлений прицела, на игрока: последнее нажатое в конце.
+## Без него две зажатые стрелки давали бы вертикаль всегда — на ней округление
+## половины, — и прицел залипал бы на повороте. В Isaac выигрывает последняя
+## нажатая, и рука ждёт именно этого.
+static var _aim_order: Dictionary = {}
 
 ## Движковая зона в карте ввода почти нулевая намеренно: круговую зону
 ## нельзя посчитать по уже обрезанным осям.
@@ -50,14 +61,51 @@ static func raw_move(player: int) -> Vector2:
 		_axis(player, "move_up", "move_down"))
 
 
+## Стик сюда не попадает намеренно: у него честный угол, и приоритет по
+## времени заедал бы — ось, заведённая раньше, держала бы прицел, пока
+## игрок не отпустит стик полностью.
+static func feed(event: InputEvent) -> void:
+	if event is InputEventJoypadMotion:
+		return
+	for player in InputMapDef.PLAYERS:
+		var order: Array = _aim_order.get(player, [])
+		for action: String in AIM_VECTORS:
+			var name := InputMapDef.action_name(player, action)
+			# Автоповтор — не нажатие и не отпускание: он бы вытолкнул
+			# удерживаемую клавишу из стека или переставил её в конец.
+			if event.is_action_pressed(name):
+				order.erase(action)
+				order.append(action)
+			elif event.is_action_released(name):
+				order.erase(action)
+		_aim_order[player] = order
+
+
+## Стек чистится событиями, но событие отпускания теряется при потере окном
+## фокуса — отсюда сверка с настоящим состоянием клавиши.
+static func aim_priority(player: int) -> Vector2:
+	var order: Array = _aim_order.get(player, [])
+	for i in range(order.size() - 1, -1, -1):
+		var action: String = order[i]
+		if _held(player, action):
+			return AIM_VECTORS[action]
+	return Vector2.ZERO
+
+
+static func resolve_aim(axes: Vector2, priority: Vector2) -> Vector2:
+	if priority != Vector2.ZERO and axes.x != 0.0 and axes.y != 0.0:
+		return priority
+	return CharacterPose.snap_aim(axes, AIM_DIRECTIONS)
+
+
 static func read(player: int, tick: int):
 	var move := apply_deadzone(raw_move(player))
 
-	var aim := CharacterPose.snap_aim(
+	var aim := resolve_aim(
 		apply_deadzone(Vector2(
 			_axis(player, "aim_left", "aim_right"),
 			_axis(player, "aim_up", "aim_down"))),
-		AIM_DIRECTIONS)
+		aim_priority(player))
 
 	var buttons := 0
 	# Нажал направление — полетело, как в Isaac. Кнопка остаётся для

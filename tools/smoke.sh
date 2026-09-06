@@ -57,5 +57,5 @@ if [ $input_code -ne 0 ] \
     exit 1
 fi
 
-grep -E "сдвиг|ВВОД СТЕНДА" <<< "$input_output"
+grep -E "сдвиг|стрелка|прицел|ВВОД СТЕНДА" <<< "$input_output"
 exit 0

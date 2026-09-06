@@ -31,6 +31,9 @@ var _failures: PackedStringArray = []
 ## функцию. Так уже случилось при переезде тела из слота в актора.
 var _completed := 0
 
+## Тот же сторож для проверок стрельбы: они идут вне общего счётчика.
+var _extras_done := 0
+
 
 func _initialize() -> void:
 	_run()
@@ -68,11 +71,14 @@ func _run() -> void:
 			await _check(sandbox, case, layout)
 
 	await _check_shooting(sandbox)
+	await _check_last_pressed_wins(sandbox)
 
 	var expected := CASES.size() * LAYOUTS.size()
 	if _completed != expected:
 		_failures.append("до конца дошло %d проверок из %d — ищи ошибку скрипта выше" % [
 			_completed, expected])
+	if _extras_done != 2:
+		_failures.append("проверки стрельбы оборвались: дошло %d из 2" % _extras_done)
 
 	sandbox.queue_free()
 	await process_frame
@@ -91,31 +97,30 @@ func _run() -> void:
 	quit(1)
 
 
-func _check_shooting(sandbox: Node) -> void:
-	sandbox._reset()
-	await process_frame
+func _arrow(key: int, down: bool) -> void:
+	var event := InputEventKey.new()
+	event.physical_keycode = key
+	event.pressed = down
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
+
+func _ticks(sandbox: Node, count: int) -> void:
+	var until: int = sandbox._state.tick + count
+	while sandbox._state.tick < until:
+		await process_frame
+
+
+func _check_shooting(sandbox: Node) -> void:
 	var arrows := {KEY_RIGHT: "вправо", KEY_UP: "вверх", KEY_LEFT: "влево", KEY_DOWN: "вниз"}
 	for key in arrows:
 		sandbox._reset()
 		await process_frame
 		var before: int = sandbox._state.projectiles.size()
 
-		var down := InputEventKey.new()
-		down.physical_keycode = key
-		down.pressed = true
-		Input.parse_input_event(down)
-		Input.flush_buffered_events()
-
-		var until: int = sandbox._state.tick + 4
-		while sandbox._state.tick < until:
-			await process_frame
-
-		var up := InputEventKey.new()
-		up.physical_keycode = key
-		up.pressed = false
-		Input.parse_input_event(up)
-		Input.flush_buffered_events()
+		_arrow(key, true)
+		await _ticks(sandbox, 4)
+		_arrow(key, false)
 		await process_frame
 
 		var fired: int = sandbox._state.projectiles.size() - before
@@ -123,6 +128,36 @@ func _check_shooting(sandbox: Node) -> void:
 			arrows[key], fired, "ok" if fired > 0 else "ПАДЕНИЕ"])
 		if fired <= 0:
 			_failures.append("стрелка %s не выстрелила — отдельной кнопки огня быть не должно" % arrows[key])
+	_extras_done += 1
+
+
+## Порядок нажатий собирается из событий, а не опросом состояния клавиш, —
+## проверить его можно только в живой сцене.
+func _check_last_pressed_wins(sandbox: Node) -> void:
+	sandbox._reset()
+	await process_frame
+
+	_arrow(KEY_UP, true)
+	await _ticks(sandbox, 2)
+	_arrow(KEY_RIGHT, true)
+	await _ticks(sandbox, 2)
+	var later: Vector2 = sandbox._state.actor_of_slot(0).aim
+
+	_arrow(KEY_RIGHT, false)
+	await _ticks(sandbox, 2)
+	var back: Vector2 = sandbox._state.actor_of_slot(0).aim
+
+	_arrow(KEY_UP, false)
+	await process_frame
+
+	var ok := later.is_equal_approx(Vector2.RIGHT) and back.is_equal_approx(Vector2.UP)
+	print("    вверх, затем вправо  прицел %s, после отпускания %s  %s" % [
+		later, back, "ok" if ok else "ПАДЕНИЕ"])
+	if not later.is_equal_approx(Vector2.RIGHT):
+		_failures.append("вправо нажато позже вверх, а прицел смотрит %s" % later)
+	elif not back.is_equal_approx(Vector2.UP):
+		_failures.append("вправо отпущено, прицел не вернулся вверх, а смотрит %s" % back)
+	_extras_done += 1
 
 
 func _check(sandbox: Node, case: Dictionary, layout: Dictionary) -> void:

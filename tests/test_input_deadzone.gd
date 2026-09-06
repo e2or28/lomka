@@ -95,7 +95,24 @@ func _test_aiming_has_no_free_angle() -> bool:
 
 func _test_two_keys_do_not_give_a_diagonal() -> bool:
 	var both := InputReader.apply_deadzone(Vector2(1.0, -1.0))
-	var aim := InputReader.CharacterPose.snap_aim(both, InputReader.AIM_DIRECTIONS)
+	var aim := InputReader.resolve_aim(both, Vector2.ZERO)
 	check(aim.is_equal_approx(Vector2.UP),
-		"вправо и вверх вместе дали не вертикаль, а " + str(aim))
+		"вправо и вверх вместе дали диагональ: " + str(aim))
+	return true
+
+
+func _test_last_pressed_direction_wins() -> bool:
+	var both := InputReader.apply_deadzone(Vector2(1.0, -1.0))
+
+	var late_right := InputReader.resolve_aim(both, Vector2.RIGHT)
+	check(late_right.is_equal_approx(Vector2.RIGHT),
+		"вверх зажат раньше, стрелять должно вправо, а вышло " + str(late_right))
+
+	var late_up := InputReader.resolve_aim(both, Vector2.UP)
+	check(late_up.is_equal_approx(Vector2.UP),
+		"вправо зажат раньше, стрелять должно вверх, а вышло " + str(late_up))
+
+	var single := InputReader.resolve_aim(Vector2(0.0, -1.0), Vector2.RIGHT)
+	check(single.is_equal_approx(Vector2.UP),
+		"отпущенная стрелка продолжает держать прицел: " + str(single))
 	return true

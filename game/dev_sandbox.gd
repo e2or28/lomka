@@ -204,6 +204,13 @@ func _on_stat_changed(stat: String, value: float) -> void:
 			actor.stack.base[stat] = value
 
 
+## Порядок нажатия стрелок нужен вводу, а _unhandled_input для этого не
+## годится: событие, съеденное ползунками, сюда не дойдёт, и клавиша
+## останется в стеке зажатой навсегда.
+func _input(event: InputEvent) -> void:
+	InputReader.feed(event)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
