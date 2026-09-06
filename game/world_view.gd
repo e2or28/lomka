@@ -20,6 +20,8 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
+const OrganArt = preload("res://game/organ_art.gd")
+const Corpses = preload("res://sim/corpses.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
@@ -123,13 +125,13 @@ func _draw() -> void:
 		return
 	draw_rect(get_viewport_rect(), Color(0.035, 0.04, 0.045))
 	_draw_room()
-	for pickup in state.pickups:
-		_draw_pickup(pickup)
 	var actors := state.actors.duplicate()
 	actors.sort_custom(func(a, b): return a.position.y < b.position.y)
 	for actor in actors:
 		if not actor.alive:
 			_draw_actor(actor)
+	for pickup in state.pickups:
+		_draw_pickup(pickup)
 	for actor in actors:
 		if not actor.alive:
 			continue
@@ -181,12 +183,7 @@ func _draw_pickup(pickup: Pickup) -> void:
 
 	var sprite: Texture2D = ground if ground != null else textures.get(pickup.content_id + "_top")
 	if pickup.kind == Pickup.KIND_ORGAN:
-		draw_circle(at, 12, Color(0.27, 0.07, 0.1))
-		draw_arc(at, 12, 0, TAU, 24, Color(1, 0.5, 0.4), 2)
-		var record := Organs.organ(pickup.content_id)
-		var mark := "С" if record.get("slot", "") == "heart" else "П"
-		draw_string(ThemeDB.fallback_font, at + Vector2(-5, 5), mark,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.8, 0.65))
+		OrganArt.draw_ground(self, textures, pickup.content_id, at)
 	elif sprite != null:
 		var size := sprite.get_size()
 		if ground != null:
@@ -202,6 +199,8 @@ func _draw_pickup(pickup: Pickup) -> void:
 	var caption := key
 	if pickup.kind == Pickup.KIND_WEAPON:
 		caption += " · " + Arsenal.weapon(pickup.content_id).get("name", pickup.content_id)
+	elif pickup.kind == Pickup.KIND_ORGAN:
+		caption += " · " + Organs.organ(pickup.content_id).get("name", pickup.content_id)
 	var width := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var label_at := at + Vector2(-width * 0.5, -pickup.radius - 6)
 	draw_rect(Rect2(label_at + Vector2(-5, -14), Vector2(width + 10, 19)), Color(0.04, 0.04, 0.04, 0.8))
@@ -272,21 +271,27 @@ func _draw_actor(actor: Actor) -> void:
 		color = color.darkened(0.5)
 
 	var tint := Color.WHITE if not downed else Color(0.55, 0.55, 0.6)
+	if not actor.alive:
+		tint.a = Corpses.opacity(actor, state.tick)
+		color.a = tint.a
+		if tint.a <= 0.0:
+			return
 	if not _draw_sprite(actor, at, tint):
 		var box := Rect2(at - BODY * 0.5, BODY)
 		draw_rect(box, color, true)
 		draw_rect(box, color.lightened(0.35), false, 1.0)
 
 	if not actor.alive:
-		# Труп остаётся на экране: над ним делается харвест органов.
-		draw_line(at + Vector2(-10, -8), at + Vector2(10, 8), color.lightened(0.3), 2.0)
-		draw_line(at + Vector2(-10, 8), at + Vector2(10, -8), color.lightened(0.3), 2.0)
 		if actor.organ_id != "" and not actor.harvested:
-			draw_arc(at, actor.radius + 8, 0, TAU, 40, Color(0.95, 0.54, 0.36, 0.7), 2)
 			var player := state.actor_of_slot(inspected_slot)
-			if player != null and Harvest.nearest(state, player) == actor:
+			if player != null and player.alive and not state.slots[inspected_slot].downed \
+					and Harvest.nearest(state, player) == actor:
 				var key := "F" if inspected_slot == 0 else "X"
-				draw_string(ThemeDB.fallback_font, at + Vector2(-50, 24), key + " · ИЗВЛЕЧЬ",
+				var caption := key + " · ИЗВЛЕЧЬ"
+				if actor.corpse_until_tick >= 0:
+					caption += " · %d с" % ceili(float(actor.corpse_until_tick - state.tick) / 60.0)
+				var width := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+				draw_string(ThemeDB.fallback_font, at + Vector2(-width * 0.5, 24), caption,
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.8, 0.55))
 		return
 
@@ -322,14 +327,14 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.behaviour == "tank":
 		var side := -1.0 if actor.aim.x > 0.0 else 1.0
 		draw_set_transform(at, 0.0, Vector2(side, 1.0))
-		var color := tint if actor.alive else Color(0.45, 0.39, 0.35, 0.75)
+		var color := tint if actor.alive else Color(0.45, 0.39, 0.35, 0.75 * tint.a)
 		draw_texture_rect(sprite, Rect2(-TANK_ROOT, TANK_SIZE), false, color)
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		return true
 	var size := sprite.get_size()
 	if not actor.alive:
 		draw_texture_rect(sprite, Rect2(at - Vector2(size.x * 0.5, size.y * 0.2),
-			Vector2(size.x, size.y * 0.3)), false, Color(0.4, 0.35, 0.35, 0.7))
+			Vector2(size.x, size.y * 0.3)), false, Color(0.4, 0.35, 0.35, 0.7 * tint.a))
 	else:
 		draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
 	return true
@@ -373,7 +378,10 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	# Ноль — анфас: кадр не отражается и кисть берётся анфасная.
 	var side := 0 if front else int(facing.get(actor.id, 1))
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
+	var organs: Dictionary = state.slots[actor.slot].organs if actor.slot >= 0 else {}
+	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, true)
 	_draw_facing(textures[chosen], canvas, side, tint)
+	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, false)
 	_draw_weapon(actor, canvas, phase, speed, side, tint,
 		actor.weapon_id != "" and chosen.contains("_%s_" % actor.weapon_id))
 	return true

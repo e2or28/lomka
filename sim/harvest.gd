@@ -15,6 +15,8 @@ static func nearest(state, player):
 	for corpse in state.actors:
 		if corpse.kind != Actor.Kind.ENEMY or corpse.alive or corpse.harvested:
 			continue
+		if corpse.corpse_until_tick >= 0 and state.tick >= corpse.corpse_until_tick:
+			continue
 		if Organs.organ(corpse.organ_id).is_empty():
 			continue
 		var reach: float = corpse.radius + player.radius + REACH

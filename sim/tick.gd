@@ -17,6 +17,7 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
+const Corpses = preload("res://sim/corpses.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
@@ -38,6 +39,7 @@ static func step(state: RunState, commands: Dictionary) -> void:
 	_fly_projectiles(state)
 	_touch_damage(state)
 	Harvest.advance(state, commands)
+	Corpses.advance(state)
 	_tick_timers(state)
 	_collect_dead(state)
 	RoomTravel.advance(state, commands)
@@ -302,7 +304,6 @@ static func _tick_timers(state: RunState) -> void:
 		actor.invulnerable = maxf(actor.invulnerable - DELTA, 0.0)
 
 
-## Трупы врагов остаются в списке: над ними делается харвест органов.
 static func _collect_dead(state: RunState) -> void:
 	var surviving: Array[Projectile] = []
 	for projectile in state.projectiles:

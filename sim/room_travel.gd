@@ -5,6 +5,7 @@ const Actor = preload("res://sim/actor.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const RoomMap = preload("res://sim/room_map.gd")
+const Corpses = preload("res://sim/corpses.gd")
 
 
 static func start(seed_text: String, players: int) -> RunState:
@@ -64,3 +65,4 @@ static func _enter(state: RunState, direction: String) -> void:
 		actor.attack_ticks = 0
 		state.slots[actor.slot].harvest_target = -1
 		state.slots[actor.slot].harvest_ticks = 0
+	Corpses.advance(state)

@@ -44,6 +44,7 @@ var stack: ModifierStack = null
 
 var organ_id: String = ""
 var harvested: bool = false
+var corpse_until_tick: int = -1
 var attack_ticks: int = 0
 var attack_aim: Vector2 = Vector2.ZERO
 
@@ -63,7 +64,7 @@ func heal_to_full() -> void:
 	alive = health > 0.0
 
 
-## true, если этим ударом тело добито — симуляция трупов не убирает.
+## true, если этим ударом тело добито; время исчезновения ставит Corpses.
 func take_damage(amount: float) -> bool:
 	if not alive or invulnerable > 0.0 or amount <= 0.0:
 		return false
@@ -84,6 +85,7 @@ func to_dict() -> Dictionary:
 		"attack_ticks": attack_ticks,
 		"behaviour": behaviour,
 		"cooldown": cooldown,
+		"corpse_until_tick": corpse_until_tick,
 		"health": health,
 		"harvested": harvested,
 		"id": id,
@@ -108,6 +110,7 @@ static func from_dict(data: Dictionary):
 	actor.attack_ticks = int(data.get("attack_ticks", 0))
 	actor.behaviour = data.get("behaviour", "")
 	actor.cooldown = float(data.get("cooldown", 0.0))
+	actor.corpse_until_tick = int(data.get("corpse_until_tick", -1))
 	actor.health = float(data.get("health", 0.0))
 	actor.harvested = bool(data.get("harvested", false))
 	actor.organ_id = data.get("organ_id", "")
