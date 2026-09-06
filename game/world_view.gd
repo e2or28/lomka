@@ -15,6 +15,8 @@ const Projectile = preload("res://sim/projectile.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
+const ArmPose = preload("res://game/arm_pose.gd")
+const CharacterArms = preload("res://game/character_arms.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
@@ -45,7 +47,7 @@ const TANK_ROOT := Vector2(288, 220)
 
 ## Снаряд вылетает из кисти, а не из-под ног: симуляция считает всё на полу,
 ## высота живёт только здесь. Тень остаётся внизу и показывает её.
-const PROJECTILE_FLIGHT := PLAYER_ROOT.y - CharacterPose.HAND_SIDE.y
+const PROJECTILE_FLIGHT := 51.0
 
 ## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
 ## только вместе с картинкой.
@@ -83,6 +85,7 @@ var projectile_age: Dictionary = {}
 var breath := 0.0
 
 var _animation_state: RunState = null
+var _arms := CharacterArms.new()
 
 
 ## Здесь, а не в _draw: _draw может вызываться чаще или реже кадра.
@@ -94,6 +97,7 @@ func advance(delta: float) -> void:
 		facing.clear()
 		standing_front.clear()
 		projectile_age.clear()
+		_arms.clear()
 	if state == null:
 		return
 
@@ -380,10 +384,17 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
 	var organs: Dictionary = state.slots[actor.slot].organs if actor.slot >= 0 else {}
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, true)
-	_draw_facing(textures[chosen], canvas, side, tint)
+	var stats := actor.stack.compute()
+	var progress := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
+	var motion := ArmPose.motion(chosen, actor.weapon_id, phase, speed, progress)
+	var body_transform := Transform2D(0.0, canvas)
+	if side < 0:
+		body_transform = Transform2D(Vector2(-1, 0), Vector2(0, 1), canvas + Vector2(PLAYER_CANVAS.x, 0))
+	draw_set_transform_matrix(body_transform)
+	_arms.draw(self, actor.id, textures[chosen], chosen, motion, tint)
+	draw_set_transform(Vector2.ZERO)
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, false)
-	_draw_weapon(actor, canvas, phase, speed, side, tint,
-		actor.weapon_id != "" and chosen.contains("_%s_" % actor.weapon_id))
+	_draw_weapon(actor, canvas, side, tint, chosen, motion, body_transform)
 	return true
 
 
@@ -394,48 +405,22 @@ func _first_name(names: PackedStringArray) -> String:
 	return ""
 
 
-## Спрайт берётся по идентификатору оружия — здесь нет ни одного
-## разветвления по видам. Нет спрайта — ничего не рисуется, это правильнее
-## заглушки: чужой прямоугольник приняли бы за настоящее оружие.
-func _draw_weapon(actor: Actor, canvas: Vector2, phase: float, speed: float,
-		side: int, tint: Color, aimed: bool) -> void:
-	if actor.weapon_id == "":
-		return
+func _draw_weapon(actor: Actor, canvas: Vector2, side: int, tint: Color,
+		frame: String, motion: Transform2D, body_transform: Transform2D) -> void:
 	var texture: Texture2D = textures.get(actor.weapon_id)
 	if texture == null:
 		return
-
-	var stats := actor.stack.compute()
-	var hand := CharacterPose.hand_position(phase, speed,
-		CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0)),
-		side, aimed, actor.weapon_id)
-	if side > 0:
-		hand.x = PLAYER_CANVAS.x - hand.x
-
-	# Оружие отражается вместе с персонажем: иначе кольт у идущего влево
-	# смотрел бы стволом назад.
-	var size := texture.get_size()
-	var mirrored := side < 0
-	var offset := CharacterPose.weapon_offset(actor.weapon_id, size, mirrored)
-	if mirrored:
-		draw_set_transform(canvas + hand - Vector2(size.x - offset.x, offset.y)
-			+ Vector2(size.x, 0.0), 0.0, Vector2(-1.0, 1.0))
-		draw_texture(texture, Vector2.ZERO, tint)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		return
-	draw_texture(texture, canvas + hand - offset, tint)
-
-
-## Профильные кадры нарисованы лицом вправо, поэтому отражается движение
-## влево. Проверено тестом «направление взгляда».
-func _draw_facing(texture: Texture2D, canvas: Vector2, side: int, tint: Color) -> void:
-	if side >= 0:
-		draw_texture(texture, canvas, tint)
-		return
-	var width := texture.get_size().x
-	draw_set_transform(canvas + Vector2(width, 0.0), 0.0, Vector2(-1.0, 1.0))
+	var grip := CharacterPose.weapon_offset(actor.weapon_id, texture.get_size(), false)
+	var attachment := ArmPose.weapon_transform(frame, motion, grip, side, actor.weapon_id)
+	attachment.origin += canvas
+	draw_set_transform_matrix(attachment)
 	draw_texture(texture, Vector2.ZERO, tint)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Пальцы закрывают рукоять, ствол/корпус остаются перед рукой.
+	var palm: Vector2 = ArmPose.joints(frame)[2]
+	var fingers := Rect2(palm + Vector2(-2, 0), Vector2(4, 4))
+	draw_set_transform_matrix(body_transform * motion)
+	draw_texture_rect_region(textures[frame], fingers, fingers, tint)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
