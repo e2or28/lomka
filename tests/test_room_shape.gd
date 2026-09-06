@@ -13,6 +13,15 @@ func title() -> String:
 	return "форма комнаты"
 
 
+func _test_lower_wall_stops_feet_at_the_visible_floor() -> bool:
+	var room = Room.dev_room()
+	var feet: Vector2 = room.clamp_body(Vector2(-200, 1000), RADIUS)
+	var pixel_y: float = feet.y - room.bounds.position.y + WorldView.ROOM_INSET.y
+	check(pixel_y + RADIUS <= 640.0,
+		"ноги заходят на нижнюю стену: пол кончается на y=640, круг тела доходит до %.0f" % (pixel_y + RADIUS))
+	return true
+
+
 func _test_bounds_sit_on_the_drawn_floor() -> bool:
 	var image := Image.new()
 	if image.load("res://art/room_start.png") != OK:
@@ -22,7 +31,7 @@ func _test_bounds_sit_on_the_drawn_floor() -> bool:
 	var room = Room.dev_room()
 	var inset := WorldView.ROOM_INSET
 	eq(Vector2(image.get_width(), image.get_height()),
-		inset + room.bounds.size + Vector2(93.0, 66.0),
+		inset + room.bounds.size + Vector2(93.0, 240.0),
 		"поля картинки вокруг игровой зоны разошлись с отступом")
 	return true
 

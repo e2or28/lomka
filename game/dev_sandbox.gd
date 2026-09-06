@@ -11,6 +11,7 @@ const SimTick = preload("res://sim/tick.gd")
 const Motion = preload("res://sim/motion.gd")
 const Command = preload("res://sim/input/command.gd")
 const Encounter = preload("res://sim/encounter.gd")
+const RoomTravel = preload("res://sim/room_travel.gd")
 const Actor = preload("res://sim/actor.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
@@ -31,11 +32,10 @@ const SPRITES: Array[String] = [
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
 	"monster", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
-	"room_start", "tandem",
+	"room_start", "room_center", "room_north", "room_south", "room_west", "room_east", "tandem",
 ]
 
 const SEED := "стенд"
-const MONSTERS := 3
 
 ## Куда встаёт заказанный монстр: перед игроком, по направлению прицела.
 const SPAWN_REACH := 240.0
@@ -84,8 +84,7 @@ func _ready() -> void:
 
 
 func _reset() -> void:
-	_state = Encounter.dev_room(SEED, _active_slots, MONSTERS)
-	Encounter.add_enemy(_state, "tandem", Vector2(90, -90))
+	_state = RoomTravel.start(SEED, _active_slots)
 	_view.state = _state
 	_view.inspected_slot = 0
 	_organ_hud.state = _state
@@ -136,6 +135,7 @@ func _watch_drift(commands: Dictionary) -> void:
 
 
 func _process(delta: float) -> void:
+	_recenter()
 	_view.advance(delta)
 	_view.queue_redraw()
 
@@ -158,7 +158,7 @@ func _readout() -> String:
 
 	var alive := _state.living(Actor.Kind.ENEMY).size()
 	lines.append("врагов живо %d из %d · снарядов в воздухе %d%s" % [
-		alive, MONSTERS + 1, _state.projectiles.size(),
+		alive, _state.actors.size() - _active_slots, _state.projectiles.size(),
 		"  · КОМНАТА ЗАЧИЩЕНА" if _state.room_cleared() else ""])
 	if _state.party_down():
 		lines.append("ГРУППА ПАЛА — R для сброса")

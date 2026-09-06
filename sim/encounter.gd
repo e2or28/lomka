@@ -30,7 +30,7 @@ static func dev_room(seed_text: String, players: int, monsters: int,
 
 	# Пока лут не раскладывается по сиду (M3), кольт лежит на виду от места
 	# появления группы: без него второе оружие в игре недостижимо.
-	add_pickup(state, "colt", Vector2(180, 150))
+	add_pickup(state, "colt", state.room.clamp_body(Vector2(180, 150), 24.0))
 
 	return state
 

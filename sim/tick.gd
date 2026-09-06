@@ -15,6 +15,7 @@ const Arsenal = preload("res://sim/arsenal.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
+const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
@@ -39,6 +40,7 @@ static func step(state: RunState, commands: Dictionary) -> void:
 	Harvest.advance(state, commands)
 	_tick_timers(state)
 	_collect_dead(state)
+	RoomTravel.advance(state, commands)
 	state.tick += 1
 
 

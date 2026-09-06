@@ -1,5 +1,6 @@
 extends Control
 
+const RoomMap = preload("res://sim/room_map.gd")
 const RunState = preload("res://sim/run_state.gd")
 const Organs = preload("res://sim/organs.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
@@ -57,10 +58,11 @@ func _draw() -> void:
 		_text(Vector2(20, 105), "Левый стик · идти    Правый · стрелять", 12)
 		_text(Vector2(20, 123), "X · извлечь    A · подобрать    1 · отладка", 12)
 	if state.occupied_count() > 1:
-		_text(Vector2(310, 105), "V · тело другого игрока", 12, MINT)
+		_text(Vector2(310, 105), "V · игрок и камера", 12, MINT)
 	_panel(Rect2(viewport.x - 204, 18, 186, 68), ACCENT.darkened(0.5))
 	_text(Vector2(viewport.x - 188, 40), "РОЗЫСК / HEAT", 12, ACCENT)
 	_text(Vector2(viewport.x - 188, 69), "%03d" % state.heat, 28, PAPER)
+	_draw_map(viewport)
 	_draw_boss(viewport)
 	if Organs.has_behaviour(slot, "keep_moving"):
 		var remaining := maxf(0, (180.0 - slot.stationary_ticks) / 60.0)
@@ -166,3 +168,20 @@ func _draw_context(player, slot, row: Vector2, hovered: String) -> void:
 	_text(at + Vector2(16, 52), description, 15)
 	_text(at + Vector2(16, 79), footer, 12, MUTED)
 	draw_rect(Rect2(at + Vector2(0, 104), Vector2(879 * progress, 4)), ACCENT)
+
+
+func _draw_map(viewport: Vector2) -> void:
+	if state.room.id == "": return
+	var at := Vector2(viewport.x - 204, 98)
+	_panel(Rect2(at, Vector2(186, 178)))
+	_text(at + Vector2(12, 23), RoomMap.NAMES[state.room.id], 16)
+	var positions := {"center": Vector2(0, 0), "north": Vector2(0, -1),
+		"south": Vector2(0, 1), "west": Vector2(-1, 0), "east": Vector2(1, 0)}
+	for id in RoomMap.IDS:
+		var cell: Vector2 = at + Vector2(80, 71) + positions[id] * 27
+		var color := MINT if id == state.room.id else MUTED.darkened(0.55)
+		if id != state.room.id and state.room_states.has(id): color = MUTED
+		draw_rect(Rect2(cell, Vector2(23, 20)), color)
+		if id == "north": _text(cell + Vector2(7, 15), "!", 14, INK)
+	_text(at + Vector2(12, 138), "Проходы открыты" if state.room_cleared() else "Зачисти комнату для выхода", 11, MINT if state.room_cleared() else ACCENT)
+	_text(at + Vector2(12, 159), "↑ Главный зал" if state.room.id == "south" else "Иди к зелёной стрелке", 11, MUTED)

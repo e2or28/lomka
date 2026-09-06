@@ -2,12 +2,13 @@ extends RefCounted
 ## Комната: границы и точки появления. Симуляция знает о ней только это —
 ## расстановка мебели не её дело (docs/PLAN.md).
 ##
-## Пока комната одна и задаётся кодом. На M3 придут зоны из data/.
+## Планировки первого этажа — в room_map.gd.
+
+var id: String = ""
 
 var bounds: Rect2 = Rect2(-320, -180, 640, 360)
 
-## Дверные косяки: торчат в комнату, и тело из них выталкивается. Двери
-## пока закрыты — на M3 прямоугольник снимется вместе с открытием прохода.
+## Косяки остаются твёрдыми и после открытия прохода.
 var blockers: Array[Rect2] = []
 
 var player_spawns: Array[Vector2] = []
@@ -19,13 +20,13 @@ var enemy_spawns: Array[Vector2] = []
 ## Границы и косяки сняты с art/room_start.png, см. art/README.md.
 static func dev_room():
 	var room := new()
-	room.bounds = Rect2(-593, -302, 1186, 604)
+	room.bounds = Rect2(-593, -302, 1186, 430)
 	room.blockers = [
 		Rect2(-593, -267, 40, 395),
 		Rect2(546, -267, 47, 395),
 	]
 	room.player_spawns = [
-		Vector2(-70, 150), Vector2(70, 150), Vector2(-70, 240), Vector2(70, 240),
+		Vector2(-70, 0), Vector2(70, 0), Vector2(-70, 70), Vector2(70, 70),
 	]
 	room.enemy_spawns = [
 		Vector2(-380, -180), Vector2(380, -180), Vector2(-380, 20), Vector2(380, 20),
@@ -85,6 +86,7 @@ func contains(position: Vector2) -> bool:
 func to_dict() -> Dictionary:
 	return {
 		"blockers": blockers,
+		"id": id,
 		"bounds": bounds,
 		"enemy_spawns": enemy_spawns,
 		"player_spawns": player_spawns,
@@ -93,6 +95,7 @@ func to_dict() -> Dictionary:
 
 static func from_dict(data: Dictionary):
 	var room := new()
+	room.id = data.get("id", "")
 	room.bounds = data.get("bounds", Rect2())
 	var walls: Array[Rect2] = []
 	for rect in data.get("blockers", []):

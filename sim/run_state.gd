@@ -28,6 +28,7 @@ var actors: Array[Actor] = []
 var projectiles: Array[Projectile] = []
 var pickups: Array[Pickup] = []
 var room: Room = null
+var room_states: Dictionary = {}
 
 ## Не выводится из длины массива: иначе после смерти тела номер
 ## переиспользуется, и снаряд попадает не в того, кого целил.
@@ -119,6 +120,7 @@ func to_dict() -> Dictionary:
 		"projectiles": projectiles_out,
 		"rng": rng.to_dict(),
 		"room": room.to_dict(),
+		"room_states": room_states.duplicate(true),
 		"run_seed": run_seed,
 		"slots": slots_out,
 		"tick": tick,
@@ -137,6 +139,7 @@ static func from_dict(data: Dictionary):
 	state.next_id = int(data.get("next_id", 1))
 	state.rng = RngStreams.from_dict(data.get("rng", {}))
 	state.room = Room.from_dict(data.get("room", {}))
+	state.room_states = data.get("room_states", {}).duplicate(true)
 	state.tick = int(data.get("tick", 0))
 	state.heat = int(data.get("heat", 0))
 	state.zone_index = int(data.get("zone_index", 0))

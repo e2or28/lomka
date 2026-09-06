@@ -8,6 +8,8 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const RoomMap = preload("res://sim/room_map.gd")
+const RoomArt = preload("res://game/room_art.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const Pickup = preload("res://sim/pickup.gd")
@@ -119,6 +121,7 @@ func advance(delta: float) -> void:
 func _draw() -> void:
 	if state == null:
 		return
+	draw_rect(get_viewport_rect(), Color(0.035, 0.04, 0.045))
 	_draw_room()
 	for pickup in state.pickups:
 		_draw_pickup(pickup)
@@ -140,6 +143,8 @@ func _draw() -> void:
 ## Картинка комнаты выше игровой зоны сверху, чем снизу: по центру окна
 ## ставится она, а не зона, иначе верх стены с лампами уезжает за экран.
 func centering_origin(viewport: Vector2) -> Vector2:
+	if state != null and state.room.id != "":
+		return _map_origin(viewport)
 	var background: Texture2D = textures.get("room_start")
 	if state == null or background == null:
 		return viewport * 0.5
@@ -147,6 +152,12 @@ func centering_origin(viewport: Vector2) -> Vector2:
 
 
 func _draw_room() -> void:
+	if state.room.id != "":
+		var texture: Texture2D = textures.get("room_" + state.room.id)
+		if texture != null:
+			RoomArt.draw(self, state.room, texture, origin)
+			_draw_doors()
+			return
 	var rect := Rect2(origin + state.room.bounds.position, state.room.bounds.size)
 
 	var background: Texture2D = textures.get("room_start")
@@ -437,3 +448,40 @@ func _sprite_height(actor: Actor) -> float:
 		return TANK_ROOT.y
 	var sprite: Texture2D = textures.get("monster")
 	return sprite.get_size().y if sprite != null else BODY.y
+
+
+func _map_origin(viewport: Vector2) -> Vector2:
+	var texture: Texture2D = textures.get("room_" + state.room.id)
+	if texture == null: return viewport * 0.5
+	var image_rect := RoomArt.image_rect(state.room, texture.get_size())
+	var player := state.actor_of_slot(inspected_slot)
+	var target := player.position if player != null else Vector2.ZERO
+	# Место под тело HUD: ноги у нижней стены должны оставаться видны.
+	var usable := viewport - Vector2(0, 120)
+	var result := usable * 0.5 - target
+	for axis in 2:
+		if image_rect.size[axis] <= usable[axis]:
+			result[axis] = usable[axis] * 0.5 - image_rect.get_center()[axis]
+		else:
+			result[axis] = clampf(result[axis], usable[axis] - image_rect.end[axis], -image_rect.position[axis])
+	return result
+
+
+func _draw_doors() -> void:
+	var opened := state.room_cleared()
+	var color := Color(0.63, 0.86, 0.65) if opened else Color(0.9, 0.32, 0.25)
+	for direction in RoomMap.exits(state.room):
+		var normal: Vector2 = RoomMap.DIRECTIONS[direction]
+		var tangent := Vector2(-normal.y, normal.x)
+		var at := origin + RoomMap.door(state.room, direction) - normal * 5
+		var width := RoomMap.half_width(direction)
+		draw_line(at - tangent * width, at + tangent * width, color.darkened(0.5), 10)
+		draw_line(at - tangent * width, at + tangent * width, color, 3)
+		if opened:
+			var tip := at - normal * 22
+			draw_line(tip - normal * 12 - tangent * 9, tip, color, 3)
+			draw_line(tip - normal * 12 + tangent * 9, tip, color, 3)
+		else:
+			for step in [-1, 0, 1]:
+				var bar: Vector2 = at + tangent * step * 22
+				draw_line(bar - normal * 10, bar + normal * 10, color, 4)

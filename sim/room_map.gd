@@ -1,0 +1,57 @@
+extends RefCounted
+
+const Room = preload("res://sim/room.gd")
+
+const IDS := ["south", "center", "north", "west", "east"]
+const NAMES := {"south": "Приёмная", "center": "Главный зал", "north": "Тандем",
+	"west": "Курьерская", "east": "Архив"}
+const LINKS := {
+	"south": {"north": "center"},
+	"center": {"south": "south", "north": "north", "west": "west", "east": "east"},
+	"north": {"south": "center"}, "west": {"east": "center"}, "east": {"west": "center"},
+}
+const DIRECTIONS := {"north": Vector2.UP, "south": Vector2.DOWN,
+	"west": Vector2.LEFT, "east": Vector2.RIGHT}
+const OPPOSITE := {"north": "south", "south": "north", "west": "east", "east": "west"}
+const ROSTERS := {"south": [], "center": ["test_monster", "runner", "heavy"],
+	"north": ["tandem"], "west": ["runner", "runner"], "east": ["heavy", "test_monster"]}
+
+
+static func make(id: String) -> Room:
+	var room := Room.new()
+	room.id = id
+	# Пол замерен в исходных PNG; координаты симуляции начинаются в его центре.
+	var size := Vector2(1344, 750)
+	if id == "south": size.y = 680
+	if id in ["west", "east"]: size = Vector2(832, 1250)
+	room.bounds = Rect2(-size * 0.5, size)
+	room.player_spawns = [Vector2(-70, 100), Vector2(70, 100), Vector2(-70, 170), Vector2(70, 170)]
+	room.enemy_spawns = [Vector2(0, -100), Vector2(-240, -160), Vector2(240, -160)]
+	if id == "north": room.enemy_spawns = [Vector2(0, 60)]
+	# Выступы у боковых дверей: проём между двумя прямоугольниками остаётся свободен.
+	if id == "center":
+		room.blockers = [Rect2(-672, -150, 42, 100), Rect2(629, -150, 43, 100),
+			Rect2(-672, 35, 42, 105), Rect2(629, 35, 43, 105)]
+	elif id == "west":
+		room.blockers = [Rect2(366, -375, 50, 140), Rect2(366, 145, 50, 130)]
+	elif id == "east":
+		room.blockers = [Rect2(-416, -375, 50, 140), Rect2(-416, 145, 50, 140)]
+	return room
+
+
+static func exits(room: Room) -> Dictionary:
+	return LINKS.get(room.id, {})
+
+
+static func door(room: Room, direction: String) -> Vector2:
+	var at: Vector2 = room.bounds.get_center()
+	match direction:
+		"north": at.y = room.bounds.position.y
+		"south": at.y = room.bounds.end.y
+		"west": at = Vector2(room.bounds.position.x, -7 if room.id == "center" else -15)
+		"east": at = Vector2(room.bounds.end.x, -7 if room.id == "center" else -15)
+	return at
+
+
+static func half_width(direction: String) -> float:
+	return 70.0 if direction in ["north", "south"] else 40.0
