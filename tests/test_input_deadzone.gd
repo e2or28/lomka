@@ -83,11 +83,19 @@ func _test_monotonic() -> bool:
 
 
 func _test_aiming_has_no_free_angle() -> bool:
-	eq(InputReader.AIM_DIRECTIONS, 8,
+	eq(InputReader.AIM_DIRECTIONS, 4,
 		"число направлений прицела разошлось с решением из DECISIONS.md")
 
 	var free := Vector2(1.0, 0.15).normalized()
 	var snapped := InputReader.CharacterPose.snap_aim(free, InputReader.AIM_DIRECTIONS)
 	check(absf(snapped.angle() - free.angle()) > 0.05,
 		"прицел не притянулся к направлению — свободный угол вернулся")
+	return true
+
+
+func _test_two_keys_do_not_give_a_diagonal() -> bool:
+	var both := InputReader.apply_deadzone(Vector2(1.0, -1.0))
+	var aim := InputReader.CharacterPose.snap_aim(both, InputReader.AIM_DIRECTIONS)
+	check(aim.is_equal_approx(Vector2.UP),
+		"вправо и вверх вместе дали не вертикаль, а " + str(aim))
 	return true
