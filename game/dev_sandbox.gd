@@ -30,7 +30,7 @@ const SPRITES: Array[String] = [
 	"player_colt_stand",
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
-	"monster", "folder", "bullet", "suitcase", "colt", "colt_top",
+	"monster", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
 	"room_start", "tandem",
 ]
 

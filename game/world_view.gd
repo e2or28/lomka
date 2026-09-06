@@ -17,6 +17,7 @@ const ProjectilePose = preload("res://game/projectile_pose.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
+const Arsenal = preload("res://sim/arsenal.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
@@ -158,14 +159,16 @@ func _draw_room() -> void:
 
 
 ## Лежит на полу, поэтому рисуется до тел: подошедший накрывает его собой.
-## Спрайт берётся видом сверху — тот же предмет в руке нарисован сбоку.
+## Напольный спрайт крупнее оружия в руке, чтобы лут читался на пёстром полу.
 func _draw_pickup(pickup: Pickup) -> void:
 	var at := origin + pickup.position
+	var ground: Texture2D = textures.get(pickup.content_id + "_ground")
 	draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
-	draw_circle(Vector2.ZERO, pickup.radius * 0.7, Color(0.0, 0.0, 0.0, 0.28))
+	draw_circle(Vector2.ZERO, 28.0 if ground != null else pickup.radius * 0.7,
+		Color(0.0, 0.0, 0.0, 0.28))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	var sprite: Texture2D = textures.get(pickup.content_id + "_top")
+	var sprite: Texture2D = ground if ground != null else textures.get(pickup.content_id + "_top")
 	if pickup.kind == Pickup.KIND_ORGAN:
 		draw_circle(at, 12, Color(0.27, 0.07, 0.1))
 		draw_arc(at, 12, 0, TAU, 24, Color(1, 0.5, 0.4), 2)
@@ -174,25 +177,33 @@ func _draw_pickup(pickup: Pickup) -> void:
 		draw_string(ThemeDB.fallback_font, at + Vector2(-5, 5), mark,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.8, 0.65))
 	elif sprite != null:
-		draw_texture(sprite, at - sprite.get_size() * 0.5)
+		var size := sprite.get_size()
+		if ground != null:
+			size *= 54.0 / size.x
+		draw_texture_rect(sprite, Rect2(at - size * 0.5, size), false)
 	else:
 		draw_rect(Rect2(at - Vector2(9, 4), Vector2(18, 8)), PAPER_COLOR, true)
 
 	if not _within_reach(pickup):
 		return
 	draw_arc(at, pickup.radius, 0, TAU, 28, Color(1, 1, 1, 0.35), 1.5)
-	draw_string(ThemeDB.fallback_font, at + Vector2(-4, -pickup.radius - 6),
-		"E", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.85))
+	var key := "E" if inspected_slot == 0 else "A"
+	var caption := key
+	if pickup.kind == Pickup.KIND_WEAPON:
+		caption += " · " + Arsenal.weapon(pickup.content_id).get("name", pickup.content_id)
+	var width := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var label_at := at + Vector2(-width * 0.5, -pickup.radius - 6)
+	draw_rect(Rect2(label_at + Vector2(-5, -14), Vector2(width + 10, 19)), Color(0.04, 0.04, 0.04, 0.8))
+	draw_string(ThemeDB.fallback_font, label_at,
+		caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.89, 0.65))
 
 
 func _within_reach(pickup: Pickup) -> bool:
-	for actor in state.actors:
-		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
-			continue
-		var reach: float = pickup.radius + actor.radius
-		if pickup.position.distance_squared_to(actor.position) <= reach * reach:
-			return true
-	return false
+	var actor := state.actor_of_slot(inspected_slot)
+	if actor == null or not actor.alive or state.slots[inspected_slot].downed:
+		return false
+	var reach: float = pickup.radius + actor.radius
+	return pickup.position.distance_squared_to(actor.position) <= reach * reach
 
 
 func _draw_projectile(projectile: Projectile) -> void:
