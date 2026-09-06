@@ -18,7 +18,7 @@ func title() -> String:
 
 func _test_bestiary_matches_schema() -> bool:
 	no_errors(Bestiary.validate_all(), "записи бестиария не прошли схему")
-	eq(Bestiary.ENEMIES.size(), 3, "врагов не три — M1 требует три типа")
+	eq(Bestiary.ENEMIES.size(), 4, "ожидались три врага и мини-босс")
 	return true
 
 

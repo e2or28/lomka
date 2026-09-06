@@ -1,10 +1,10 @@
 extends RefCounted
 ## Записи врагов и персонажей: данные, а не классы (правило 7).
 ##
-## Пока их две и лежат константами. На M3 переедут в data/*.json через тот
-## же валидатор.
+## На M3 записи переедут в data/*.json через тот же валидатор.
 
 const Schemas = preload("res://sim/data/schemas.gd")
+const Organs = preload("res://sim/organs.gd")
 
 ## Боевых статов здесь нет: они приходят от оружия (sim/arsenal.gd), иначе
 ## смена оружия складывалась бы с врождённым уроном, и безоружный стрелял бы.
@@ -59,7 +59,7 @@ const RUNNER := {
 	},
 	"radius": 18.0,
 	"behaviour": "harrier",
-	"organ_drops": [],
+	"organ_drops": [{"organ": "courier_heart", "chance": 1.0}],
 	"zones": ["dev_room"],
 	"tier": 1,
 }
@@ -81,11 +81,24 @@ const HEAVY := {
 	"tier": 2,
 }
 
+const TANDEM := {
+	"id": "tandem", "name": "Тандем", "behaviour": "tank",
+	"base_stats": {
+		"health": 360.0, "damage": 18.0, "move_speed": 45.0,
+		"acceleration": 240.0, "friction": 1200.0,
+		"projectile_speed": 340.0, "range": 1200.0,
+	},
+	"radius": 92.0,
+	"organ_drops": [{"organ": "armored_spine", "chance": 1.0}],
+	"zones": ["dev_room"], "tier": 3,
+}
+
 const CHARACTERS := {"clerk": CLERK}
 const ENEMIES := {
 	"test_monster": TEST_MONSTER,
 	"runner": RUNNER,
 	"heavy": HEAVY,
+	"tandem": TANDEM,
 }
 
 
@@ -103,4 +116,7 @@ static func validate_all() -> PackedStringArray:
 		errors.append_array(Schemas.validate("character", CHARACTERS[id]))
 	for id in ENEMIES:
 		errors.append_array(Schemas.validate("enemy", ENEMIES[id]))
+		for drop in ENEMIES[id].get("organ_drops", []):
+			if Organs.organ(drop["organ"]).is_empty():
+				errors.append("enemy '%s': unknown organ %s" % [id, drop["organ"]])
 	return errors

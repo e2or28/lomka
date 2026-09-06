@@ -13,6 +13,9 @@ const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const Pickup = preload("res://sim/pickup.gd")
+const Organs = preload("res://sim/organs.gd")
+const Harvest = preload("res://sim/harvest.gd")
+const Miniboss = preload("res://sim/miniboss.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
@@ -33,6 +36,7 @@ static func step(state: RunState, commands: Dictionary) -> void:
 	_take_pickups(state, commands)
 	_fly_projectiles(state)
 	_touch_damage(state)
+	Harvest.advance(state, commands)
 	_tick_timers(state)
 	_collect_dead(state)
 	state.tick += 1
@@ -74,6 +78,9 @@ static func _drive_enemies(state: RunState) -> void:
 		if not actor.alive or actor.kind != Actor.Kind.ENEMY:
 			continue
 		var target := _nearest_target(state, actor)
+		if actor.behaviour == "tank":
+			Miniboss.drive(state, actor, target, DELTA)
+			continue
 		var move := Vector2.ZERO
 		if target != null:
 			var offset := target.position - actor.position
@@ -133,8 +140,27 @@ static func _move_bodies(state: RunState) -> void:
 	for actor in state.actors:
 		if not actor.alive:
 			continue
+		var before := actor.position
 		actor.position = Motion.step_position(actor.position, actor.velocity, DELTA)
 		actor.position = state.room.clamp_body(actor.position, actor.radius)
+		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0:
+			_tick_organs(state, actor, before)
+
+
+static func _tick_organs(state: RunState, actor, before: Vector2) -> void:
+	var slot := state.slots[actor.slot]
+	if slot.downed or not Organs.has_behaviour(slot, "keep_moving"):
+		slot.stationary_ticks = 0
+		return
+	if actor.position.distance_squared_to(before) > 0.0001:
+		slot.stationary_ticks = 0
+		return
+	slot.stationary_ticks += 1
+	if slot.stationary_ticks > 180 and (slot.stationary_ticks - 181) % 60 == 0:
+		# Внутренний штраф проходит сквозь неуязвимость от касания.
+		actor.health = maxf(0.0, actor.health - 5.0)
+		if actor.health <= 0.0:
+			_knock_down(state, actor)
 
 
 ## После перемещения тел, до полёта снарядов: подобранное оружие стреляет
@@ -152,17 +178,17 @@ static func _take_pickups(state: RunState, commands: Dictionary) -> void:
 
 		var actor := state.actor_by_id(slot.actor_id)
 		if actor != null and actor.alive:
-			_swap_weapon(state, actor)
+			_swap_pickup(state, actor)
 
 
 ## Обмен, а не поглощение: прежнее оружие остаётся лежать на месте
 ## подобранного, и за ним можно вернуться. Безоружный забирает предмет
 ## насовсем — иначе на полу оставалась бы пустая ячейка.
-static func _swap_weapon(state: RunState, actor) -> void:
+static func _swap_pickup(state: RunState, actor) -> void:
 	var nearest: Pickup = null
 	var shortest := INF
 	for pickup in state.pickups:
-		if pickup.kind != Pickup.KIND_WEAPON:
+		if pickup.kind not in [Pickup.KIND_WEAPON, Pickup.KIND_ORGAN]:
 			continue
 		var reach: float = pickup.radius + actor.radius
 		var distance := pickup.position.distance_squared_to(actor.position)
@@ -175,7 +201,15 @@ static func _swap_weapon(state: RunState, actor) -> void:
 		return
 
 	var dropped: String = actor.weapon_id
-	if not Arsenal.equip(actor, nearest.content_id):
+	if nearest.kind == Pickup.KIND_ORGAN:
+		var record := Organs.organ(nearest.content_id)
+		if record.is_empty():
+			return
+		var slot := state.slots[actor.slot]
+		dropped = slot.organs[record["slot"]]
+		if not Organs.equip(actor, slot, nearest.content_id):
+			return
+	elif not Arsenal.equip(actor, nearest.content_id):
 		return
 	if dropped == "":
 		state.pickups.erase(nearest)
@@ -209,6 +243,8 @@ static func _fly_projectiles(state: RunState) -> void:
 		var spent := false
 		for actor in state.actors:
 			if not projectile.can_hit(actor):
+				continue
+			if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0 and state.slots[actor.slot].downed:
 				continue
 			var reach := projectile.radius + actor.radius
 			if projectile.position.distance_squared_to(actor.position) > reach * reach:

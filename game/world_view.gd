@@ -14,6 +14,9 @@ const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
+const Organs = preload("res://sim/organs.gd")
+const Harvest = preload("res://sim/harvest.gd")
+const Miniboss = preload("res://sim/miniboss.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
@@ -30,6 +33,10 @@ const PLAYER_CANVAS := Vector2(128, 192)
 ## Рост фигуры на кадре: значение по умолчанию у tools/import_frames.py,
 ## под которое приведён весь набор.
 const PLAYER_HEIGHT := 156.0
+
+# PNG танка 1334×742; опора в центре гусениц, ствол выступает влево.
+const TANK_SIZE := Vector2(440, 245)
+const TANK_ROOT := Vector2(288, 220)
 
 ## Снаряд вылетает из кисти, а не из-под ног: симуляция считает всё на полу,
 ## высота живёт только здесь. Тень остаётся внизу и показывает её.
@@ -66,6 +73,7 @@ var standing_front: Dictionary = {}
 ## Ставится стендом: симуляция про представление не знает.
 var firing: Dictionary = {}
 var show_hitboxes := false
+var inspected_slot := 0
 var projectile_age: Dictionary = {}
 var breath := 0.0
 
@@ -113,10 +121,19 @@ func _draw() -> void:
 	_draw_room()
 	for pickup in state.pickups:
 		_draw_pickup(pickup)
+	var actors := state.actors.duplicate()
+	actors.sort_custom(func(a, b): return a.position.y < b.position.y)
+	for actor in actors:
+		if not actor.alive:
+			_draw_actor(actor)
+	for actor in actors:
+		if not actor.alive:
+			continue
+		if actor.behaviour == "tank" and actor.attack_ticks > 0:
+			_draw_tank_warning(actor)
+		_draw_actor(actor)
 	for projectile in state.projectiles:
 		_draw_projectile(projectile)
-	for actor in state.actors:
-		_draw_actor(actor)
 
 
 ## Картинка комнаты выше игровой зоны сверху, чем снизу: по центру окна
@@ -149,7 +166,14 @@ func _draw_pickup(pickup: Pickup) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	var sprite: Texture2D = textures.get(pickup.content_id + "_top")
-	if sprite != null:
+	if pickup.kind == Pickup.KIND_ORGAN:
+		draw_circle(at, 12, Color(0.27, 0.07, 0.1))
+		draw_arc(at, 12, 0, TAU, 24, Color(1, 0.5, 0.4), 2)
+		var record := Organs.organ(pickup.content_id)
+		var mark := "С" if record.get("slot", "") == "heart" else "П"
+		draw_string(ThemeDB.fallback_font, at + Vector2(-5, 5), mark,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.8, 0.65))
+	elif sprite != null:
 		draw_texture(sprite, at - sprite.get_size() * 0.5)
 	else:
 		draw_rect(Rect2(at - Vector2(9, 4), Vector2(18, 8)), PAPER_COLOR, true)
@@ -189,7 +213,11 @@ func _draw_projectile(projectile: Projectile) -> void:
 	draw_set_transform(at, angle, Vector2.ONE)
 
 	var paper: Texture2D = textures.get(projectile.kind)
-	if paper != null:
+	if projectile.kind == "tank_shell":
+		draw_line(Vector2(-22, 0), Vector2.ZERO, Color(1, 0.35, 0.08, 0.45), 8)
+		draw_circle(Vector2.ZERO, 11, Color(0.15, 0.12, 0.07))
+		draw_circle(Vector2(3, 0), 7, Color(1, 0.6, 0.22))
+	elif paper != null:
 		var size := paper.get_size()
 		draw_texture(paper, -size * 0.5)
 	else:
@@ -231,6 +259,13 @@ func _draw_actor(actor: Actor) -> void:
 		# Труп остаётся на экране: над ним делается харвест органов.
 		draw_line(at + Vector2(-10, -8), at + Vector2(10, 8), color.lightened(0.3), 2.0)
 		draw_line(at + Vector2(-10, 8), at + Vector2(10, -8), color.lightened(0.3), 2.0)
+		if actor.organ_id != "" and not actor.harvested:
+			draw_arc(at, actor.radius + 8, 0, TAU, 40, Color(0.95, 0.54, 0.36, 0.7), 2)
+			var player := state.actor_of_slot(inspected_slot)
+			if player != null and Harvest.nearest(state, player) == actor:
+				var key := "F" if inspected_slot == 0 else "X"
+				draw_string(ThemeDB.fallback_font, at + Vector2(-50, 24), key + " · ИЗВЛЕЧЬ",
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.8, 0.55))
 		return
 
 	_draw_health(actor, at, color)
@@ -256,18 +291,46 @@ func _draw_actor(actor: Actor) -> void:
 
 
 func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
-	if not actor.alive:
-		return false
-
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
 
-	var sprite: Texture2D = textures.get("monster")
+	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	if sprite == null:
 		return false
+	if actor.behaviour == "tank":
+		var side := -1.0 if actor.aim.x > 0.0 else 1.0
+		draw_set_transform(at, 0.0, Vector2(side, 1.0))
+		var color := tint if actor.alive else Color(0.45, 0.39, 0.35, 0.75)
+		draw_texture_rect(sprite, Rect2(-TANK_ROOT, TANK_SIZE), false, color)
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		return true
 	var size := sprite.get_size()
-	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
+	if not actor.alive:
+		draw_texture_rect(sprite, Rect2(at - Vector2(size.x * 0.5, size.y * 0.2),
+			Vector2(size.x, size.y * 0.3)), false, Color(0.4, 0.35, 0.35, 0.7))
+	else:
+		draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
 	return true
+
+
+func _draw_tank_warning(actor: Actor) -> void:
+	var at := origin + actor.position
+	var strength := 1.0 - float(actor.attack_ticks) / Miniboss.WINDUP_TICKS
+	var direction := actor.attack_aim
+	var from := at + direction * (actor.radius + 12)
+	var reach := float(actor.stack.compute().get("range", 1200.0)) + actor.radius + 12
+	var bounds := state.room.bounds
+	if absf(direction.x) > 0.0001:
+		var edge := bounds.end.x if direction.x > 0 else bounds.position.x
+		reach = minf(reach, (edge - actor.position.x) / direction.x)
+	if absf(direction.y) > 0.0001:
+		var edge := bounds.end.y if direction.y > 0 else bounds.position.y
+		reach = minf(reach, (edge - actor.position.y) / direction.y)
+	var to := at + direction * reach
+	draw_line(from, to, Color(1, 0.25, 0.15, 0.14 + strength * 0.15), 24)
+	draw_dashed_line(from, to, Color(1, 0.5, 0.22, 0.7), 2, 10)
+	draw_arc(at, actor.radius + 5, -PI / 2, -PI / 2 + TAU * strength,
+		40, Color(1, 0.45, 0.18), 4)
 
 
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
@@ -359,5 +422,7 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 func _sprite_height(actor: Actor) -> float:
 	if actor.kind == Actor.Kind.PLAYER:
 		return PLAYER_HEIGHT
+	if actor.behaviour == "tank":
+		return TANK_ROOT.y
 	var sprite: Texture2D = textures.get("monster")
 	return sprite.get_size().y if sprite != null else BODY.y

@@ -38,6 +38,7 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 	projectile.owner_kind = int(owner.kind)
 	projectile.position = owner.position
 	projectile.damage = float(stats.get("damage", 0.0))
+	projectile.pierce = maxi(0, int(stats.get("pierce", 0.0)))
 
 	var speed := float(stats.get("projectile_speed", 0.0))
 	var aim := direction if direction != Vector2.ZERO else Vector2.RIGHT

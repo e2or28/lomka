@@ -20,8 +20,9 @@ const WorldView = preload("res://game/world_view.gd")
 const ArtLibrary = preload("res://game/art_library.gd")
 const DebugOverlay = preload("res://game/debug_overlay.gd")
 const ScaleReference = preload("res://game/scale_reference.gd")
+const OrganHud = preload("res://game/organ_hud.gd")
 
-## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми F5.
+## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми 4.
 const SPRITES: Array[String] = [
 	"player", "player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
@@ -30,7 +31,7 @@ const SPRITES: Array[String] = [
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
 	"monster", "folder", "bullet", "suitcase", "colt", "colt_top",
-	"room_start",
+	"room_start", "tandem",
 ]
 
 const SEED := "стенд"
@@ -44,6 +45,7 @@ var _view: WorldView = null
 var _art: ArtLibrary = null
 var _overlay: DebugOverlay = null
 var _scale_ref: ScaleReference = null
+var _organ_hud: OrganHud = null
 
 var _active_slots := 1
 var _origin := Vector2.ZERO
@@ -64,9 +66,15 @@ func _ready() -> void:
 	add_child(_scale_ref)
 
 	_overlay = DebugOverlay.new()
+	_overlay.visible = false
 	_overlay.stat_changed.connect(_on_stat_changed)
 	add_child(_overlay)
 	_view.show_hitboxes = _overlay.visible
+	var hud_layer := CanvasLayer.new()
+	hud_layer.layer = 5
+	add_child(hud_layer)
+	_organ_hud = OrganHud.new()
+	hud_layer.add_child(_organ_hud)
 
 	_reload_art()
 	_reset()
@@ -77,7 +85,11 @@ func _ready() -> void:
 
 func _reset() -> void:
 	_state = Encounter.dev_room(SEED, _active_slots, MONSTERS)
+	Encounter.add_enemy(_state, "tandem", Vector2(90, -90))
 	_view.state = _state
+	_view.inspected_slot = 0
+	_organ_hud.state = _state
+	_organ_hud.player_index = 0
 
 
 func _recenter() -> void:
@@ -146,7 +158,7 @@ func _readout() -> String:
 
 	var alive := _state.living(Actor.Kind.ENEMY).size()
 	lines.append("врагов живо %d из %d · снарядов в воздухе %d%s" % [
-		alive, MONSTERS, _state.projectiles.size(),
+		alive, MONSTERS + 1, _state.projectiles.size(),
 		"  · КОМНАТА ЗАЧИЩЕНА" if _state.room_cleared() else ""])
 	if _state.party_down():
 		lines.append("ГРУППА ПАЛА — R для сброса")
@@ -220,6 +232,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_reset()
 		KEY_Q:
 			_next_weapon()
+		KEY_V:
+			_organ_hud.player_index = (_organ_hud.player_index + 1) % _active_slots
+			_view.inspected_slot = _organ_hud.player_index
 		KEY_0:
 			_clear_enemies()
 		KEY_R:

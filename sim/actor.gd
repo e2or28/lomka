@@ -42,6 +42,11 @@ var invulnerable: float = 0.0
 
 var stack: ModifierStack = null
 
+var organ_id: String = ""
+var harvested: bool = false
+var attack_ticks: int = 0
+var attack_aim: Vector2 = Vector2.ZERO
+
 
 func _init(p_id: int = 0, p_kind: Kind = Kind.PLAYER) -> void:
 	id = p_id
@@ -75,12 +80,16 @@ func to_dict() -> Dictionary:
 		"aim": aim,
 		"alive": alive,
 		"archetype": archetype,
+		"attack_aim": attack_aim,
+		"attack_ticks": attack_ticks,
 		"behaviour": behaviour,
 		"cooldown": cooldown,
 		"health": health,
+		"harvested": harvested,
 		"id": id,
 		"invulnerable": invulnerable,
 		"kind": int(kind),
+		"organ_id": organ_id,
 		"position": position,
 		"radius": radius,
 		"slot": slot,
@@ -95,9 +104,13 @@ static func from_dict(data: Dictionary):
 	actor.aim = data.get("aim", Vector2.RIGHT)
 	actor.alive = bool(data.get("alive", true))
 	actor.archetype = data.get("archetype", "")
+	actor.attack_aim = data.get("attack_aim", Vector2.ZERO)
+	actor.attack_ticks = int(data.get("attack_ticks", 0))
 	actor.behaviour = data.get("behaviour", "")
 	actor.cooldown = float(data.get("cooldown", 0.0))
 	actor.health = float(data.get("health", 0.0))
+	actor.harvested = bool(data.get("harvested", false))
+	actor.organ_id = data.get("organ_id", "")
 	actor.invulnerable = float(data.get("invulnerable", 0.0))
 	actor.position = data.get("position", Vector2.ZERO)
 	actor.radius = float(data.get("radius", actor.radius))

@@ -20,6 +20,7 @@ var zone_index: int = 0
 
 ## Часть состояния, а не счётчик кадров: по нему сверяются хост и клиент.
 var tick: int = 0
+var heat: int = 0
 
 var rng: RngStreams = null
 var slots: Array[PlayerSlot] = []
@@ -112,6 +113,7 @@ func to_dict() -> Dictionary:
 		slots_out.append(slot.to_dict())
 	return {
 		"actors": actors_out,
+		"heat": heat,
 		"next_id": next_id,
 		"pickups": pickups_out,
 		"projectiles": projectiles_out,
@@ -136,6 +138,7 @@ static func from_dict(data: Dictionary):
 	state.rng = RngStreams.from_dict(data.get("rng", {}))
 	state.room = Room.from_dict(data.get("room", {}))
 	state.tick = int(data.get("tick", 0))
+	state.heat = int(data.get("heat", 0))
 	state.zone_index = int(data.get("zone_index", 0))
 
 	var restored_actors: Array[Actor] = []

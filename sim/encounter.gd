@@ -15,6 +15,7 @@ const Pickup = preload("res://sim/pickup.gd")
 const ROSTER: Array[String] = ["test_monster", "runner", "heavy"]
 const Schemas = preload("res://sim/data/schemas.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
+const RngStreams = preload("res://sim/core/rng_streams.gd")
 
 
 static func dev_room(seed_text: String, players: int, monsters: int,
@@ -67,6 +68,10 @@ static func add_enemy(state: RunState, enemy_id: String, position: Vector2) -> A
 	actor.position = position
 	actor.stack.base = record.get("base_stats", {}).duplicate()
 	actor.heal_to_full()
+	for drop in record.get("organ_drops", []):
+		if float(drop["chance"]) >= 1.0 or state.rng.stream(RngStreams.ORGAN_DROP).randf() < float(drop["chance"]):
+			actor.organ_id = drop["organ"]
+			break
 	state.actors.append(actor)
 	return actor
 

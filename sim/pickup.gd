@@ -1,13 +1,12 @@
 extends RefCounted
-## Предмет, лежащий на полу. Пока это только оружие; на M3 сюда придут
-## сами предметы и органы — вид лежит полем, а не отдельным классом
-## (правило 7).
+## Оружие или извлечённый орган на полу. Вид — данные, не отдельный класс.
 ##
 ## Подбор устроен обменом, а не поглощением: подобравший отдаёт в лежащее
-## своё прежнее оружие. Поэтому за предмет можно вернуться и поменяться
+## своё прежнее оружие или орган. Поэтому за предмет можно вернуться и поменяться
 ## обратно, а комната не теряет содержимое от одного нажатия.
 
 const KIND_WEAPON := "weapon"
+const KIND_ORGAN := "organ"
 
 var id: int = 0
 var kind: String = KIND_WEAPON
@@ -28,6 +27,12 @@ static func weapon(p_id: int, weapon_id: String, at: Vector2):
 	pickup.kind = KIND_WEAPON
 	pickup.content_id = weapon_id
 	pickup.position = at
+	return pickup
+
+
+static func organ(p_id: int, organ_id: String, at: Vector2):
+	var pickup = weapon(p_id, organ_id, at)
+	pickup.kind = KIND_ORGAN
 	return pickup
 
 

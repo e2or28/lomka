@@ -18,6 +18,7 @@ const STATS: Array[String] = [
 	"luck",
 	"move_speed",
 	"projectile_speed",
+	"pierce",
 	"range",
 	"shot_momentum",
 	"tumble_range",
@@ -26,9 +27,13 @@ const STATS: Array[String] = [
 
 const RARITIES: Array[String] = ["common", "uncommon", "rare", "boss"]
 
+const ORGAN_SLOTS: Array[String] = [
+	"brain", "eyes", "heart", "lungs", "liver", "spine", "legs", "genitals",
+]
+
 ## Повадки врагов. Закрытый список: опечатка в поведении иначе даёт врага,
 ## который молча стоит на месте.
-const BEHAVIOURS: Array[String] = ["charger", "harrier", "bruiser"]
+const BEHAVIOURS: Array[String] = ["charger", "harrier", "bruiser", "tank"]
 
 ## Операции соответствуют Modifier.Op по порядку.
 const OPS: Array[String] = ["add", "mul", "set"]
@@ -71,7 +76,20 @@ const ORGAN := {
 	"name": {"type": TYPE_STRING},
 	"price": {"type": TYPE_INT, "min": 0},
 	"rarity": {"type": TYPE_STRING, "values": RARITIES},
+	"slot": {"type": TYPE_STRING, "values": ORGAN_SLOTS, "required": false},
+	"description": {"type": TYPE_STRING, "required": false},
+	"heat": {"type": TYPE_INT, "min": 0, "required": false},
+	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false},
+	"behaviour": {"type": TYPE_STRING, "values": ["", "keep_moving"], "required": false},
 	"tags": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
+}
+
+const SYNERGY := {
+	"id": {"type": TYPE_STRING, "id": true},
+	"name": {"type": TYPE_STRING},
+	"description": {"type": TYPE_STRING},
+	"requires": {"type": TYPE_ARRAY, "element_type": TYPE_STRING},
+	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER},
 }
 
 const CHARACTER := {
@@ -106,6 +124,7 @@ const BY_KIND := {
 	"item": ITEM,
 	"weapon": WEAPON,
 	"organ": ORGAN,
+	"synergy": SYNERGY,
 	"character": CHARACTER,
 	"enemy": ENEMY,
 }
