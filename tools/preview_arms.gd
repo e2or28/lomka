@@ -33,6 +33,7 @@ func _initialize() -> void:
 			var actor := Actor.new()
 			actor.id = gallery.actors.size() + 1
 			actor.kind = Actor.Kind.PLAYER
+			actor.aim = Vector2.LEFT if col == 5 else Vector2.RIGHT
 			Arsenal.equip(actor, weapon)
 			gallery.actors.append(actor)
 			gallery.stride_phase[actor.id] = 0.0 if col != 2 else PI
@@ -42,7 +43,7 @@ func _initialize() -> void:
 				actor.velocity = Vector2(260, 0)
 			if col in [3, 4, 5]:
 				var progress := 0.5 if col == 4 else 0.18
-				actor.cooldown = 1.0 / float(actor.stack.compute().get("fire_rate", 1.0)) - progress * 0.18
+				gallery.feedback.shots[actor.id] = {"age": progress * 0.18, "weapon": weapon, "kind": Arsenal.projectile_of(actor)}
 	root.add_child(gallery)
 	capture.call_deferred()
 

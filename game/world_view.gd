@@ -15,6 +15,7 @@ const Projectile = preload("res://sim/projectile.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
+const CombatFeedback = preload("res://game/combat_feedback.gd")
 const ArmPose = preload("res://game/arm_pose.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
@@ -45,8 +46,8 @@ const PLAYER_HEIGHT := 156.0
 const TANK_SIZE := Vector2(440, 245)
 const TANK_ROOT := Vector2(288, 220)
 
-## Снаряд вылетает из кисти, а не из-под ног: симуляция считает всё на полу,
-## высота живёт только здесь. Тень остаётся внизу и показывает её.
+## Запасная высота для снарядов без известной точки выпуска (например, танка).
+## У игрока смещение фиксируется по кисти/дулу в момент выстрела.
 const PROJECTILE_FLIGHT := 51.0
 
 ## Печатает tools/import_room.py при импорте комнаты; менять руками нельзя —
@@ -86,20 +87,20 @@ var breath := 0.0
 
 var _animation_state: RunState = null
 var _arms := CharacterArms.new()
+var feedback := CombatFeedback.new()
+var _animation_room := ""
 
 
 ## Здесь, а не в _draw: _draw может вызываться чаще или реже кадра.
 func advance(delta: float) -> void:
 	breath += delta
-	if state != _animation_state:
-		_animation_state = state
-		stride_phase.clear()
-		facing.clear()
-		standing_front.clear()
-		projectile_age.clear()
-		_arms.clear()
+	_sync_animation_state()
 	if state == null:
 		return
+	feedback.advance(delta)
+	for id in feedback.falls.keys():
+		if state.actor_by_id(id) == null:
+			feedback.falls.erase(id)
 
 	for actor in state.actors:
 		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
@@ -117,11 +118,66 @@ func advance(delta: float) -> void:
 	for projectile in state.projectiles:
 		live_projectiles[projectile.id] = true
 		projectile_age[projectile.id] = float(projectile_age.get(projectile.id, 0.0)) + delta
+		if not feedback.projectile_offsets.has(projectile.id):
+			feedback.projectile_offsets[projectile.id] = _restored_emission_offset(projectile)
 
 	for id in projectile_age.keys():
 		if live_projectiles.has(id):
 			continue
 		projectile_age.erase(id)
+	for id in feedback.projectile_offsets.keys():
+		if not live_projectiles.has(id):
+			feedback.projectile_offsets.erase(id)
+
+
+func _restored_emission_offset(projectile: Projectile) -> Vector2:
+	var owner := state.actor_by_id(projectile.owner_id)
+	if owner != null and owner.kind == Actor.Kind.PLAYER and projectile.kind in ["bullet", "folder"]:
+		var weapon := "colt" if projectile.kind == "bullet" else "suitcase"
+		var aim := CharacterPose.snap_aim(projectile.velocity.normalized(), 4)
+		var pose := _player_pose(owner, aim, weapon, 0.0)
+		if not pose.is_empty():
+			return ArmPose.emission(pose.frame, pose.motion, weapon,
+				CharacterPose.weapon_offset(weapon, Vector2.ZERO, false), pose.side, aim) - PLAYER_ROOT
+	return Vector2(0, -PROJECTILE_FLIGHT)
+
+
+func _sync_animation_state() -> void:
+	var room_id := state.room.id if state != null else ""
+	if state == _animation_state and room_id == _animation_room:
+		return
+	_animation_state = state
+	_animation_room = room_id
+	stride_phase.clear()
+	facing.clear()
+	standing_front.clear()
+	projectile_age.clear()
+	_arms.clear()
+	feedback.clear()
+
+
+func consume_events(events: Array[Dictionary]) -> void:
+	_sync_animation_state()
+	if state == null:
+		return
+	for event in events:
+		if event.room_id != state.room.id:
+			continue
+		var actor := state.actor_by_id(event.actor_id)
+		if actor == null:
+			continue
+		if event.type == "shot":
+			var at: Vector2 = event.position - Vector2(0, PROJECTILE_FLIGHT)
+			if actor.kind == Actor.Kind.PLAYER:
+				var pose := _player_pose(actor, event.aim, event.weapon, 0.0)
+				if not pose.is_empty():
+					var grip := CharacterPose.weapon_offset(event.weapon, Vector2.ZERO, false)
+					at = event.position - PLAYER_ROOT + CharacterPose.idle_bob(actor.velocity.length(), breath) + ArmPose.emission(
+						pose.frame, pose.motion, event.weapon, grip, pose.side, event.aim)
+			feedback.shot(event, at)
+		elif event.type == "hit":
+			var at: Vector2 = event.position - Vector2(0, _sprite_height(actor) * 0.55)
+			feedback.hit(event, at)
 
 
 func _draw() -> void:
@@ -144,6 +200,12 @@ func _draw() -> void:
 		_draw_actor(actor)
 	for projectile in state.projectiles:
 		_draw_projectile(projectile)
+	feedback.draw_impacts(self, origin)
+	var inspected := state.actor_of_slot(inspected_slot)
+	if inspected != null:
+		var alpha := feedback.flash(inspected.id) * 0.28
+		if alpha > 0:
+			draw_rect(get_viewport_rect().grow(-5), Color(0.85, 0.16, 0.13, alpha), false, 10)
 
 
 ## Картинка комнаты выше игровой зоны сверху, чем снизу: по центру окна
@@ -227,7 +289,8 @@ func _draw_projectile(projectile: Projectile) -> void:
 	var tumble := projectile.tumble_progress()
 	_draw_projectile_shadow(ground_at, tumble)
 
-	var at := ground_at - Vector2(0.0, PROJECTILE_FLIGHT + ProjectilePose.hop(tumble))
+	var emission_offset: Vector2 = feedback.projectile_offsets.get(projectile.id, Vector2(0, -PROJECTILE_FLIGHT))
+	var at := ground_at + emission_offset - Vector2(0, ProjectilePose.hop(tumble))
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
 
 	# Вращается то, что бросают. Пуля не крутится, а летит носом вперёд:
@@ -280,7 +343,11 @@ func _draw_actor(actor: Actor) -> void:
 		color.a = tint.a
 		if tint.a <= 0.0:
 			return
-	if not _draw_sprite(actor, at, tint):
+	var flash := feedback.flash(actor.id)
+	tint *= Color(1 + flash * 1.8, 1 + flash * 1.2, 1 + flash * 0.7)
+	var visual_at := at + feedback.offset(actor.id, 0.25 if actor.behaviour == "tank" else 1.0)
+	var drawn := _draw_fallen(actor, visual_at, tint) if not actor.alive or downed else _draw_sprite(actor, visual_at, tint)
+	if not drawn:
 		var box := Rect2(at - BODY * 0.5, BODY)
 		draw_rect(box, color, true)
 		draw_rect(box, color.lightened(0.35), false, 1.0)
@@ -299,9 +366,12 @@ func _draw_actor(actor: Actor) -> void:
 					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.8, 0.55))
 		return
 
+	if downed:
+		draw_string(ThemeDB.fallback_font, at + Vector2(-18, -24), "УПАЛ", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.9, 0.75, 0.65))
+		return
 	_draw_health(actor, at, color)
 
-	if actor.aim != Vector2.ZERO and not downed:
+	if show_hitboxes and actor.aim != Vector2.ZERO and not downed:
 		var from := at - Vector2(0, _sprite_height(actor) * 0.45)
 		draw_line(from, from + actor.aim.normalized() * 40.0, Color(1, 1, 1, 0.4), 2.0)
 
@@ -336,11 +406,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		return true
 	var size := sprite.get_size()
-	if not actor.alive:
-		draw_texture_rect(sprite, Rect2(at - Vector2(size.x * 0.5, size.y * 0.2),
-			Vector2(size.x, size.y * 0.3)), false, Color(0.4, 0.35, 0.35, 0.7 * tint.a))
-	else:
-		draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
+	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
 	return true
 
 
@@ -364,37 +430,76 @@ func _draw_tank_warning(actor: Actor) -> void:
 		40, Color(1, 0.45, 0.18), 4)
 
 
-func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
+func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = "",
+		progress_override: float = -2.0) -> Dictionary:
+	if weapon == "":
+		weapon = actor.weapon_id
+	var recent: Dictionary = feedback.shots.get(actor.id, {})
+	var matching_shot: bool = not recent.is_empty() and recent.get("weapon", "") == weapon
+	if aim == Vector2.ZERO and (bool(firing.get(actor.id, false)) or matching_shot):
+		aim = actor.aim
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
-
 	var front := bool(standing_front.get(actor.id, false))
-	var names := CharacterPose.stand_names(actor.weapon_id)
+	if weapon == "colt" and aim != Vector2.ZERO:
+		front = false
+	var names := CharacterPose.stand_names(weapon)
 	if CharacterPose.use_walk_frames(speed):
-		names = CharacterPose.walk_frame_names(actor.weapon_id, CharacterPose.walk_frame(phase))
+		names = CharacterPose.walk_frame_names(weapon, CharacterPose.walk_frame(phase))
 		front = false
 	elif front:
-		names = CharacterPose.front_stand_names(actor.weapon_id)
+		names = CharacterPose.front_stand_names(weapon)
 	var chosen := _first_name(names)
 	if chosen == "":
-		return false
+		return {}
+	var side := 0 if front else CharacterPose.aiming_facing(aim, actor.velocity,
+		aim != Vector2.ZERO, int(facing.get(actor.id, 1)))
+	var progress := -1.0
+	if matching_shot:
+		progress = float(recent.age) / CharacterPose.THROW_TIME
+	if progress_override > -2.0:
+		progress = progress_override
+	var motion := ArmPose.aimed_motion(chosen, weapon, phase, speed, progress, aim, side)
+	return {"frame": chosen, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
 
-	# Ноль — анфас: кадр не отражается и кисть берётся анфасная.
-	var side := 0 if front else int(facing.get(actor.id, 1))
-	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(speed, breath)
+
+func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
+	var pose := _player_pose(actor)
+	if pose.is_empty():
+		return false
+	var side: int = pose.side
+	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(actor.velocity.length(), breath)
 	var organs: Dictionary = state.slots[actor.slot].organs if actor.slot >= 0 else {}
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, true)
-	var stats := actor.stack.compute()
-	var progress := CharacterPose.throw_progress(actor.cooldown, stats.get("fire_rate", 0.0))
-	var motion := ArmPose.motion(chosen, actor.weapon_id, phase, speed, progress)
 	var body_transform := Transform2D(0.0, canvas)
 	if side < 0:
 		body_transform = Transform2D(Vector2(-1, 0), Vector2(0, 1), canvas + Vector2(PLAYER_CANVAS.x, 0))
 	draw_set_transform_matrix(body_transform)
-	_arms.draw(self, actor.id, textures[chosen], chosen, motion, tint)
+	_arms.draw(self, actor.id, textures[pose.frame], pose.frame, pose.motion, tint, textures.get("player_side_stand"))
 	draw_set_transform(Vector2.ZERO)
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, false)
-	_draw_weapon(actor, canvas, side, tint, chosen, motion, body_transform)
+	_draw_weapon(canvas, tint, pose, body_transform)
+	return true
+
+
+func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
+	if actor.behaviour == "tank":
+		return _draw_sprite(actor, at, tint)
+	var texture: Texture2D = textures.get("player_side_stand") if actor.kind == Actor.Kind.PLAYER else textures.get(actor.archetype, textures.get("monster"))
+	if texture == null:
+		return false
+	var progress := feedback.fall_progress(actor.id)
+	if actor.kind == Actor.Kind.ENEMY:
+		tint *= Color.WHITE.lerp(Color(0.6, 0.55, 0.52), progress)
+	var size := texture.get_size()
+	var root := PLAYER_ROOT if actor.kind == Actor.Kind.PLAYER else Vector2(size.x * 0.5, size.y)
+	var center := Vector2(0, -root.y * 0.5 * (1.0 - progress))
+	var direction := 1.0
+	if feedback.falls.has(actor.id) and Vector2(feedback.falls[actor.id].direction).x < 0:
+		direction = -1.0
+	draw_set_transform(at + center, direction * progress * PI * 0.5, Vector2(1, lerpf(1, 0.65, progress)))
+	draw_texture(texture, Vector2(-root.x, -root.y * 0.5), tint)
+	draw_set_transform(Vector2.ZERO)
 	return true
 
 
@@ -405,21 +510,26 @@ func _first_name(names: PackedStringArray) -> String:
 	return ""
 
 
-func _draw_weapon(actor: Actor, canvas: Vector2, side: int, tint: Color,
-		frame: String, motion: Transform2D, body_transform: Transform2D) -> void:
-	var texture: Texture2D = textures.get(actor.weapon_id)
+func _draw_weapon(canvas: Vector2, tint: Color, pose: Dictionary,
+		body_transform: Transform2D) -> void:
+	var texture: Texture2D = textures.get(pose.weapon)
 	if texture == null:
 		return
-	var grip := CharacterPose.weapon_offset(actor.weapon_id, texture.get_size(), false)
-	var attachment := ArmPose.weapon_transform(frame, motion, grip, side, actor.weapon_id)
+	var grip := CharacterPose.weapon_offset(pose.weapon, texture.get_size(), false)
+	var attachment := ArmPose.weapon_transform(pose.frame, pose.motion, grip, pose.side, pose.weapon, pose.aim)
 	attachment.origin += canvas
 	draw_set_transform_matrix(attachment)
 	draw_texture(texture, Vector2.ZERO, tint)
-	# Пальцы закрывают рукоять, ствол/корпус остаются перед рукой.
-	var palm: Vector2 = ArmPose.joints(frame)[2]
+	var shot: Dictionary = feedback.shots.get(pose.actor_id, {})
+	if pose.weapon == "colt" and shot.get("weapon", "") == "colt" and shot.age < 0.055:
+		var muzzle := Vector2(19, 3)
+		var reach := 11.0 * (1 - float(shot.age) / 0.055)
+		draw_colored_polygon(PackedVector2Array([muzzle, muzzle + Vector2(4, -3),
+			muzzle + Vector2(reach, 0), muzzle + Vector2(4, 3)]), Color(1, 0.84, 0.4, 0.9))
+	var palm: Vector2 = ArmPose.joints(pose.frame)[2]
 	var fingers := Rect2(palm + Vector2(-2, 0), Vector2(4, 4))
-	draw_set_transform_matrix(body_transform * motion)
-	draw_texture_rect_region(textures[frame], fingers, fingers, tint)
+	draw_set_transform_matrix(body_transform * Transform2D(pose.motion))
+	draw_texture_rect_region(textures[pose.frame], fingers, fingers, tint)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -439,7 +549,7 @@ func _sprite_height(actor: Actor) -> float:
 		return PLAYER_HEIGHT
 	if actor.behaviour == "tank":
 		return TANK_ROOT.y
-	var sprite: Texture2D = textures.get("monster")
+	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	return sprite.get_size().y if sprite != null else BODY.y
 
 

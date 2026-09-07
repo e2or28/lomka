@@ -31,19 +31,34 @@ const HARRIER_PERIOD := 96
 const HARRIER_BACKOFF := 120.0
 
 
-static func step(state: RunState, commands: Dictionary) -> void:
+static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
+	# Одноразовый результат тика: не хранится в забеге и не меняет его хеш.
+	var events: Array[Dictionary] = []
+	var first_new_id := state.next_id
+	var room_id := state.room.id
 	_drive_players(state, commands)
 	_drive_enemies(state)
-	_move_bodies(state)
+	for projectile in state.projectiles:
+		if projectile.id < first_new_id:
+			continue
+		var owner := state.actor_by_id(projectile.owner_id)
+		events.append({"type": "shot", "actor_id": projectile.owner_id,
+			"projectile_id": projectile.id, "kind": projectile.kind,
+			"position": projectile.position, "direction": projectile.velocity.normalized(),
+			"aim": owner.aim, "weapon": owner.weapon_id})
+	_move_bodies(state, events)
 	_take_pickups(state, commands)
-	_fly_projectiles(state)
-	_touch_damage(state)
+	_fly_projectiles(state, events)
+	_touch_damage(state, events)
 	Harvest.advance(state, commands)
 	Corpses.advance(state)
 	_tick_timers(state)
 	_collect_dead(state)
 	RoomTravel.advance(state, commands)
 	state.tick += 1
+	for event in events:
+		event["room_id"] = room_id
+	return events
 
 
 static func _drive_players(state: RunState, commands: Dictionary) -> void:
@@ -140,7 +155,7 @@ static func _nearest_target(state: RunState, hunter) -> Actor:
 	return best
 
 
-static func _move_bodies(state: RunState) -> void:
+static func _move_bodies(state: RunState, events: Array[Dictionary]) -> void:
 	for actor in state.actors:
 		if not actor.alive:
 			continue
@@ -148,7 +163,9 @@ static func _move_bodies(state: RunState) -> void:
 		actor.position = Motion.step_position(actor.position, actor.velocity, DELTA)
 		actor.position = state.room.clamp_body(actor.position, actor.radius)
 		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0:
+			var health_before := actor.health
 			_tick_organs(state, actor, before)
+			_record_hit(events, actor, health_before, "strain", Vector2.ZERO)
 
 
 static func _tick_organs(state: RunState, actor, before: Vector2) -> void:
@@ -236,7 +253,7 @@ static func _fire(state: RunState, actor, stats: Dictionary) -> void:
 
 ## Попадание проверяется после перемещения снаряда, но до перемещения тел в
 ## следующем тике — иначе быстрый снаряд проскочил бы сквозь цель.
-static func _fly_projectiles(state: RunState) -> void:
+static func _fly_projectiles(state: RunState, events: Array[Dictionary]) -> void:
 	var surviving: Array[Projectile] = []
 	for projectile in state.projectiles:
 		var flying := projectile.advance(DELTA)
@@ -254,7 +271,10 @@ static func _fly_projectiles(state: RunState) -> void:
 			if projectile.position.distance_squared_to(actor.position) > reach * reach:
 				continue
 
+			var health_before := actor.health
 			var finished := actor.take_damage(projectile.damage)
+			_record_hit(events, actor, health_before, projectile.kind,
+				projectile.velocity.normalized(), projectile.id)
 			if finished and actor.kind == Actor.Kind.PLAYER and actor.slot >= 0:
 				_knock_down(state, actor)
 			projectile.hit_ids.append(actor.id)
@@ -269,7 +289,7 @@ static func _fly_projectiles(state: RunState) -> void:
 
 
 ## Темп ударов задают кадры неуязвимости жертвы: своего отсчёта у врага нет.
-static func _touch_damage(state: RunState) -> void:
+static func _touch_damage(state: RunState, events: Array[Dictionary]) -> void:
 	for enemy in state.actors:
 		if not enemy.alive or enemy.kind != Actor.Kind.ENEMY:
 			continue
@@ -284,9 +304,22 @@ static func _touch_damage(state: RunState) -> void:
 			var reach := enemy.radius + target.radius
 			if enemy.position.distance_squared_to(target.position) > reach * reach:
 				continue
+			var health_before := target.health
 			if target.take_damage(damage) and target.slot >= 0:
 				_knock_down(state, target)
+			_record_hit(events, target, health_before, "contact",
+				(target.position - enemy.position).normalized())
 			target.invulnerable = HIT_INVULNERABILITY
+
+
+static func _record_hit(events: Array[Dictionary], actor: Actor, health_before: float,
+		kind: String, direction: Vector2, projectile_id: int = -1) -> void:
+	if actor.health >= health_before:
+		return
+	events.append({"type": "hit", "actor_id": actor.id, "kind": kind,
+		"position": actor.position, "direction": direction,
+		"damage": health_before - actor.health, "fallen": actor.health <= 0.0,
+		"projectile_id": projectile_id})
 
 
 ## Тело остаётся живым при нулевом здоровье намеренно: упавшего поднимает

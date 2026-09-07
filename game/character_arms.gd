@@ -7,9 +7,9 @@ var _meshes := {}
 
 
 func draw(view: Node2D, actor_id: int, texture: Texture2D, frame: String,
-		motion: Transform2D, tint: Color) -> void:
-	if not _frames.has(frame) or _frames[frame].texture != texture:
-		_frames[frame] = _prepare(texture, frame)
+		motion: Transform2D, tint: Color, backing: Texture2D = null) -> void:
+	if not _frames.has(frame) or _frames[frame].texture != texture or _frames[frame].backing != backing:
+		_frames[frame] = _prepare(texture, frame, backing)
 	var data: Dictionary = _frames[frame]
 	var vertices: PackedVector3Array = data.vertices.duplicate()
 	var indices: PackedInt32Array = data.moving
@@ -37,9 +37,10 @@ func clear() -> void:
 	_meshes.clear()
 
 
-func _prepare(texture: Texture2D, frame: String) -> Dictionary:
+func _prepare(texture: Texture2D, frame: String, backing: Texture2D) -> Dictionary:
 	var size := texture.get_size()
 	var original := texture.get_image()
+	var shirt := backing.get_image() if backing != null else original
 	var body := Image.create_empty(int(size.x), int(size.y), false, Image.FORMAT_RGBA8)
 	body.blit_rect(original, Rect2i(Vector2i.ZERO, Vector2i(size)), Vector2i.ZERO)
 	var arm := Image.create_empty(int(size.x), int(size.y), false, Image.FORMAT_RGBA8)
@@ -57,8 +58,8 @@ func _prepare(texture: Texture2D, frame: String) -> Dictionary:
 			shoulder + Vector2(-9, -6), shoulder + Vector2(3, -4),
 			elbow + Vector2(10, -10), palm + Vector2(9, -9),
 			palm + Vector2(9, 9), elbow + Vector2(-7, 10), shoulder + Vector2(-10, 12)])
-	# Под рукавом восстанавливаем закрытую часть рубашки/брюк из соседней
-	# колонки того же кадра. Исходные PNG остаются нетронутыми.
+	# У поднятых рук предплечье закрывает весь живот. Рубашку под ним
+	# берём из базовой стойки; соседняя колонка содержит кожу и даёт полосы.
 	for y in int(size.y):
 		for x in int(size.x):
 			if not Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), polygon):
@@ -67,7 +68,12 @@ func _prepare(texture: Texture2D, frame: String) -> Dictionary:
 			var fill := Color.TRANSPARENT
 			if raised:
 				if x >= shoulder.x - 3 and x <= elbow.x + 10 and y >= shoulder.y + 2 and y <= elbow.y + 10:
-					fill = original.get_pixel(int(elbow.x + 7), y)
+					if backing != null:
+						var sx := roundi(remap(x, shoulder.x - 3, elbow.x + 10, 57, 70))
+						var sy := roundi(remap(y, shoulder.y + 2, elbow.y + 10, 74, 108))
+						fill = shirt.get_pixel(sx, sy)
+					else:
+						fill = original.get_pixel(int(shoulder.x + 6), mini(y, int(elbow.y - 12)))
 			elif x >= shoulder.x + 3 and y >= shoulder.y + 2:
 				fill = original.get_pixel(int(shoulder.x + 11), y)
 			body.set_pixel(x, y, fill)
@@ -93,6 +99,6 @@ func _prepare(texture: Texture2D, frame: String) -> Dictionary:
 			var i := y * columns + x
 			triangles.append_array(PackedInt32Array([i, i + 1, i + columns,
 				i + 1, i + columns + 1, i + columns]))
-	return {"texture": texture, "body": ImageTexture.create_from_image(body),
+	return {"texture": texture, "backing": backing, "body": ImageTexture.create_from_image(body),
 		"arm": ImageTexture.create_from_image(arm), "vertices": vertices, "uv": uv,
 		"moving": moving, "weights": weights, "triangles": triangles}

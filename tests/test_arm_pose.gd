@@ -65,3 +65,23 @@ func _test_motion_returns_without_a_snap() -> bool:
 	check(Pose.pulse(0.18) > 0.99, "нет акцента атаки")
 	check(Pose.pulse(0.999) < 0.001, "конец отдачи обрывается")
 	return true
+
+
+func _test_aimed_muzzle_and_grip_agree_in_four_directions() -> bool:
+	var pose_script: Script = Pose
+	if not check(pose_script.has_method("aimed_motion"), "рука не умеет следовать прицелу"):
+		return true
+	var errors := PackedStringArray()
+	for direction in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		for side in [-1, 1]:
+			var frame := "player_colt_walk_4"
+			var motion: Transform2D = pose_script.call("aimed_motion", frame, "colt", 0.5, 260, 0.18, direction, side)
+			var grip := Vector2(4, 6)
+			var weapon: Transform2D = pose_script.call("weapon_transform", frame, motion, grip, side, "colt", direction)
+			var palm := Pose.hand(frame, motion)
+			if side < 0:
+				palm.x = 128 - palm.x
+			if weapon.basis_xform(Vector2.RIGHT).dot(direction) < 0.999 or (weapon * grip).distance_to(palm) > 0.001:
+				errors.append("%s / %d" % [direction, side])
+	check(errors.is_empty(), "ствол не смотрит по прицелу или потеряна кисть: " + ", ".join(errors))
+	return true

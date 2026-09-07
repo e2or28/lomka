@@ -79,12 +79,43 @@ static func arm_weight(point: Vector2, frame: String) -> float:
 
 
 static func weapon_transform(frame: String, transform: Transform2D,
-		grip: Vector2, side: int, weapon: String) -> Transform2D:
+		grip: Vector2, side: int, weapon: String, aim: Vector2 = Vector2.ZERO) -> Transform2D:
 	var angle := transform.get_rotation()
 	if weapon == "colt" and not is_raised(frame):
 		angle += PI * 0.5
+	if weapon == "colt" and aim != Vector2.ZERO:
+		angle = local_aim(aim, side).angle()
 	var result := Transform2D(angle, hand(frame, transform))
 	result.origin -= result.basis_xform(grip)
 	if side < 0:
 		return Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(128, 0)) * result
 	return result
+
+
+static func local_aim(aim: Vector2, side: int) -> Vector2:
+	return Vector2(-aim.x, aim.y) if side < 0 else aim
+
+
+static func aimed_motion(frame: String, weapon: String, phase: float, speed: float,
+		progress: float, aim: Vector2, side: int) -> Transform2D:
+	if aim == Vector2.ZERO:
+		return motion(frame, weapon, phase, speed, progress)
+	var direction := local_aim(aim, side).normalized()
+	var action := pulse(progress)
+	var shoulder: Vector2 = joints(frame)[0]
+	if weapon == "colt":
+		var rest := 0.0 if is_raised(frame) else PI * 0.5
+		var angle := wrapf(direction.angle() - rest, -PI, PI) * 0.6
+		return Transform2D(angle, shoulder - shoulder.rotated(angle) - direction * action * 3.0)
+	if absf(direction.y) > 0.5:
+		return Transform2D(0.0, direction * action * 10.0)
+	return motion(frame, weapon, phase, speed, progress)
+
+
+static func emission(frame: String, transform: Transform2D, weapon: String,
+		grip: Vector2, side: int, aim: Vector2) -> Vector2:
+	if weapon == "colt":
+		# Срез ствола на colt.png, холст 19×12.
+		return weapon_transform(frame, transform, grip, side, weapon, aim) * Vector2(19, 3)
+	var point := hand(frame, transform)
+	return Vector2(128 - point.x, point.y) if side < 0 else point

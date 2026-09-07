@@ -28,7 +28,7 @@ const SPRITES: Array[String] = [
 	"player", "player_side_stand",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
-	"player_colt_stand",
+	"player_colt_stand", "player_colt_front",
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
 	"monster", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
@@ -103,13 +103,14 @@ func _physics_process(_delta: float) -> void:
 	for i in _active_slots:
 		var command: Command = InputReader.read(i, _state.tick)
 		commands[i] = command
-	SimTick.step(_state, commands)
+	var events := SimTick.step(_state, commands)
 	_watch_drift(commands)
 
 	for i in _active_slots:
 		var slot := _state.slots[i]
 		if commands.has(i) and slot.actor_id >= 0:
 			_view.firing[slot.actor_id] = commands[i].pressed(Command.BTN_FIRE)
+	_view.consume_events(events)
 
 
 
