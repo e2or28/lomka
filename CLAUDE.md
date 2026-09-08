@@ -485,6 +485,47 @@ python3 tools/gen_road.py    # пересобрать docs/roadmap.svg
 правки в ней будут стёрты. Забыть пересобрать не страшно — тест «карта
 ввода» краснеет на рассинхроне таблицы и файла.
 
+## Генерация изображений
+
+Картинки генерируются через `codex-imagegen` — CLI поверх подписки ChatGPT
+(`codex login`, ключ `OPENAI_API_KEY` не нужен и не заводится). Установлен из
+`~/tools/codex-imagegen-cli`, бинарник в `~/.local/bin`.
+
+**Игрового арта это не касается.** Спрайты, комнаты, враги, интерфейсные
+иконки — работа Саши, и она не делегируется генератору, см. раздел «Что
+остаётся людям». Инструмент здесь для всего остального: мокапы, черновые
+референсы, картинки для девлога и страницы в Steam, временные заглушки,
+которые заведомо будут перерисованы.
+
+Результат складывается в `assets/generated/`.
+
+```bash
+codex-imagegen generate --prompt "flat vector icon of a cocktail glass, no text" \
+  --out assets/generated/icon.png --size 1024x1024 --quality medium
+
+codex-imagegen edit --image assets/generated/icon.png \
+  --prompt "убрать фон, оставить только силуэт" \
+  --out assets/generated/icon-cut.png --background transparent
+
+codex-imagegen generate --prompt "..." --out assets/generated/probe.png --dry-run
+```
+
+Флаги, которые нужны на практике:
+
+| флаг | значения |
+|---|---|
+| `--size` | `auto`, `1024x1024`, `1536x1024`, `1024x1536` |
+| `--quality` | `auto`, `low`, `medium`, `high` |
+| `--background` | `auto`, `transparent`, `opaque` |
+| `--n` | сколько картинок запросить |
+| `--output-format` | `png`, `webp` (по умолчанию выводится из расширения `--out`) |
+| `--dry-run` | показать запрос, не тратя квоту |
+
+Репозиторий в альфе и опирается на недокументированное поведение Codex.
+Падает — показать Егору ошибку целиком, а не искать обход через API-ключ.
+Отдельно про `HTTP 429 usage_limit_reached`: это исчерпанная квота подписки,
+в ответе есть `resets_at` — ждать сброса, а не чинить установку.
+
 ## Работа с гитом
 
 **Работаем прямо в `main`: закоммитил — влил — запушил, без веток и без
