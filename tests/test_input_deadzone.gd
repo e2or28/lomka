@@ -5,6 +5,7 @@ extends "res://tests/framework/test_case.gd"
 ## Круговая мёртвая зона стика.
 
 const InputReader = preload("res://game/input_reader.gd")
+const Aim = preload("res://sim/aim.gd")
 
 const DZ = InputReader.STICK_DEADZONE
 
@@ -83,13 +84,19 @@ func _test_monotonic() -> bool:
 
 
 func _test_aiming_has_no_free_angle() -> bool:
-	eq(InputReader.AIM_DIRECTIONS, 4,
-		"число направлений прицела разошлось с решением из DECISIONS.md")
-
 	var free := Vector2(1.0, 0.15).normalized()
-	var snapped := InputReader.CharacterPose.snap_aim(free, InputReader.AIM_DIRECTIONS)
-	check(absf(snapped.angle() - free.angle()) > 0.05,
+	check(absf(Aim.snap(free).angle() - free.angle()) > 0.05,
 		"прицел не притянулся к направлению — свободный угол вернулся")
+	almost_eq(Aim.snap(Vector2(1.0, 0.9).normalized()).angle(), 0.0,
+		"прицел под 42 градуса уехал с ближней оси", 1e-5)
+	eq(Aim.snap(Vector2.ZERO), Vector2.ZERO, "нулевой прицел превратился в направление")
+
+	var seen := {}
+	for step in 64:
+		var result := Aim.snap(Vector2.RIGHT.rotated(TAU * step / 64.0))
+		seen[snappedf(fposmod(result.angle(), TAU), 0.0001)] = true
+		almost_eq(result.length(), 1.0, "притянутый прицел не единичной длины", 1e-5)
+	eq(seen.size(), 4, "число направлений прицела разошлось с решением из DECISIONS.md")
 	return true
 
 

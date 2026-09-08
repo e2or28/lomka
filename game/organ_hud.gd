@@ -185,14 +185,7 @@ func _draw_context(player, slot, row: Vector2, hovered: String, hovered_item: St
 			if slot.harvest_target == corpse.id:
 				progress = float(slot.harvest_ticks) / Harvest.DURATION_TICKS
 		else:
-			var nearest = null
-			var shortest := INF
-			for pickup in state.pickups:
-				var reach: float = pickup.radius + player.radius
-				var distance: float = pickup.position.distance_squared_to(player.position)
-				if distance <= reach * reach and distance < shortest:
-					nearest = pickup
-					shortest = distance
+			var nearest = Pickup.nearest(state, player)
 			var key := "E" if player_index == 0 else "A"
 			if nearest != null and nearest.kind == Pickup.KIND_ORGAN:
 				var record := Organs.organ(nearest.content_id)

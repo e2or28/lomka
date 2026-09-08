@@ -112,14 +112,6 @@ static func stand_front(aim: Vector2, velocity: Vector2, firing: bool, previous:
 	return absf(velocity.y) > absf(velocity.x)
 
 
-static func snap_aim(aim: Vector2, directions: int) -> Vector2:
-	if aim == Vector2.ZERO or directions <= 0:
-		return aim
-	var step := TAU / float(directions)
-	var angle := roundf(aim.angle() / step) * step
-	return Vector2.RIGHT.rotated(angle)
-
-
 static func use_walk_frames(speed: float) -> bool:
 	return speed >= WALK_THRESHOLD
 

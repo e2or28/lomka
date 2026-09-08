@@ -4,6 +4,7 @@ const Actor = preload("res://sim/actor.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Command = preload("res://sim/input/command.gd")
+const Aim = preload("res://sim/aim.gd")
 
 const DURATION_TICKS := 240
 const COOLDOWN_TICKS := 600
@@ -37,11 +38,9 @@ static func activate(state, slot) -> bool:
 		return false
 	if slot.cover_ticks > 0 or slot.skill_cooldown_ticks > 0 or actor.weapon_id != "suitcase":
 		return false
-	var direction := Vector2.RIGHT
-	if absf(actor.aim.x) >= absf(actor.aim.y):
-		direction = Vector2.LEFT if actor.aim.x < 0.0 else Vector2.RIGHT
-	else:
-		direction = Vector2.UP if actor.aim.y < 0.0 else Vector2.DOWN
+	var direction := Aim.snap(actor.aim)
+	if direction == Vector2.ZERO:
+		direction = Vector2.RIGHT
 	var position: Vector2 = actor.position + direction * COVER_DISTANCE
 	var area := _rectangle(position, direction)
 	if not state.room.bounds.encloses(area):

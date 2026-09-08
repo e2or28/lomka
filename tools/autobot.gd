@@ -16,6 +16,7 @@ const Items = preload("res://sim/items.gd")
 const Organs = preload("res://sim/organs.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Fnv = preload("res://sim/core/fnv.gd")
+const Aim = preload("res://sim/aim.gd")
 
 const TIMEOUT_TICKS := 3600
 const MONSTERS := 3
@@ -205,7 +206,7 @@ func _decide(state: RunState, actor) -> Command:
 		move = -direction
 	else:
 		move = Vector2(-direction.y, direction.x)
-	return Command.from_axes(state.tick, move, _square(direction), Command.BTN_FIRE)
+	return Command.from_axes(state.tick, move, Aim.snap(direction), Command.BTN_FIRE)
 
 
 func _nearest_enemy(state: RunState, actor):
@@ -217,14 +218,6 @@ func _nearest_enemy(state: RunState, actor):
 			shortest = distance
 			nearest = enemy
 	return nearest
-
-
-## Прицел живёт в четырёх направлениях (решение от 2 сентября), и бот обязан
-## целиться так же, иначе он мерил бы несуществующую диагональ.
-func _square(direction: Vector2) -> Vector2:
-	if absf(direction.x) >= absf(direction.y):
-		return Vector2.LEFT if direction.x < 0.0 else Vector2.RIGHT
-	return Vector2.UP if direction.y < 0.0 else Vector2.DOWN
 
 
 func _write(out_dir: String, run: Dictionary) -> void:

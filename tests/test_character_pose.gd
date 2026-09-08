@@ -112,30 +112,6 @@ func _test_vertical_aim_does_not_turn_the_body() -> bool:
 	return true
 
 
-func _test_snap_aim_quantises_to_four() -> bool:
-	var snapped := Pose.snap_aim(Vector2(1.0, 0.15).normalized(), 4)
-	almost_eq(snapped.angle(), 0.0, "почти горизонтальный прицел не притянулся к оси", 1e-5)
-
-	var diagonal := Pose.snap_aim(Vector2(1.0, 0.9).normalized(), 4)
-	almost_eq(diagonal.angle(), 0.0, "прицел под 42 градуса уехал с ближней оси", 1e-5)
-
-	var seen := {}
-	for step in 64:
-		var angle := TAU * step / 64.0
-		var result := Pose.snap_aim(Vector2.RIGHT.rotated(angle), 4)
-		seen[snappedf(fposmod(result.angle(), TAU), 0.0001)] = true
-		almost_eq(result.length(), 1.0, "притянутый прицел не единичной длины", 1e-5)
-	eq(seen.size(), 4, "получилось не четыре направления")
-	return true
-
-
-func _test_snap_aim_keeps_zero_zero() -> bool:
-	eq(Pose.snap_aim(Vector2.ZERO, 4), Vector2.ZERO, "нулевой прицел превратился в направление")
-	var free := Vector2(1.0, 0.15).normalized()
-	eq(Pose.snap_aim(free, 0), free, "при нуле направлений прицел всё равно притянулся")
-	return true
-
-
 func _test_walk_frames_follow_the_weapon() -> bool:
 	var colt := Pose.walk_frame_names("colt", 2)
 	eq(colt.size(), 2, "у оружия со своим набором нет запасного варианта")

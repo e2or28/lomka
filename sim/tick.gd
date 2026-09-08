@@ -211,20 +211,7 @@ static func _take_pickups(state: RunState, commands: Dictionary) -> void:
 ## подобранного, и за ним можно вернуться. Безоружный забирает предмет
 ## насовсем — иначе на полу оставалась бы пустая ячейка.
 static func _swap_pickup(state: RunState, actor) -> void:
-	var nearest: Pickup = null
-	var shortest := INF
-	for pickup in state.pickups:
-		if pickup.kind == Pickup.KIND_WEAPON and state.slots[actor.slot].cover_ticks > 0:
-			continue
-		if pickup.kind not in [Pickup.KIND_WEAPON, Pickup.KIND_ORGAN, Pickup.KIND_ITEM]:
-			continue
-		var reach: float = pickup.radius + actor.radius
-		var distance := pickup.position.distance_squared_to(actor.position)
-		if distance > reach * reach or distance >= shortest:
-			continue
-		shortest = distance
-		nearest = pickup
-
+	var nearest: Pickup = Pickup.nearest(state, actor)
 	if nearest == null:
 		return
 	if nearest.kind == Pickup.KIND_ITEM:

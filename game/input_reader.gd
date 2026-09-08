@@ -15,7 +15,7 @@ const CharacterPose = preload("res://game/character_pose.gd")
 const STICK_DEADZONE := 0.22
 
 ## Свободный угол и диагональ убраны — docs/DECISIONS.md, 7 сентября 2026.
-const AIM_DIRECTIONS := 4
+const Aim = preload("res://sim/aim.gd")
 
 const AIM_VECTORS := {
 	"aim_up": Vector2.UP,
@@ -95,7 +95,7 @@ static func aim_priority(player: int) -> Vector2:
 static func resolve_aim(axes: Vector2, priority: Vector2) -> Vector2:
 	if priority != Vector2.ZERO and axes.x != 0.0 and axes.y != 0.0:
 		return priority
-	return CharacterPose.snap_aim(axes, AIM_DIRECTIONS)
+	return Aim.snap(axes)
 
 
 static func read(player: int, tick: int):

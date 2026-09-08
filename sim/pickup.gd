@@ -43,6 +43,25 @@ static func item(p_id: int, item_id: String, at: Vector2):
 	return pickup
 
 
+## Что заберёт это тело, нажав E. Одно место на игру: вид рисует подсказку
+## по нему же, иначе подпись обещает подбор там, где тик его запретил —
+## так и случилось с оружием при выставленном укрытии.
+static func nearest(state, actor):
+	var found = null
+	var shortest := INF
+	for pickup in state.pickups:
+		if pickup.kind not in [KIND_WEAPON, KIND_ORGAN, KIND_ITEM]:
+			continue
+		if pickup.kind == KIND_WEAPON and state.slots[actor.slot].cover_ticks > 0:
+			continue
+		var reach: float = pickup.radius + actor.radius
+		var distance: float = pickup.position.distance_squared_to(actor.position)
+		if distance <= reach * reach and distance < shortest:
+			found = pickup
+			shortest = distance
+	return found
+
+
 func to_dict() -> Dictionary:
 	return {
 		"content_id": content_id,

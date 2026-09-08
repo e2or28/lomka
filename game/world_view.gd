@@ -15,6 +15,7 @@ const Projectile = preload("res://sim/projectile.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
+const Aim = preload("res://sim/aim.gd")
 const CombatFeedback = preload("res://game/combat_feedback.gd")
 const ArmPose = preload("res://game/arm_pose.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
@@ -30,6 +31,7 @@ const Abilities = preload("res://sim/abilities.gd")
 const Shooting = preload("res://sim/shooting.gd")
 
 const BODY := Vector2(32, 40)
+const BAR := Vector2(34, 3)
 const PROJECTILE := Vector2(18, 14)
 const PROJECTILE_SHADOW_RADIUS := 10.0
 
@@ -137,7 +139,7 @@ func _restored_emission_offset(projectile: Projectile) -> Vector2:
 	var owner := state.actor_by_id(projectile.owner_id)
 	if owner != null and owner.kind == Actor.Kind.PLAYER and projectile.kind in ["bullet", "folder"]:
 		var weapon := "colt" if projectile.kind == "bullet" else "suitcase"
-		var aim := CharacterPose.snap_aim(projectile.velocity.normalized(), 4)
+		var aim := Aim.snap(projectile.velocity.normalized())
 		var pose := _player_pose(owner, aim, weapon, 0.0)
 		if not pose.is_empty():
 			return ArmPose.emission(pose.frame, pose.motion, weapon,
@@ -193,8 +195,9 @@ func _draw() -> void:
 	for actor in actors:
 		if not actor.alive:
 			_draw_actor(actor)
+	var reachable = _reachable_pickup()
 	for pickup in state.pickups:
-		_draw_pickup(pickup)
+		_draw_pickup(pickup, reachable)
 	for slot in state.slots:
 		if slot.cover_ticks > 0:
 			_draw_cover(slot)
@@ -245,7 +248,7 @@ func _draw_room() -> void:
 
 ## Лежит на полу, поэтому рисуется до тел: подошедший накрывает его собой.
 ## Напольный спрайт крупнее оружия в руке, чтобы лут читался на пёстром полу.
-func _draw_pickup(pickup: Pickup) -> void:
+func _draw_pickup(pickup: Pickup, reachable) -> void:
 	var at := origin + pickup.position
 	var ground: Texture2D = textures.get(pickup.content_id + "_ground")
 	draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
@@ -267,7 +270,7 @@ func _draw_pickup(pickup: Pickup) -> void:
 	else:
 		draw_rect(Rect2(at - Vector2(9, 4), Vector2(18, 8)), PAPER_COLOR, true)
 
-	if not _within_reach(pickup):
+	if pickup != reachable:
 		return
 	draw_arc(at, pickup.radius, 0, TAU, 28, Color(1, 1, 1, 0.35), 1.5)
 	var key := "E" if inspected_slot == 0 else "A"
@@ -295,12 +298,13 @@ func _draw_badge(at: Vector2, badge: String) -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.16, 0.15, 0.14))
 
 
-func _within_reach(pickup: Pickup) -> bool:
+## Подсказка горит у одного лута — того, который и возьмётся. Правило,
+## по которому он выбран, живёт в симуляции.
+func _reachable_pickup():
 	var actor := state.actor_of_slot(inspected_slot)
 	if actor == null or not actor.alive or state.slots[inspected_slot].downed:
-		return false
-	var reach: float = pickup.radius + actor.radius
-	return pickup.position.distance_squared_to(actor.position) <= reach * reach
+		return null
+	return Pickup.nearest(state, actor)
 
 
 func _draw_projectile(projectile: Projectile) -> void:
@@ -556,11 +560,8 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	var maximum: float = actor.max_health()
 	if maximum <= 0.0:
 		return
-	var width := 34.0
-	var top := at + Vector2(-width * 0.5, -_sprite_height(actor) - 10.0)
-	draw_rect(Rect2(top, Vector2(width, 3)), Color(0, 0, 0, 0.6), true)
-	var share := clampf(actor.health / maximum, 0.0, 1.0)
-	draw_rect(Rect2(top, Vector2(width * share, 3)), color.lightened(0.2), true)
+	_draw_bar(at + Vector2(-BAR.x * 0.5, -_sprite_height(actor) - 10.0), BAR,
+		actor.health / maximum, color.lightened(0.2))
 
 
 ## Чемодан-укрытие: пока он стоит, его нет в руках владельца.
@@ -575,10 +576,8 @@ func _draw_cover(slot) -> void:
 	var handle := Rect2(rect.get_center() - Vector2(rect.size.x * 0.18, rect.size.y * 0.5 + 6),
 		Vector2(rect.size.x * 0.36, 6))
 	draw_rect(handle, Color(0.14, 0.1, 0.08), true)
-	var share := clampf(slot.cover_health / Abilities.COVER_HEALTH, 0.0, 1.0)
-	var bar := Rect2(rect.position + Vector2(0, -12), Vector2(rect.size.x, 4))
-	draw_rect(bar, Color(0, 0, 0, 0.6), true)
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), Color(0.83, 0.62, 0.35), true)
+	_draw_bar(rect.position + Vector2(0, -12), Vector2(rect.size.x, 4),
+		slot.cover_health / Abilities.COVER_HEALTH, Color(0.83, 0.62, 0.35))
 
 
 func _draw_charge(actor: Actor, at: Vector2) -> void:
@@ -588,11 +587,13 @@ func _draw_charge(actor: Actor, at: Vector2) -> void:
 	var duration := Shooting.charge_duration(actor.stack.compute())
 	if duration <= 0:
 		return
-	var width := 34.0
-	var top := at + Vector2(-width * 0.5, -_sprite_height(actor) - 18.0)
-	draw_rect(Rect2(top, Vector2(width, 3)), Color(0, 0, 0, 0.6), true)
-	var share := clampf(float(slot.charge_ticks) / duration, 0.0, 1.0)
-	draw_rect(Rect2(top, Vector2(width * share, 3)), Color(1.0, 0.82, 0.35), true)
+	_draw_bar(at + Vector2(-BAR.x * 0.5, -_sprite_height(actor) - 18.0), BAR,
+		float(slot.charge_ticks) / duration, Color(1.0, 0.82, 0.35))
+
+
+func _draw_bar(top: Vector2, size: Vector2, share: float, color: Color) -> void:
+	draw_rect(Rect2(top, size), Color(0, 0, 0, 0.6), true)
+	draw_rect(Rect2(top, Vector2(size.x * clampf(share, 0.0, 1.0), size.y)), color, true)
 
 
 func _sprite_height(actor: Actor) -> float:

@@ -8,7 +8,6 @@ extends Node2D
 
 const RunState = preload("res://sim/run_state.gd")
 const SimTick = preload("res://sim/tick.gd")
-const Motion = preload("res://sim/motion.gd")
 const Command = preload("res://sim/input/command.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const RoomTravel = preload("res://sim/room_travel.gd")
@@ -180,7 +179,7 @@ func _readout() -> String:
 			stats.get("damage", 0.0), stats.get("fire_rate", 0.0),
 			stats.get("range", 0.0), stats.get("move_speed", 0.0)])
 
-	lines.append("прицел: %d направлений, стрелками, как в Isaac" % InputReader.AIM_DIRECTIONS)
+	lines.append("прицел: четыре направления, стрелками, как в Isaac")
 	lines.append("")
 	for line in InputReader.diagnostics(0):
 		lines.append(line)
