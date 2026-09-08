@@ -8,7 +8,6 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
-const RoomMap = preload("res://sim/room_map.gd")
 const RoomArt = preload("res://game/room_art.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
@@ -25,6 +24,7 @@ const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
+const LootArt = preload("res://game/loot_art.gd")
 const Corpses = preload("res://sim/corpses.gd")
 const Items = preload("res://sim/items.gd")
 const Abilities = preload("res://sim/abilities.gd")
@@ -66,7 +66,6 @@ const SLOT_COLORS: Array[Color] = [
 	Color(0.9, 0.55, 0.8),
 ]
 const ENEMY_COLOR := Color(0.85, 0.35, 0.4)
-const PAPER_COLOR := Color(0.93, 0.88, 0.72)
 
 var state: RunState = null
 var origin := Vector2.ZERO
@@ -196,8 +195,9 @@ func _draw() -> void:
 		if not actor.alive:
 			_draw_actor(actor)
 	var reachable = _reachable_pickup()
+	var key := "E" if inspected_slot == 0 else "A"
 	for pickup in state.pickups:
-		_draw_pickup(pickup, reachable)
+		LootArt.draw(self, textures, pickup, origin + pickup.position, pickup == reachable, key)
 	for slot in state.slots:
 		if slot.cover_ticks > 0:
 			_draw_cover(slot)
@@ -233,7 +233,7 @@ func _draw_room() -> void:
 		var texture: Texture2D = textures.get("room_" + state.room.id)
 		if texture != null:
 			RoomArt.draw(self, state.room, texture, origin)
-			_draw_doors()
+			RoomArt.draw_doors(self, state.room, state.room_cleared(), origin)
 			return
 	var rect := Rect2(origin + state.room.bounds.position, state.room.bounds.size)
 
@@ -244,58 +244,6 @@ func _draw_room() -> void:
 
 	draw_rect(rect, Color(0.11, 0.10, 0.12), true)
 	draw_rect(rect, Color(0.35, 0.33, 0.38), false, 2.0)
-
-
-## Лежит на полу, поэтому рисуется до тел: подошедший накрывает его собой.
-## Напольный спрайт крупнее оружия в руке, чтобы лут читался на пёстром полу.
-func _draw_pickup(pickup: Pickup, reachable) -> void:
-	var at := origin + pickup.position
-	var ground: Texture2D = textures.get(pickup.content_id + "_ground")
-	draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
-	draw_circle(Vector2.ZERO, 28.0 if ground != null else pickup.radius * 0.7,
-		Color(0.0, 0.0, 0.0, 0.28))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-	var sprite: Texture2D = ground if ground != null else textures.get(pickup.content_id + "_top")
-	if pickup.kind == Pickup.KIND_ORGAN:
-		if not OrganArt.draw_ground(self, textures, pickup.content_id, at):
-			_draw_badge(at, Organs.organ(pickup.content_id).get("badge", "?"))
-	elif pickup.kind == Pickup.KIND_ITEM:
-		_draw_badge(at, Items.item(pickup.content_id).get("badge", "?"))
-	elif sprite != null:
-		var size := sprite.get_size()
-		if ground != null:
-			size *= 54.0 / size.x
-		draw_texture_rect(sprite, Rect2(at - size * 0.5, size), false)
-	else:
-		draw_rect(Rect2(at - Vector2(9, 4), Vector2(18, 8)), PAPER_COLOR, true)
-
-	if pickup != reachable:
-		return
-	draw_arc(at, pickup.radius, 0, TAU, 28, Color(1, 1, 1, 0.35), 1.5)
-	var key := "E" if inspected_slot == 0 else "A"
-	var caption := key
-	if pickup.kind == Pickup.KIND_WEAPON:
-		caption += " · " + Arsenal.weapon(pickup.content_id).get("name", pickup.content_id)
-	elif pickup.kind == Pickup.KIND_ORGAN:
-		caption += " · " + Organs.organ(pickup.content_id).get("name", pickup.content_id)
-	elif pickup.kind == Pickup.KIND_ITEM:
-		caption += " · " + Items.item(pickup.content_id).get("name", pickup.content_id)
-	var width := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var label_at := at + Vector2(-width * 0.5, -pickup.radius - 6)
-	draw_rect(Rect2(label_at + Vector2(-5, -14), Vector2(width + 10, 19)), Color(0.04, 0.04, 0.04, 0.8))
-	draw_string(ThemeDB.fallback_font, label_at,
-		caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.89, 0.65))
-
-
-## Карточка с буквой — заглушка до спрайтов Саши, см. art/README.md.
-func _draw_badge(at: Vector2, badge: String) -> void:
-	var card := Rect2(at - Vector2(17, 21), Vector2(34, 42))
-	draw_rect(card, PAPER_COLOR, true)
-	draw_rect(card, Color(0.2, 0.18, 0.15), false, 1.5)
-	var width := ThemeDB.fallback_font.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
-	draw_string(ThemeDB.fallback_font, at + Vector2(-width * 0.5, 9), badge,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.16, 0.15, 0.14))
 
 
 ## Подсказка горит у одного лута — того, который и возьмётся. Правило,
@@ -335,10 +283,10 @@ func _draw_projectile(projectile: Projectile) -> void:
 		draw_texture(paper, -size * 0.5)
 	else:
 		var body := Rect2(-PROJECTILE * 0.5, PROJECTILE)
-		draw_rect(body, PAPER_COLOR, true)
-		draw_rect(body, PAPER_COLOR.darkened(0.5), false, 1.0)
-		draw_line(Vector2(-4, -2), Vector2(4, -2), PAPER_COLOR.darkened(0.4), 1.0)
-		draw_line(Vector2(-4, 1), Vector2(2, 1), PAPER_COLOR.darkened(0.4), 1.0)
+		draw_rect(body, LootArt.PAPER, true)
+		draw_rect(body, LootArt.PAPER.darkened(0.5), false, 1.0)
+		draw_line(Vector2(-4, -2), Vector2(4, -2), LootArt.PAPER.darkened(0.4), 1.0)
+		draw_line(Vector2(-4, 1), Vector2(2, 1), LootArt.PAPER.darkened(0.4), 1.0)
 
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -620,23 +568,3 @@ func _map_origin(viewport: Vector2) -> Vector2:
 		else:
 			result[axis] = clampf(result[axis], usable[axis] - image_rect.end[axis], -image_rect.position[axis])
 	return result
-
-
-func _draw_doors() -> void:
-	var opened := state.room_cleared()
-	var color := Color(0.63, 0.86, 0.65) if opened else Color(0.9, 0.32, 0.25)
-	for direction in RoomMap.exits(state.room):
-		var normal: Vector2 = RoomMap.DIRECTIONS[direction]
-		var tangent := Vector2(-normal.y, normal.x)
-		var at := origin + RoomMap.door(state.room, direction) - normal * 5
-		var width := RoomMap.half_width(direction)
-		draw_line(at - tangent * width, at + tangent * width, color.darkened(0.5), 10)
-		draw_line(at - tangent * width, at + tangent * width, color, 3)
-		if opened:
-			var tip := at - normal * 22
-			draw_line(tip - normal * 12 - tangent * 9, tip, color, 3)
-			draw_line(tip - normal * 12 + tangent * 9, tip, color, 3)
-		else:
-			for step in [-1, 0, 1]:
-				var bar: Vector2 = at + tangent * step * 22
-				draw_line(bar - normal * 10, bar + normal * 10, color, 4)

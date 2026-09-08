@@ -1,6 +1,7 @@
 extends RefCounted
 
 const Room = preload("res://sim/room.gd")
+const RoomMap = preload("res://sim/room_map.gd")
 const WALL_HEIGHT := 210.0
 
 
@@ -24,3 +25,23 @@ static func draw(view: Node2D, room: Room, texture: Texture2D, origin: Vector2) 
 	view.draw_texture_rect_region(texture,
 		Rect2(at + Vector2(0, WALL_HEIGHT), Vector2(source_size.x, source_size.y - inset.y)),
 		Rect2(Vector2(0, inset.y), Vector2(source_size.x, source_size.y - inset.y)))
+
+
+## Проём открыт — зелёная стрелка наружу, закрыт — красная решётка.
+static func draw_doors(view: Node2D, room: Room, opened: bool, origin: Vector2) -> void:
+	var color := Color(0.63, 0.86, 0.65) if opened else Color(0.9, 0.32, 0.25)
+	for direction in RoomMap.exits(room):
+		var normal: Vector2 = RoomMap.DIRECTIONS[direction]
+		var tangent := Vector2(-normal.y, normal.x)
+		var at := origin + RoomMap.door(room, direction) - normal * 5
+		var width := RoomMap.half_width(direction)
+		view.draw_line(at - tangent * width, at + tangent * width, color.darkened(0.5), 10)
+		view.draw_line(at - tangent * width, at + tangent * width, color, 3)
+		if opened:
+			var tip := at - normal * 22
+			view.draw_line(tip - normal * 12 - tangent * 9, tip, color, 3)
+			view.draw_line(tip - normal * 12 + tangent * 9, tip, color, 3)
+		else:
+			for step in [-1, 0, 1]:
+				var bar: Vector2 = at + tangent * step * 22
+				view.draw_line(bar - normal * 10, bar + normal * 10, color, 4)
