@@ -6,8 +6,6 @@ const Organs = preload("res://sim/organs.gd")
 const Command = preload("res://sim/input/command.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
-const Encounter = preload("res://sim/encounter.gd")
-const SimTick = preload("res://sim/tick.gd")
 
 func title() -> String:
 	return "сборки и эффекты предметов"

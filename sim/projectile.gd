@@ -5,7 +5,6 @@ extends RefCounted
 ## здесь была и убрана: снаряд, шлёпающийся на пол, обрывал атаку там, где
 ## игрок ждал продолжения.
 
-const Fnv = preload("res://sim/core/fnv.gd")
 
 var id: int = 0
 

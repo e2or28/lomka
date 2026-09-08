@@ -111,11 +111,9 @@ static func enemy(id: String) -> Dictionary:
 
 
 static func validate_all() -> PackedStringArray:
-	var errors := PackedStringArray()
-	for id in CHARACTERS:
-		errors.append_array(Schemas.validate("character", CHARACTERS[id]))
+	var errors := Schemas.validate_records("character", CHARACTERS)
+	errors.append_array(Schemas.validate_records("enemy", ENEMIES))
 	for id in ENEMIES:
-		errors.append_array(Schemas.validate("enemy", ENEMIES[id]))
 		for drop in ENEMIES[id].get("organ_drops", []):
 			if Organs.organ(drop["organ"]).is_empty():
 				errors.append("enemy '%s': unknown organ %s" % [id, drop["organ"]])

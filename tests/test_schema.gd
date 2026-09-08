@@ -36,11 +36,17 @@ const GOOD_ENEMY := {
 	"tier": 1,
 }
 
+## Слот, Heat, описание и модификаторы обязательны: орган без них не
+## показать в теле и не оценить перед установкой.
 const GOOD_ORGAN := {
 	"id": "pechen",
 	"name": "Печень",
 	"price": 12,
 	"rarity": "common",
+	"slot": "liver",
+	"heat": 10,
+	"description": "Пьёт за двоих.",
+	"modifiers": [],
 }
 
 

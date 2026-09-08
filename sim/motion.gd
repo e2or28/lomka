@@ -3,15 +3,6 @@ extends RefCounted
 ## и потолок скорости идут через стек модификаторов статами acceleration,
 ## friction и move_speed (правило 4) — предмет на ускорение работает сам.
 
-const Schemas = preload("res://sim/data/schemas.gd")
-
-## Заглушка: числа подбираются на стенде ползунками.
-const PLACEHOLDER_STATS := {
-	"acceleration": 9000.0,
-	"friction": 18000.0,
-	"move_speed": 260.0,
-}
-
 
 ## move_input — от -1 до 1 по каждой оси.
 static func step_velocity(velocity: Vector2, move_input: Vector2, stats: Dictionary, delta: float) -> Vector2:

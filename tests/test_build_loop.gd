@@ -8,7 +8,6 @@ const Command = preload("res://sim/input/command.gd")
 const Abilities = preload("res://sim/abilities.gd")
 const Items = preload("res://sim/items.gd")
 const Pickup = preload("res://sim/pickup.gd")
-const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const Encounter = preload("res://sim/encounter.gd")
 

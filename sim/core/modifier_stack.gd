@@ -27,11 +27,6 @@ func add(mod: Modifier) -> Modifier:
 	return mod
 
 
-func add_all(mods: Array) -> void:
-	for m in mods:
-		add(m)
-
-
 func size() -> int:
 	return _mods.size()
 

@@ -141,15 +141,9 @@ static func has_behaviour(slot, behaviour: String) -> bool:
 
 
 static func validate_all() -> PackedStringArray:
-	var errors := PackedStringArray()
-	for id in RECORDS:
-		var record: Dictionary = RECORDS[id]
-		errors.append_array(Schemas.validate("organ", record))
-		for field in ["slot", "heat", "description", "modifiers"]:
-			if not record.has(field):
-				errors.append("organ '%s': missing %s" % [id, field])
+	var errors := Schemas.validate_records("organ", RECORDS)
+	errors.append_array(Schemas.validate_records("synergy", SYNERGIES))
 	for id in SYNERGIES:
-		errors.append_array(Schemas.validate("synergy", SYNERGIES[id]))
 		for required in SYNERGIES[id]["requires"]:
 			if not RECORDS.has(required):
 				errors.append("synergy '%s': unknown organ %s" % [id, required])

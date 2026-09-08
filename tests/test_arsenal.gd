@@ -7,7 +7,6 @@ extends "res://tests/framework/test_case.gd"
 
 const Arsenal = preload("res://sim/arsenal.gd")
 const Encounter = preload("res://sim/encounter.gd")
-const Actor = preload("res://sim/actor.gd")
 const Modifier = preload("res://sim/core/modifier.gd")
 const SimTick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")

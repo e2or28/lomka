@@ -45,7 +45,4 @@ static func equip(actor, slot, id: String) -> bool:
 	return true
 
 static func validate_all() -> PackedStringArray:
-	var errors := PackedStringArray()
-	for id in RECORDS:
-		errors.append_array(Schemas.validate("item", RECORDS[id]))
-	return errors
+	return Schemas.validate_records("item", RECORDS)

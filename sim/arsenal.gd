@@ -90,7 +90,4 @@ static func projectile_of(actor) -> String:
 
 
 static func validate_all() -> PackedStringArray:
-	var errors := PackedStringArray()
-	for id in WEAPONS:
-		errors.append_array(Schemas.validate("weapon", WEAPONS[id]))
-	return errors
+	return Schemas.validate_records("weapon", WEAPONS)

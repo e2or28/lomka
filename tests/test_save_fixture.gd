@@ -9,7 +9,6 @@ extends "res://tests/framework/test_case.gd"
 
 const SaveGame = preload("res://sim/save/save_game.gd")
 const ReferenceRun = preload("res://tests/framework/reference_run.gd")
-const RngStreams = preload("res://sim/core/rng_streams.gd")
 const Actor = preload("res://sim/actor.gd")
 
 const FIXTURE_PATH := "res://tests/fixtures/save_format_13.bin"

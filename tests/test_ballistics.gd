@@ -5,8 +5,6 @@ extends "res://tests/framework/test_case.gd"
 ## Как это ощущается решается на стенде; здесь только то, что считается.
 
 const Arena = preload("res://tests/framework/arena.gd")
-const Projectile = preload("res://sim/projectile.gd")
-const RunState = preload("res://sim/run_state.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 
 const SEED := "баллистика"

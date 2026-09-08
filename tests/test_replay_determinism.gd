@@ -9,9 +9,7 @@ const RunState = preload("res://sim/run_state.gd")
 const SimTick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")
 const CommandLog = preload("res://sim/input/command_log.gd")
-const Motion = preload("res://sim/motion.gd")
 const Encounter = preload("res://sim/encounter.gd")
-const Actor = preload("res://sim/actor.gd")
 const SaveGame = preload("res://sim/save/save_game.gd")
 
 const SEED := "реплей-1"

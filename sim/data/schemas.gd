@@ -81,11 +81,11 @@ const ORGAN := {
 	"name": {"type": TYPE_STRING},
 	"price": {"type": TYPE_INT, "min": 0},
 	"rarity": {"type": TYPE_STRING, "values": RARITIES},
-	"slot": {"type": TYPE_STRING, "values": ORGAN_SLOTS, "required": false},
-	"description": {"type": TYPE_STRING, "required": false},
+	"slot": {"type": TYPE_STRING, "values": ORGAN_SLOTS},
+	"description": {"type": TYPE_STRING},
 	"badge": {"type": TYPE_STRING, "required": false},
-	"heat": {"type": TYPE_INT, "min": 0, "required": false},
-	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false},
+	"heat": {"type": TYPE_INT, "min": 0},
+	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER},
 	"behaviour": {"type": TYPE_STRING, "values": ["", "keep_moving", "coward"], "required": false},
 	"tags": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
 }
@@ -146,6 +146,15 @@ static func schema_for(kind: String) -> Dictionary:
 
 static func validate(kind: String, data: Dictionary) -> PackedStringArray:
 	return Schema.validate(data, schema_for(kind), "%s '%s'" % [kind, data.get("id", "?")])
+
+
+## Реестр целиком: четыре справочника проверяли себя одинаковым циклом,
+## а расходиться им нельзя — валидатор один на весь контент (правило 5).
+static func validate_records(kind: String, records: Dictionary) -> PackedStringArray:
+	var errors := PackedStringArray()
+	for id in records:
+		errors.append_array(validate(kind, records[id]))
+	return errors
 
 
 static func validate_or_fail(kind: String, data: Dictionary) -> bool:
