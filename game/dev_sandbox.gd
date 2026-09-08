@@ -18,6 +18,7 @@ const Bestiary = preload("res://sim/bestiary.gd")
 const InputReader = preload("res://game/input_reader.gd")
 const InputMapDef = preload("res://tools/input_map.gd")
 const WorldView = preload("res://game/world_view.gd")
+const Abilities = preload("res://sim/abilities.gd")
 const ArtLibrary = preload("res://game/art_library.gd")
 const DebugOverlay = preload("res://game/debug_overlay.gd")
 const ScaleReference = preload("res://game/scale_reference.gd")
@@ -296,6 +297,8 @@ func _next_weapon() -> void:
 
 	var note := PackedStringArray()
 	for actor in _state.living(Actor.Kind.PLAYER):
+		# Иначе чемодан оказался бы разом и в руках, и укрытием на полу.
+		Abilities.finish(_state, _state.slots[actor.slot])
 		var index := ids.find(actor.weapon_id)
 		var next: String = ids[(index + 1) % ids.size()]
 		if Arsenal.equip(actor, next):

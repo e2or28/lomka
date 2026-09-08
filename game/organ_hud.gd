@@ -6,6 +6,8 @@ const Organs = preload("res://sim/organs.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Pickup = preload("res://sim/pickup.gd")
+const Items = preload("res://sim/items.gd")
+const Bestiary = preload("res://sim/bestiary.gd")
 
 const INK := Color(0.045, 0.055, 0.065, 0.94)
 const PAPER := Color(0.94, 0.89, 0.77)
@@ -53,10 +55,10 @@ func _draw() -> void:
 	draw_rect(Rect2(176, 53, 96 * hp, 8), MINT)
 	if player_index == 0:
 		_text(Vector2(20, 105), "WASD · идти    Стрелки · стрелять", 12)
-		_text(Vector2(20, 123), "F · извлечь    E · подобрать    1 · отладка", 12)
+		_text(Vector2(20, 123), "F · извлечь   E · подобрать   Пробел · перерыв   1 · отладка", 12)
 	else:
 		_text(Vector2(20, 105), "Левый стик · идти    Правый · стрелять", 12)
-		_text(Vector2(20, 123), "X · извлечь    A · подобрать    1 · отладка", 12)
+		_text(Vector2(20, 123), "X · извлечь   A · подобрать   LB · перерыв   1 · отладка", 12)
 	if state.occupied_count() > 1:
 		_text(Vector2(310, 105), "V · игрок и камера", 12, MINT)
 	_panel(Rect2(viewport.x - 204, 18, 186, 68), ACCENT.darkened(0.5))
@@ -72,6 +74,9 @@ func _draw() -> void:
 		_panel(Rect2(18, 136, 272, 30), ACCENT.darkened(0.6))
 		_text(Vector2(28, 156), text, 13, ACCENT)
 
+	var hovered_item := _draw_items(slot)
+	_draw_skill(slot)
+
 	var row := Vector2((viewport.x - (CELL_WIDTH + GAP) * 8 + GAP) / 2, viewport.y - 76)
 	var hovered := ""
 	for i in Schemas.ORGAN_SLOTS.size():
@@ -83,10 +88,7 @@ func _draw() -> void:
 		var over := rect.has_point(get_global_mouse_position())
 		_panel(rect, ACCENT if over else (MINT.darkened(0.45) if has_organ else MUTED.darkened(0.6)))
 		_text(at + Vector2(10, 21), Organs.SLOT_NAMES[socket], 13, PAPER if has_organ else MUTED)
-		var short_name := "Обычный"
-		if id == "courier_heart": short_name = "Курьера"
-		elif id == "armored_spine": short_name = "Бронированный"
-		_text(at + Vector2(10, 43), short_name, 12, MINT if has_organ else MUTED.darkened(0.2))
+		_text(at + Vector2(10, 43), _short_name(id), 12, MINT if has_organ else MUTED.darkened(0.2))
 		if over:
 			hovered = socket
 
@@ -97,7 +99,7 @@ func _draw() -> void:
 		caption = synergy["name"] + "  ·  " + synergy["description"]
 	_panel(Rect2(row + Vector2(0, -28), Vector2((CELL_WIDTH + GAP) * 8 - GAP, 24)))
 	_text(row + Vector2(10, -11), caption, 12, MINT if not synergies.is_empty() else MUTED)
-	_draw_context(player, slot, row, hovered)
+	_draw_context(player, slot, row, hovered, hovered_item)
 	if state.party_down():
 		var at := Vector2(viewport.x * 0.5 - 230, viewport.y * 0.5 - 48)
 		_panel(Rect2(at, Vector2(460, 96)), ACCENT)
@@ -123,9 +125,53 @@ func _draw_boss(viewport: Vector2) -> void:
 		_text(at + Vector2(114, 85), "ВЫСТРЕЛ — УХОДИ С ЛИНИИ", 13, ACCENT)
 
 
-func _draw_context(player, slot, row: Vector2, hovered: String) -> void:
+func _short_name(id: String) -> String:
+	var name: String = Organs.organ(id).get("name", "")
+	if name == "": return "Обычный"
+	var words := name.split(" ")
+	return words[words.size() - 1].capitalize()
+
+
+## Собранные предметы: карточка с буквой, число повторов углом.
+func _draw_items(slot) -> String:
+	if slot.items.is_empty(): return ""
+	var counts := {}
+	for id in slot.items: counts[id] = int(counts.get(id, 0)) + 1
+	_panel(Rect2(18, 176, 272, 52), MINT.darkened(0.6))
+	_text(Vector2(28, 194), "ПРЕДМЕТЫ", 11, MUTED)
+	var hovered := ""
+	var i := 0
+	for id in counts:
+		var rect := Rect2(28 + i * 34, 199, 30, 22)
+		var over := rect.has_point(get_global_mouse_position())
+		draw_rect(rect, PAPER.darkened(0.1) if over else PAPER.darkened(0.35))
+		_text(rect.position + Vector2(5, 16), Items.item(id).get("badge", "?"), 14, INK)
+		if int(counts[id]) > 1:
+			_text(rect.position + Vector2(20, 9), "%d" % counts[id], 10, INK)
+		if over: hovered = id
+		i += 1
+	return hovered
+
+
+func _draw_skill(slot) -> void:
+	if Bestiary.character(slot.character_id).get("skill", "") != "lunch_break": return
+	var text := "ПЕРЕРЫВ · чемодан готов"
+	var color := MINT
+	if slot.cover_ticks > 0:
+		text = "ПЕРЕРЫВ · чемодан стоит %.1f с" % (slot.cover_ticks / 60.0)
+		color = ACCENT
+	elif slot.skill_cooldown_ticks > 0:
+		text = "ПЕРЕРЫВ · снова через %.1f с" % (slot.skill_cooldown_ticks / 60.0)
+		color = MUTED
+	var top := 176.0 if slot.items.is_empty() else 234.0
+	_panel(Rect2(18, top, 272, 30), color.darkened(0.6))
+	_text(Vector2(28, top + 20), text, 12, color)
+
+
+func _draw_context(player, slot, row: Vector2, hovered: String, hovered_item: String) -> void:
 	var title := ""
 	var description := ""
+	var compare := ""
 	var footer := ""
 	var progress := 0.0
 	if not slot.downed:
@@ -134,10 +180,8 @@ func _draw_context(player, slot, row: Vector2, hovered: String) -> void:
 			var record := Organs.organ(corpse.organ_id)
 			title = ("F" if player_index == 0 else "X") + "  ДЕРЖАТЬ  ·  " + record["name"]
 			description = record["description"]
-			var old: String = slot.organs[record["slot"]]
+			compare = _instead_of(slot, record["slot"])
 			footer = "+%d HEAT  ·  1 с без движения и стрельбы" % record["heat"]
-			if old != "":
-				footer += "  ·  Прежний орган останется на полу"
 			if slot.harvest_target == corpse.id:
 				progress = float(slot.harvest_ticks) / Harvest.DURATION_TICKS
 		else:
@@ -149,25 +193,53 @@ func _draw_context(player, slot, row: Vector2, hovered: String) -> void:
 				if distance <= reach * reach and distance < shortest:
 					nearest = pickup
 					shortest = distance
+			var key := "E" if player_index == 0 else "A"
 			if nearest != null and nearest.kind == Pickup.KIND_ORGAN:
 				var record := Organs.organ(nearest.content_id)
-				title = ("E" if player_index == 0 else "A") + "  УСТАНОВИТЬ  ·  " + record["name"]
+				title = key + "  УСТАНОВИТЬ  ·  " + record["name"]
 				description = record["description"]
+				compare = _instead_of(slot, record["slot"])
 				footer = "Без роста Heat. Прежний орган остаётся на полу."
+			elif nearest != null and nearest.kind == Pickup.KIND_ITEM:
+				var record := Items.item(nearest.content_id)
+				title = key + "  ВЗЯТЬ  ·  " + record["name"]
+				description = record["description"]
+				footer = "Предмет остаётся до конца забега. Одинаковые складываются."
+	if hovered_item != "":
+		var record := Items.item(hovered_item)
+		title = "ПРЕДМЕТ  /  " + record["name"]
+		description = record["description"]
+		compare = ""
+		footer = "Предметы работают вместе с органами."
+		progress = 0.0
 	if hovered != "":
 		var record := Organs.organ(slot.organs[hovered])
 		title = Organs.SLOT_NAMES[hovered] + "  /  " + record.get("name", "Обычный орган")
 		description = record.get("description", "Без особых эффектов. Найди сильного врага с органом для этого слота.")
-		footer = "Органы разных слотов работают вместе."
+		compare = ""
+		footer = "Органы разных слотов работают вместе, одного слота — вытесняют друг друга."
 		progress = 0.0
 	if title == "":
 		return
-	var at := row + Vector2(90, -143)
-	_panel(Rect2(at, Vector2(879, 108)), ACCENT.darkened(0.4))
+	var height := 128.0 if compare != "" else 104.0
+	var at := row + Vector2(90, -35 - height)
+	_panel(Rect2(at, Vector2(879, height)), ACCENT.darkened(0.4))
 	_text(at + Vector2(16, 27), title, 18, ACCENT)
 	_text(at + Vector2(16, 52), description, 15)
-	_text(at + Vector2(16, 79), footer, 12, MUTED)
-	draw_rect(Rect2(at + Vector2(0, 104), Vector2(879 * progress, 4)), ACCENT)
+	if compare != "":
+		_text(at + Vector2(16, 76), compare, 13, MINT)
+	_text(at + Vector2(16, height - 28), footer, 12, MUTED)
+	draw_rect(Rect2(at + Vector2(0, height - 4), Vector2(879 * progress, 4)), ACCENT)
+
+
+## Слот один, органов на него несколько: без этой строки замена сердца
+## выглядит бесплатной, а она снимает прежние эффекты и сочетания.
+func _instead_of(slot, socket: String) -> String:
+	var old: String = slot.organs.get(socket, "")
+	if old == "":
+		return "Слот «%s» пуст." % Organs.SLOT_NAMES[socket]
+	var record := Organs.organ(old)
+	return "Вместо: %s — %s" % [record["name"], record["description"]]
 
 
 func _draw_map(viewport: Vector2) -> void:

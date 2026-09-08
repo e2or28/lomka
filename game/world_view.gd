@@ -25,6 +25,9 @@ const Miniboss = preload("res://sim/miniboss.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
 const Corpses = preload("res://sim/corpses.gd")
+const Items = preload("res://sim/items.gd")
+const Abilities = preload("res://sim/abilities.gd")
+const Shooting = preload("res://sim/shooting.gd")
 
 const BODY := Vector2(32, 40)
 const PROJECTILE := Vector2(18, 14)
@@ -192,6 +195,9 @@ func _draw() -> void:
 			_draw_actor(actor)
 	for pickup in state.pickups:
 		_draw_pickup(pickup)
+	for slot in state.slots:
+		if slot.cover_ticks > 0:
+			_draw_cover(slot)
 	for actor in actors:
 		if not actor.alive:
 			continue
@@ -249,7 +255,10 @@ func _draw_pickup(pickup: Pickup) -> void:
 
 	var sprite: Texture2D = ground if ground != null else textures.get(pickup.content_id + "_top")
 	if pickup.kind == Pickup.KIND_ORGAN:
-		OrganArt.draw_ground(self, textures, pickup.content_id, at)
+		if not OrganArt.draw_ground(self, textures, pickup.content_id, at):
+			_draw_badge(at, Organs.organ(pickup.content_id).get("badge", "?"))
+	elif pickup.kind == Pickup.KIND_ITEM:
+		_draw_badge(at, Items.item(pickup.content_id).get("badge", "?"))
 	elif sprite != null:
 		var size := sprite.get_size()
 		if ground != null:
@@ -267,11 +276,23 @@ func _draw_pickup(pickup: Pickup) -> void:
 		caption += " · " + Arsenal.weapon(pickup.content_id).get("name", pickup.content_id)
 	elif pickup.kind == Pickup.KIND_ORGAN:
 		caption += " · " + Organs.organ(pickup.content_id).get("name", pickup.content_id)
+	elif pickup.kind == Pickup.KIND_ITEM:
+		caption += " · " + Items.item(pickup.content_id).get("name", pickup.content_id)
 	var width := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var label_at := at + Vector2(-width * 0.5, -pickup.radius - 6)
 	draw_rect(Rect2(label_at + Vector2(-5, -14), Vector2(width + 10, 19)), Color(0.04, 0.04, 0.04, 0.8))
 	draw_string(ThemeDB.fallback_font, label_at,
 		caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 0.89, 0.65))
+
+
+## Карточка с буквой — заглушка до спрайтов Саши, см. art/README.md.
+func _draw_badge(at: Vector2, badge: String) -> void:
+	var card := Rect2(at - Vector2(17, 21), Vector2(34, 42))
+	draw_rect(card, PAPER_COLOR, true)
+	draw_rect(card, Color(0.2, 0.18, 0.15), false, 1.5)
+	var width := ThemeDB.fallback_font.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
+	draw_string(ThemeDB.fallback_font, at + Vector2(-width * 0.5, 9), badge,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color(0.16, 0.15, 0.14))
 
 
 func _within_reach(pickup: Pickup) -> bool:
@@ -370,10 +391,8 @@ func _draw_actor(actor: Actor) -> void:
 		draw_string(ThemeDB.fallback_font, at + Vector2(-18, -24), "УПАЛ", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.9, 0.75, 0.65))
 		return
 	_draw_health(actor, at, color)
-
-	if show_hitboxes and actor.aim != Vector2.ZERO and not downed:
-		var from := at - Vector2(0, _sprite_height(actor) * 0.45)
-		draw_line(from, from + actor.aim.normalized() * 40.0, Color(1, 1, 1, 0.4), 2.0)
+	if is_player and actor.slot >= 0:
+		_draw_charge(actor, at)
 
 	if actor.invulnerable > 0.0:
 		draw_arc(at, actor.radius + 10.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
@@ -387,7 +406,7 @@ func _draw_actor(actor: Actor) -> void:
 		draw_arc(at, actor.radius, 0, TAU, 32, Color(1, 0.35, 0.35, 0.9), 1.5)
 
 	if is_player:
-		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 16.0),
+		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 24.0),
 			"p%d" % (actor.slot + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.7))
 
 
@@ -542,6 +561,38 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	draw_rect(Rect2(top, Vector2(width, 3)), Color(0, 0, 0, 0.6), true)
 	var share := clampf(actor.health / maximum, 0.0, 1.0)
 	draw_rect(Rect2(top, Vector2(width * share, 3)), color.lightened(0.2), true)
+
+
+## Чемодан-укрытие: пока он стоит, его нет в руках владельца.
+func _draw_cover(slot) -> void:
+	var area := Abilities.rect(slot)
+	var rect := Rect2(origin + area.position, area.size)
+	draw_set_transform(rect.get_center() + Vector2(0, rect.size.y * 0.4), 0.0, Vector2(1.0, 0.34))
+	draw_circle(Vector2.ZERO, rect.size.x * 0.5, Color(0, 0, 0, 0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_rect(rect, Color(0.24, 0.16, 0.11), true)
+	draw_rect(rect, Color(0.08, 0.06, 0.05), false, 2.0)
+	var handle := Rect2(rect.get_center() - Vector2(rect.size.x * 0.18, rect.size.y * 0.5 + 6),
+		Vector2(rect.size.x * 0.36, 6))
+	draw_rect(handle, Color(0.14, 0.1, 0.08), true)
+	var share := clampf(slot.cover_health / Abilities.COVER_HEALTH, 0.0, 1.0)
+	var bar := Rect2(rect.position + Vector2(0, -12), Vector2(rect.size.x, 4))
+	draw_rect(bar, Color(0, 0, 0, 0.6), true)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * share, bar.size.y)), Color(0.83, 0.62, 0.35), true)
+
+
+func _draw_charge(actor: Actor, at: Vector2) -> void:
+	var slot = state.slots[actor.slot]
+	if slot.charge_ticks <= 0:
+		return
+	var duration := Shooting.charge_duration(actor.stack.compute())
+	if duration <= 0:
+		return
+	var width := 34.0
+	var top := at + Vector2(-width * 0.5, -_sprite_height(actor) - 18.0)
+	draw_rect(Rect2(top, Vector2(width, 3)), Color(0, 0, 0, 0.6), true)
+	var share := clampf(float(slot.charge_ticks) / duration, 0.0, 1.0)
+	draw_rect(Rect2(top, Vector2(width * share, 3)), Color(1.0, 0.82, 0.35), true)
 
 
 func _sprite_height(actor: Actor) -> float:
