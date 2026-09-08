@@ -1,16 +1,19 @@
 extends RefCounted
 
 const Pose = preload("res://game/arm_pose.gd")
+const Gait = preload("res://game/character_gait.gd")
 
 var _frames := {}
 var _meshes := {}
 
 
 func draw(view: Node2D, actor_id: int, texture: Texture2D, frame: String,
-		motion: Transform2D, tint: Color, backing: Texture2D = null) -> void:
-	if not _frames.has(frame) or _frames[frame].texture != texture or _frames[frame].backing != backing:
-		_frames[frame] = _prepare(texture, frame, backing)
-	var data: Dictionary = _frames[frame]
+		motion: Transform2D, tint: Color, backing: Texture2D = null,
+		legs: Texture2D = null, gait: String = "") -> void:
+	var key := frame + ":" + gait
+	if not _frames.has(key) or _frames[key].texture != texture or _frames[key].backing != backing or _frames[key].legs != legs:
+		_frames[key] = _prepare(texture, frame, backing, legs, gait)
+	var data: Dictionary = _frames[key]
 	var vertices: PackedVector3Array = data.vertices.duplicate()
 	var indices: PackedInt32Array = data.moving
 	var weights: PackedFloat32Array = data.weights
@@ -37,7 +40,8 @@ func clear() -> void:
 	_meshes.clear()
 
 
-func _prepare(texture: Texture2D, frame: String, backing: Texture2D) -> Dictionary:
+func _prepare(texture: Texture2D, frame: String, backing: Texture2D,
+		legs: Texture2D = null, gait: String = "") -> Dictionary:
 	var size := texture.get_size()
 	var original := texture.get_image()
 	var shirt := backing.get_image() if backing != null else original
@@ -77,6 +81,9 @@ func _prepare(texture: Texture2D, frame: String, backing: Texture2D) -> Dictiona
 			elif x >= shoulder.x + 3 and y >= shoulder.y + 2:
 				fill = original.get_pixel(int(shoulder.x + 11), y)
 			body.set_pixel(x, y, fill)
+	if legs != null:
+		var source := _prepare(legs, gait, backing)
+		Gait.apply(body, source.body.get_image(), frame, gait)
 	var vertices := PackedVector3Array()
 	var uv := PackedVector2Array()
 	var moving := PackedInt32Array()
@@ -99,6 +106,6 @@ func _prepare(texture: Texture2D, frame: String, backing: Texture2D) -> Dictiona
 			var i := y * columns + x
 			triangles.append_array(PackedInt32Array([i, i + 1, i + columns,
 				i + 1, i + columns + 1, i + columns]))
-	return {"texture": texture, "backing": backing, "body": ImageTexture.create_from_image(body),
+	return {"texture": texture, "backing": backing, "legs": legs, "body": ImageTexture.create_from_image(body),
 		"arm": ImageTexture.create_from_image(arm), "vertices": vertices, "uv": uv,
 		"moving": moving, "weights": weights, "triangles": triangles}

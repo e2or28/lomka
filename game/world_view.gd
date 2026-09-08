@@ -22,6 +22,7 @@ const ProjectilePose = preload("res://game/projectile_pose.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
+const TankArt = preload("res://game/tank_art.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
 const LootArt = preload("res://game/loot_art.gd")
@@ -48,8 +49,7 @@ const PLAYER_CANVAS := Vector2(128, 192)
 const PLAYER_HEIGHT := 156.0
 
 # PNG танка 1334×742; опора в центре гусениц, ствол выступает влево.
-const TANK_SIZE := Vector2(440, 245)
-const TANK_ROOT := Vector2(288, 220)
+const TANK_ROOT := TankArt.ROOT
 
 ## Запасная высота для снарядов без известной точки выпуска (например, танка).
 ## У игрока смещение фиксируется по кисти/дулу в момент выстрела.
@@ -91,6 +91,7 @@ var breath := 0.0
 
 var _animation_state: RunState = null
 var _arms := CharacterArms.new()
+var _tank_art := TankArt.new()
 var feedback := CombatFeedback.new()
 var _animation_room := ""
 
@@ -157,6 +158,7 @@ func _sync_animation_state() -> void:
 	standing_front.clear()
 	projectile_age.clear()
 	_arms.clear()
+	_tank_art.clear()
 	feedback.clear()
 
 
@@ -373,7 +375,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var side := -1.0 if actor.aim.x > 0.0 else 1.0
 		draw_set_transform(at, 0.0, Vector2(side, 1.0))
 		var color := tint if actor.alive else Color(0.45, 0.39, 0.35, 0.75 * tint.a)
-		draw_texture_rect(sprite, Rect2(-TANK_ROOT, TANK_SIZE), false, color)
+		_tank_art.draw(self, actor, sprite, color, breath)
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		return true
 	var size := sprite.get_size()
@@ -415,12 +417,16 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 	if weapon == "colt" and aim != Vector2.ZERO:
 		front = false
 	var names := CharacterPose.stand_names(weapon)
+	var gait := ""
 	if CharacterPose.use_walk_frames(speed):
-		names = CharacterPose.walk_frame_names(weapon, CharacterPose.walk_frame(phase))
+		gait = _first_name(CharacterPose.walk_frame_names(weapon, CharacterPose.walk_frame(phase)))
 		front = false
 	elif front:
 		names = CharacterPose.front_stand_names(weapon)
 	var chosen := _first_name(names)
+	if chosen == "":
+		chosen = gait
+		gait = ""
 	if chosen == "":
 		return {}
 	var side := 0 if front else CharacterPose.aiming_facing(aim, actor.velocity,
@@ -431,7 +437,7 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 	if progress_override > -2.0:
 		progress = progress_override
 	var motion := ArmPose.aimed_motion(chosen, weapon, phase, speed, progress, aim, side)
-	return {"frame": chosen, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
+	return {"frame": chosen, "gait": gait, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
 
 
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
@@ -446,7 +452,8 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if side < 0:
 		body_transform = Transform2D(Vector2(-1, 0), Vector2(0, 1), canvas + Vector2(PLAYER_CANVAS.x, 0))
 	draw_set_transform_matrix(body_transform)
-	_arms.draw(self, actor.id, textures[pose.frame], pose.frame, pose.motion, tint, textures.get("player_side_stand"))
+	_arms.draw(self, actor.id, textures[pose.frame], pose.frame, pose.motion, tint,
+		textures.get("player_side_stand"), textures.get(pose.gait), pose.gait)
 	draw_set_transform(Vector2.ZERO)
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, false)
 	_draw_weapon(canvas, tint, pose, body_transform)

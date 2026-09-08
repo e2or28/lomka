@@ -11,6 +11,8 @@
 |---|---|
 | `tools/status.sh` | Состояние проекта одной командой: гит, тесты, стенд, объём. С неё начинается сессия |
 | `Godot --path . --script res://tools/preview_combat.gd` | Снимок четырёх направлений, снарядов, попаданий и падения: `.cache/combat-preview.png` |
+| `Godot --path . --script res://tools/preview_walk.gd` | Все кадры ходьбы и обе стороны: `.cache/walk-preview.png`; `-- --frames` сохраняет 60 кадров для клипа |
+| `Godot --path . --script res://tools/preview_tank.gd` | Отдача танка: `.cache/tank-preview.png`; `-- --frames` сохраняет 120 кадров езды, подготовки и выстрела |
 | `Godot --path . --script res://tools/preview_arms.gd` | Контрольный снимок рук и оружия: `.cache/arms-preview.png`; нужен запуск с окном |
 | `tools/run.sh` | Запустить стенд. Клавиши: 1 оверлей и хитбоксы, 2 ползунки, 3 масштаб, 4 перечитать `art/`, Shift+1..9 спавн монстра, 0 убрать всех, Tab слот, V тело другого игрока, Q оружие, E подобрать, F удерживать для харвеста, R сброс, Esc выход |
 | `tools/test.sh` | Тесты симуляции без окна |
