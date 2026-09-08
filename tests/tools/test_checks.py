@@ -50,6 +50,19 @@ class CheckWrappers(unittest.TestCase):
     def test_syntax_audit_rejects_script_load_failure(self):
         self.assertNotEqual(self.run_check('audit_syntax.sh', 'Failed to load script').returncode, 0)
 
+    def test_autobot_rejects_missing_sentinel(self):
+        # Молча не состоявшийся прогон даёт пустую выборку, которую примут
+        # за результат: это хуже упавшего.
+        self.assertNotEqual(self.run_check('autobot.sh', 'сборка  зачист').returncode, 0)
+
+    def test_autobot_rejects_script_error_before_sentinel(self):
+        result = self.run_check('autobot.sh', 'SCRIPT ERROR: nil\nАВТОБОТ ЗАКОНЧИЛ: 5 прогонов')
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_autobot_accepts_finished_run(self):
+        result = self.run_check('autobot.sh', 'АВТОБОТ ЗАКОНЧИЛ: 5 прогонов, логи в res://data/logs')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_status_propagates_failed_checks(self):
         # Никакого обращения к origin и настоящему движку в тесте обёртки.
         git = self.root / 'git'

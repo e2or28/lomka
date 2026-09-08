@@ -9,3 +9,4 @@ build/
 .cache/
 __pycache__/
 art/_inbox/
+data/logs/

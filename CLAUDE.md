@@ -445,6 +445,7 @@ tools/run.sh                 # запустить стенд
 tools/make_desktop_launcher.sh  # ярлык «Ломка» на рабочем столе
 tools/test.sh                # headless-тесты симуляции
 tools/smoke.sh [кадров]      # дымовой прогон стенда без окна
+tools/autobot.sh             # прогон сборок без окна: метрики баланса
 tools/audit_syntax.sh        # аудит на синтаксис Godot 3
 tools/gen_project.sh         # пересобрать project.godot и карту ввода
 tools/gen_scenes.sh          # пересобрать сцены стенда
