@@ -18,6 +18,9 @@ const Harvest = preload("res://sim/harvest.gd")
 const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const Corpses = preload("res://sim/corpses.gd")
+const Items = preload("res://sim/items.gd")
+const Shooting = preload("res://sim/shooting.gd")
+const Abilities = preload("res://sim/abilities.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
@@ -36,6 +39,7 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var first_new_id := state.next_id
 	var room_id := state.room.id
+	Abilities.advance(state, commands)
 	_drive_players(state, commands)
 	_drive_enemies(state)
 	for projectile in state.projectiles:
@@ -85,11 +89,11 @@ static func _drive_players(state: RunState, commands: Dictionary) -> void:
 		if aim != Vector2.ZERO:
 			actor.aim = aim.normalized()
 
+		Organs.update_threat(state, actor, slot)
 		var stats := actor.stack.compute()
 		actor.velocity = Motion.step_velocity(actor.velocity, move, stats, DELTA)
 
-		if firing and actor.cooldown <= 0.0:
-			_fire(state, actor, stats)
+		Shooting.advance(state, actor, slot, stats, firing)
 
 
 static func _drive_enemies(state: RunState) -> void:
@@ -162,6 +166,7 @@ static func _move_bodies(state: RunState, events: Array[Dictionary]) -> void:
 		var before := actor.position
 		actor.position = Motion.step_position(actor.position, actor.velocity, DELTA)
 		actor.position = state.room.clamp_body(actor.position, actor.radius)
+		Abilities.constrain_enemy(state, actor, before)
 		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0:
 			var health_before := actor.health
 			_tick_organs(state, actor, before)
@@ -209,7 +214,9 @@ static func _swap_pickup(state: RunState, actor) -> void:
 	var nearest: Pickup = null
 	var shortest := INF
 	for pickup in state.pickups:
-		if pickup.kind not in [Pickup.KIND_WEAPON, Pickup.KIND_ORGAN]:
+		if pickup.kind == Pickup.KIND_WEAPON and state.slots[actor.slot].cover_ticks > 0:
+			continue
+		if pickup.kind not in [Pickup.KIND_WEAPON, Pickup.KIND_ORGAN, Pickup.KIND_ITEM]:
 			continue
 		var reach: float = pickup.radius + actor.radius
 		var distance := pickup.position.distance_squared_to(actor.position)
@@ -219,6 +226,10 @@ static func _swap_pickup(state: RunState, actor) -> void:
 		nearest = pickup
 
 	if nearest == null:
+		return
+	if nearest.kind == Pickup.KIND_ITEM:
+		if Items.equip(actor, state.slots[actor.slot], nearest.content_id):
+			state.pickups.erase(nearest)
 		return
 
 	var dropped: String = actor.weapon_id
@@ -232,23 +243,11 @@ static func _swap_pickup(state: RunState, actor) -> void:
 			return
 	elif not Arsenal.equip(actor, nearest.content_id):
 		return
+	state.slots[actor.slot].charge_ticks = 0
 	if dropped == "":
 		state.pickups.erase(nearest)
 		return
 	nearest.content_id = dropped
-
-
-static func _fire(state: RunState, actor, stats: Dictionary) -> void:
-	var rate := float(stats.get("fire_rate", 0.0))
-	var speed := float(stats.get("projectile_speed", 0.0))
-	var reach := float(stats.get("range", 0.0))
-	if rate <= 0.0 or speed <= 0.0 or reach <= 0.0:
-		return
-
-	state.projectiles.append(
-		Projectile.spawn(state.take_id(), actor, actor.aim, stats,
-			Arsenal.projectile_of(actor)))
-	actor.cooldown = 1.0 / rate
 
 
 ## Попадание проверяется после перемещения снаряда, но до перемещения тел в
@@ -256,36 +255,42 @@ static func _fire(state: RunState, actor, stats: Dictionary) -> void:
 static func _fly_projectiles(state: RunState, events: Array[Dictionary]) -> void:
 	var surviving: Array[Projectile] = []
 	for projectile in state.projectiles:
-		var flying := projectile.advance(DELTA)
-
-		if not state.room.contains(projectile.position):
-			continue
-
+		var flight := projectile.fly(DELTA, state.room)
+		var destination := projectile.position
 		var spent := false
-		for actor in state.actors:
-			if not projectile.can_hit(actor):
-				continue
-			if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0 and state.slots[actor.slot].downed:
-				continue
-			var reach := projectile.radius + actor.radius
-			if projectile.position.distance_squared_to(actor.position) > reach * reach:
-				continue
-
-			var health_before := actor.health
-			var finished := actor.take_damage(projectile.damage)
-			_record_hit(events, actor, health_before, projectile.kind,
-				projectile.velocity.normalized(), projectile.id)
-			if finished and actor.kind == Actor.Kind.PLAYER and actor.slot >= 0:
-				_knock_down(state, actor)
-			projectile.hit_ids.append(actor.id)
-			if projectile.pierce <= 0:
+		var points: Array = flight["points"]
+		for i in range(1, points.size()):
+			if _hit_segment(state, projectile, points[i - 1], points[i], events):
 				spent = true
 				break
-			projectile.pierce -= 1
-
-		if not spent and flying:
+		projectile.position = destination
+		if not spent and flight["flying"]:
 			surviving.append(projectile)
 	state.projectiles = surviving
+
+
+static func _hit_segment(state: RunState, projectile: Projectile, from: Vector2,
+		to: Vector2, events: Array[Dictionary]) -> bool:
+	var hits: Array = []
+	for actor in state.actors:
+		if not projectile.can_hit(actor): continue
+		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0 and state.slots[actor.slot].downed: continue
+		var fraction := Projectile.hit_fraction(from, to, actor.position, projectile.radius + actor.radius)
+		if fraction != INF: hits.append({"actor": actor, "fraction": fraction})
+	hits.sort_custom(func(a, b): return a.fraction < b.fraction if a.fraction != b.fraction else a.actor.id < b.actor.id)
+	for hit in hits:
+		projectile.position = from.lerp(to, hit.fraction)
+		if Abilities.blocks_shot(state, projectile, from): return true
+		var actor: Actor = hit.actor
+		var health_before := actor.health
+		var finished := actor.take_damage(projectile.damage)
+		_record_hit(events, actor, health_before, projectile.kind, (to - from).normalized(), projectile.id)
+		if finished and actor.kind == Actor.Kind.PLAYER and actor.slot >= 0: _knock_down(state, actor)
+		projectile.hit_ids.append(actor.id)
+		if projectile.pierce <= 0: return true
+		projectile.pierce -= 1
+	projectile.position = to
+	return Abilities.blocks_shot(state, projectile, from)
 
 
 ## Темп ударов задают кадры неуязвимости жертвы: своего отсчёта у врага нет.
@@ -326,6 +331,8 @@ static func _record_hit(events: Array[Dictionary], actor: Actor, health_before: 
 ## товарищ, и мёртвое тело поднимать было бы некому.
 static func _knock_down(state: RunState, actor) -> void:
 	state.slots[actor.slot].downed = true
+	state.slots[actor.slot].charge_ticks = 0
+	Abilities.finish(state, state.slots[actor.slot])
 	actor.alive = true
 	actor.health = 0.0
 	actor.velocity = Vector2.ZERO

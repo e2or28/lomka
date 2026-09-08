@@ -6,6 +6,7 @@ const Pickup = preload("res://sim/pickup.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const RoomMap = preload("res://sim/room_map.gd")
 const Corpses = preload("res://sim/corpses.gd")
+const Abilities = preload("res://sim/abilities.gd")
 
 
 static func start(seed_text: String, players: int) -> RunState:
@@ -13,6 +14,7 @@ static func start(seed_text: String, players: int) -> RunState:
 	for actor in state.actors:
 		actor.position.y -= 220
 	state.pickups[0].position = Vector2(100, -100)
+	_place_loot(state)
 	return state
 
 
@@ -34,6 +36,10 @@ static func advance(state: RunState, commands: Dictionary) -> void:
 
 
 static func _enter(state: RunState, direction: String) -> void:
+	# Укрытие принадлежит комнате, а чемодан — владельцу: иначе он уехал бы
+	# в следующую комнату лежащим на полу предыдущей.
+	for slot in state.slots:
+		Abilities.finish(state, slot)
 	var next: String = RoomMap.exits(state.room)[direction]
 	var enemies: Array = []
 	var pickups: Array = []
@@ -54,6 +60,7 @@ static func _enter(state: RunState, direction: String) -> void:
 		var roster: Array = RoomMap.ROSTERS[next]
 		for i in roster.size():
 			Encounter.add_enemy(state, roster[i], state.room.enemy_spawn(i))
+		_place_loot(state)
 	var arrival: String = RoomMap.OPPOSITE[direction]
 	var inward: Vector2 = -RoomMap.DIRECTIONS[arrival]
 	var at := RoomMap.door(state.room, arrival)
@@ -66,3 +73,11 @@ static func _enter(state: RunState, direction: String) -> void:
 		state.slots[actor.slot].harvest_target = -1
 		state.slots[actor.slot].harvest_ticks = 0
 	Corpses.advance(state)
+
+
+static func _place_loot(state: RunState) -> void:
+	for entry in RoomMap.LOOT.get(state.room.id, []):
+		var at: Vector2 = state.room.clamp_body(entry["at"], 26.0)
+		var pickup: Pickup = Pickup.item(state.take_id(), entry["id"], at)
+		if entry["kind"] == "organ": pickup.kind = Pickup.KIND_ORGAN
+		state.pickups.append(pickup)

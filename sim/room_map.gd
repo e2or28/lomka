@@ -16,6 +16,29 @@ const OPPOSITE := {"north": "south", "south": "north", "west": "east", "east": "
 const ROSTERS := {"south": [], "center": ["test_monster", "runner", "heavy"],
 	"north": ["tandem"], "west": ["runner", "runner"], "east": ["heavy", "test_monster"]}
 
+## Постоянный лут первого этажа: раскладывается при первом входе в комнату
+## и больше не создаётся. Генерации по сиду ещё нет — она придёт на M3.
+const LOOT := {
+	"south": [
+		{"kind": "item", "id": "carbon_copy", "at": Vector2(-320, -40)},
+		{"kind": "item", "id": "red_folder", "at": Vector2(320, -40)},
+	],
+	"center": [
+		{"kind": "item", "id": "rubber_stamp", "at": Vector2(-360, 230)},
+		{"kind": "item", "id": "spring", "at": Vector2(360, 230)},
+	],
+	"west": [
+		{"kind": "item", "id": "runners", "at": Vector2(-200, 330)},
+		{"kind": "item", "id": "hole_punch", "at": Vector2(60, 330)},
+	],
+	"east": [
+		{"kind": "item", "id": "heavy_seal", "at": Vector2(-160, 330)},
+		{"kind": "item", "id": "optical_ruler", "at": Vector2(140, 330)},
+		{"kind": "organ", "id": "rear_eye", "at": Vector2(-160, -330)},
+		{"kind": "organ", "id": "notary_eye", "at": Vector2(140, -330)},
+	],
+}
+
 
 static func make(id: String) -> Room:
 	var room := Room.new()

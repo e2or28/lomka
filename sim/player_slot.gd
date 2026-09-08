@@ -19,6 +19,15 @@ var actor_id: int = -1
 ## что от него зависит исход тика (правило 8).
 var interact_held: bool = false
 
+var items: Array[String] = []
+var charge_ticks: int = 0
+var skill_held: bool = false
+var skill_cooldown_ticks: int = 0
+var cover_ticks: int = 0
+var cover_health: float = 0.0
+var cover_position: Vector2 = Vector2.ZERO
+var cover_direction: Vector2 = Vector2.RIGHT
+
 var organs: Dictionary = {}
 var stationary_ticks: int = 0
 var harvest_target: int = -1
@@ -36,14 +45,22 @@ func to_dict() -> Dictionary:
 	return {
 		"actor_id": actor_id,
 		"character_id": character_id,
+		"charge_ticks": charge_ticks,
+		"cover_direction": cover_direction,
+		"cover_health": cover_health,
+		"cover_position": cover_position,
+		"cover_ticks": cover_ticks,
 		"downed": downed,
 		"harvest_spent": harvest_spent,
 		"harvest_target": harvest_target,
 		"harvest_ticks": harvest_ticks,
 		"index": index,
 		"interact_held": interact_held,
+		"items": items.duplicate(),
 		"occupied": occupied,
 		"organs": organs.duplicate(),
+		"skill_cooldown_ticks": skill_cooldown_ticks,
+		"skill_held": skill_held,
 		"stationary_ticks": stationary_ticks,
 	}
 
@@ -53,6 +70,15 @@ static func from_dict(data: Dictionary):
 	slot.actor_id = int(data.get("actor_id", -1))
 	slot.character_id = data.get("character_id", "")
 	slot.downed = bool(data.get("downed", false))
+	for item in data.get("items", []):
+		slot.items.append(str(item))
+	slot.charge_ticks = int(data.get("charge_ticks", 0))
+	slot.skill_held = bool(data.get("skill_held", false))
+	slot.skill_cooldown_ticks = int(data.get("skill_cooldown_ticks", 0))
+	slot.cover_ticks = int(data.get("cover_ticks", 0))
+	slot.cover_health = float(data.get("cover_health", 0.0))
+	slot.cover_position = data.get("cover_position", Vector2.ZERO)
+	slot.cover_direction = data.get("cover_direction", Vector2.RIGHT)
 	slot.harvest_target = int(data.get("harvest_target", -1))
 	slot.harvest_ticks = int(data.get("harvest_ticks", 0))
 	slot.harvest_spent = bool(data.get("harvest_spent", false))

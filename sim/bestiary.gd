@@ -19,7 +19,7 @@ const CLERK := {
 	},
 	"radius": 16.0,
 	"start_items": [],
-	"skill": "",
+	"skill": "lunch_break",
 	"unlocked_by_default": true,
 }
 
@@ -76,7 +76,7 @@ const HEAVY := {
 	},
 	"radius": 34.0,
 	"behaviour": "bruiser",
-	"organ_drops": [],
+	"organ_drops": [{"organ": "coward_heart", "chance": 1.0}],
 	"zones": ["dev_room"],
 	"tier": 2,
 }

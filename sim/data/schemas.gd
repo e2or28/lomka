@@ -11,6 +11,8 @@ const Schema = preload("res://sim/data/schema.gd")
 ## заводит стат, который никто не читает.
 const STATS: Array[String] = [
 	"acceleration",
+	"bounces",
+	"charge_time",
 	"damage",
 	"fire_rate",
 	"friction",
@@ -20,6 +22,7 @@ const STATS: Array[String] = [
 	"projectile_speed",
 	"pierce",
 	"range",
+	"rear_shots",
 	"shot_momentum",
 	"tumble_range",
 	"withdrawal_rate",
@@ -55,6 +58,8 @@ const HITBOX := {"type": TYPE_FLOAT, "min": 1.0, "required": false}
 const ITEM := {
 	"id": {"type": TYPE_STRING, "id": true},
 	"name": {"type": TYPE_STRING},
+	"description": {"type": TYPE_STRING, "required": false},
+	"badge": {"type": TYPE_STRING, "required": false},
 	"rarity": {"type": TYPE_STRING, "values": RARITIES},
 	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false, "default": []},
 	"behaviours": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
@@ -78,9 +83,10 @@ const ORGAN := {
 	"rarity": {"type": TYPE_STRING, "values": RARITIES},
 	"slot": {"type": TYPE_STRING, "values": ORGAN_SLOTS, "required": false},
 	"description": {"type": TYPE_STRING, "required": false},
+	"badge": {"type": TYPE_STRING, "required": false},
 	"heat": {"type": TYPE_INT, "min": 0, "required": false},
 	"modifiers": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false},
-	"behaviour": {"type": TYPE_STRING, "values": ["", "keep_moving"], "required": false},
+	"behaviour": {"type": TYPE_STRING, "values": ["", "keep_moving", "coward"], "required": false},
 	"tags": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
 }
 

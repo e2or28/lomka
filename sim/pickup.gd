@@ -7,6 +7,7 @@ extends RefCounted
 
 const KIND_WEAPON := "weapon"
 const KIND_ORGAN := "organ"
+const KIND_ITEM := "item"
 
 var id: int = 0
 var kind: String = KIND_WEAPON
@@ -33,6 +34,12 @@ static func weapon(p_id: int, weapon_id: String, at: Vector2):
 static func organ(p_id: int, organ_id: String, at: Vector2):
 	var pickup = weapon(p_id, organ_id, at)
 	pickup.kind = KIND_ORGAN
+	return pickup
+
+
+static func item(p_id: int, item_id: String, at: Vector2):
+	var pickup = weapon(p_id, item_id, at)
+	pickup.kind = KIND_ITEM
 	return pickup
 
 

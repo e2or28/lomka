@@ -79,7 +79,7 @@ func _test_revisit_and_save_keep_corpses_loot_and_build() -> bool:
 	var corpse_id: int = corpse.id
 	var last_id: int = state.next_id
 	_walk(state, "south")
-	eq(state.pickups.size(), 1, "лут стартовой комнаты потерян или продублирован")
+	eq(state.pickups.size(), 3, "лут стартовой комнаты потерян или продублирован")
 	eq(state.pickups[0].id, original_pickup, "подмена оставленного предмета")
 	eq(state.pickups[0].position, Vector2(50, 50), "лут переместился")
 	var restored = Arena.after_save(state)

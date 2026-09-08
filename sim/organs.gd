@@ -9,15 +9,35 @@ const SLOT_NAMES := {
 }
 
 const RECORDS := {
+	"coward_heart": {
+		"id": "coward_heart", "name": "Сердце труса", "slot": "heart", "badge": "Тр",
+		"price": 35, "rarity": "uncommon", "heat": 10,
+		"description": "+35% скорости, если враг ближе 240. Иначе −15% скорости.",
+		"behaviour": "coward", "modifiers": [],
+	},
+	"rear_eye": {
+		"id": "rear_eye", "name": "Глаз затылочника", "slot": "eyes", "badge": "Зт",
+		"price": 40, "rarity": "uncommon", "heat": 15,
+		"description": "Дополнительный выстрел назад. −20% урона всех выстрелов.",
+		"modifiers": [{"stat": "rear_shots", "op": "add", "value": 1.0},
+			{"stat": "damage", "op": "mul", "value": 0.8}],
+	},
+	"notary_eye": {
+		"id": "notary_eye", "name": "Глаз нотариуса", "slot": "eyes", "badge": "Нт",
+		"price": 40, "rarity": "uncommon", "heat": 15,
+		"description": "Урон ×2. Каждый выстрел требует 0,6 с удержания направления.",
+		"modifiers": [{"stat": "charge_time", "op": "add", "value": 0.6},
+			{"stat": "damage", "op": "mul", "value": 2.0}],
+	},
 	"courier_heart": {
-		"id": "courier_heart", "name": "Сердце курьера", "slot": "heart",
+		"id": "courier_heart", "name": "Сердце курьера", "slot": "heart", "badge": "Кр",
 		"price": 30, "rarity": "uncommon", "heat": 10,
 		"description": "+25% скорости. Стой дольше 3 с — теряешь 5 HP каждую секунду.",
 		"behaviour": "keep_moving",
 		"modifiers": [{"stat": "move_speed", "op": "mul", "value": 1.25}],
 	},
 	"armored_spine": {
-		"id": "armored_spine", "name": "Бронированный позвоночник", "slot": "spine",
+		"id": "armored_spine", "name": "Бронированный позвоночник", "slot": "spine", "badge": "Пз",
 		"price": 80, "rarity": "boss", "heat": 25,
 		"description": "+35% урона. −15% скорости движения.",
 		"modifiers": [
@@ -78,6 +98,8 @@ static func unequip(actor, slot, socket: String) -> String:
 
 
 static func _rebuild(actor, slot) -> void:
+	actor.stack.remove_source("organ:threat")
+	slot.charge_ticks = 0
 	for socket in Schemas.ORGAN_SLOTS:
 		var source: String = "organ:" + socket
 		actor.stack.remove_source(source)
@@ -89,6 +111,20 @@ static func _rebuild(actor, slot) -> void:
 	if not has_behaviour(slot, "keep_moving"):
 		slot.stationary_ticks = 0
 	actor.health = minf(actor.health, actor.max_health())
+
+
+static func update_threat(state, actor, slot) -> void:
+	if not has_behaviour(slot, "coward"): return
+	var multiplier := 0.85
+	for enemy in state.actors:
+		if enemy.alive and enemy.kind != actor.kind and actor.position.distance_squared_to(enemy.position) <= 240.0 * 240.0:
+			multiplier = 1.35
+			break
+	for modifier in actor.stack.modifiers():
+		if modifier.source == "organ:threat" and modifier.value == multiplier:
+			return
+	actor.stack.remove_source("organ:threat")
+	actor.stack.add(Modifier.make("move_speed", Modifier.Op.MUL, multiplier, "organ:threat"))
 
 
 static func _apply(actor, entries: Array, source: String) -> void:
