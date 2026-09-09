@@ -47,7 +47,10 @@ func enemy_spawn(index: int) -> Vector2:
 
 
 func clamp_body(position: Vector2, radius: float) -> Vector2:
+	# Нижняя стена нарисована в профиль и перекрывает тело: у неё ступни
+	# встают на контур, иначе перед ней остаётся пустая полоса в радиус.
 	var limits := bounds.grow(-radius)
+	limits.size.y += radius
 	var at := Vector2(
 		clampf(position.x, limits.position.x, limits.end.x),
 		clampf(position.y, limits.position.y, limits.end.y))

@@ -120,7 +120,7 @@ func _test_pushing_a_wall_counts_as_stopping_and_can_end_run() -> bool:
 	var state := Arena.solo("стена")
 	var player := state.actor_of_slot(0)
 	Organs.equip(player, state.slots[0], "courier_heart")
-	player.position = Vector2(0, state.room.bounds.end.y - player.radius)
+	player.position = Vector2(0, state.room.bounds.end.y)
 	player.health = 5.0
 	Arena.hold(state, 181, Vector2.DOWN)
 	check(state.party_down(), "упор в стену обошёл штраф или падение")

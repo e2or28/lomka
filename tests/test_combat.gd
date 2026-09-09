@@ -180,6 +180,7 @@ func _test_bodies_stay_inside_the_room() -> bool:
 	var state := Arena.room(SEED, 1, 1)
 	Arena.hold(state, 600, Vector2(1, 1), Vector2.ZERO)
 	var player := state.actor_of_slot(0)
-	check(state.room.bounds.has_point(player.position),
+	# Допуск на волосок: у нижней стены ступни встают ровно на контур.
+	check(state.room.bounds.grow(0.01).has_point(player.position),
 		"тело вышло за стены комнаты: %s вне %s" % [player.position, state.room.bounds])
 	return true

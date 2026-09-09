@@ -126,15 +126,17 @@ func _test_lower_boundary_matches_black_outline_and_stops_bodies() -> bool:
 		var player = state.actor_of_slot(0)
 		player.position = Vector2(-200, room.bounds.end.y - 150)
 		Arena.hold(state, 120, Vector2.DOWN)
-		almost_eq(player.position.y + player.radius - room.bounds.position.y + inset.y,
-			outline[id], "движение остановилось до контура или прошло сквозь него " + id)
+		almost_eq(player.position.y - room.bounds.position.y + inset.y,
+			outline[id], "ноги остановились до контура или прошли сквозь него " + id)
 		eq(state.room.id, id, "переход через стену мимо нижней двери " + id)
 		var top: float = -623 if id in ["west", "east"] else (-340 if id == "south" else -375)
 		almost_eq(RoomArt.image_rect(room, image.get_size()).position.y, top - RoomArt.WALL_HEIGHT,
 			"граница по контуру сдвинула рисунок комнаты " + id)
+		var limits: Rect2 = room.bounds.grow(-15.99)
+		limits.size.y += 16.0
 		for n in 16:
 			var at: Vector2 = room.clamp_body(Vector2.RIGHT.rotated(TAU * n / 16) * 5000, 16)
-			check(room.bounds.grow(-15.99).has_point(at), "тело за стеной " + id)
+			check(limits.has_point(at), "тело за стеной " + id)
 		for blocker in room.blockers:
 			var at: Vector2 = room.clamp_body(blocker.get_center(), 16)
 			check(not blocker.grow(15.99).has_point(at), "тело в косяке " + id)

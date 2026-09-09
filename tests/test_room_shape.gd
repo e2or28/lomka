@@ -17,8 +17,8 @@ func _test_lower_wall_stops_feet_at_the_visible_floor() -> bool:
 	var room = Room.dev_room()
 	var feet: Vector2 = room.clamp_body(Vector2(-200, 1000), RADIUS)
 	var pixel_y: float = feet.y - room.bounds.position.y + WorldView.ROOM_INSET.y
-	check(pixel_y + RADIUS <= 640.0,
-		"ноги заходят на нижнюю стену: пол кончается на y=640, круг тела доходит до %.0f" % (pixel_y + RADIUS))
+	almost_eq(pixel_y, 640.0,
+		"ноги встали не на контур пола: пол кончается на y=640, ступни на %.0f" % pixel_y)
 	return true
 
 
@@ -39,6 +39,7 @@ func _test_bounds_sit_on_the_drawn_floor() -> bool:
 func _test_body_stays_inside_the_room() -> bool:
 	var room = Room.dev_room()
 	var limits: Rect2 = room.bounds.grow(-RADIUS)
+	limits.size.y += RADIUS
 	var outside := 0
 	for step in 64:
 		var angle := TAU * step / 64.0
