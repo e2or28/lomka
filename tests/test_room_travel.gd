@@ -112,14 +112,26 @@ func _test_party_transfer_does_not_revive_or_bounce() -> bool:
 	return true
 
 
-func _test_every_floor_matches_source_and_stops_bodies() -> bool:
+func _test_lower_boundary_matches_black_outline_and_stops_bodies() -> bool:
+	# Чёрный контур над лицевой полосой замерен в исходных PNG, вне дверей.
+	var outline := {"south": 890, "center": 890, "north": 890, "west": 1386, "east": 1386}
 	for id in Map.IDS:
 		var room = Map.make(id)
 		var inset := RoomArt.floor_inset(id)
 		var image := Image.new()
 		eq(image.load("res://art/room_%s.png" % id), OK, "нет PNG комнаты " + id)
 		var bottom: float = inset.y + room.bounds.size.y
-		almost_eq(bottom, 1390 if id in ["west", "east"] else 890, "коллизия ниже нарисованного пола " + id)
+		almost_eq(bottom, outline[id], "граница не на чёрном контуре стены " + id)
+		var state = Encounter.dev_room("lower-wall", 1, 0, room)
+		var player = state.actor_of_slot(0)
+		player.position = Vector2(-200, room.bounds.end.y - 150)
+		Arena.hold(state, 120, Vector2.DOWN)
+		almost_eq(player.position.y + player.radius - room.bounds.position.y + inset.y,
+			outline[id], "движение остановилось до контура или прошло сквозь него " + id)
+		eq(state.room.id, id, "переход через стену мимо нижней двери " + id)
+		var top: float = -623 if id in ["west", "east"] else (-340 if id == "south" else -375)
+		almost_eq(RoomArt.image_rect(room, image.get_size()).position.y, top - RoomArt.WALL_HEIGHT,
+			"граница по контуру сдвинула рисунок комнаты " + id)
 		for n in 16:
 			var at: Vector2 = room.clamp_body(Vector2.RIGHT.rotated(TAU * n / 16) * 5000, 16)
 			check(room.bounds.grow(-15.99).has_point(at), "тело за стеной " + id)

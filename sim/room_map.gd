@@ -44,9 +44,10 @@ static func make(id: String) -> Room:
 	var room := Room.new()
 	room.id = id
 	# Пол замерен в исходных PNG; координаты симуляции начинаются в его центре.
+	# Низ упирается в чёрный контур над лицевой полосой: y=890/890/890/1386/1386.
 	var size := Vector2(1344, 750)
 	if id == "south": size.y = 680
-	if id in ["west", "east"]: size = Vector2(832, 1250)
+	if id in ["west", "east"]: size = Vector2(832, 1246)
 	room.bounds = Rect2(-size * 0.5, size)
 	room.player_spawns = [Vector2(-70, 100), Vector2(70, 100), Vector2(-70, 170), Vector2(70, 170)]
 	room.enemy_spawns = [Vector2(0, -100), Vector2(-240, -160), Vector2(240, -160)]
