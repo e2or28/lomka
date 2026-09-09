@@ -18,12 +18,13 @@ var archetype: String = ""
 ## Пустая строка у игрока: им управляет человек.
 var behaviour: String = ""
 
-## Хитбокс — круг на позиции тела, как Entity.Size в Isaac. От кадра
-## анимации не зависит: иначе попадание перестаёт быть предсказуемым, и
-## игрок не может научиться расстоянию. Значение по умолчанию — у игрока:
-## уже силуэта намеренно, спрайт 47 пикселей в плечах, так прощаются
-## касания краем. У врагов приходит из бестиария.
+## Напольный радиус для стен, расталкивания и касаний. У игрока он также
+## остаётся прощающей зоной попадания; у врагов урон принимают hurtboxes.
 var radius: float = 16.0
+## Зоны урона относительно опоры тела в плоскости видимого снаряда.
+var hurtboxes: Array[Rect2] = []
+var facing: int = 1
+var standing_front: bool = false
 
 var position: Vector2 = Vector2.ZERO
 var velocity: Vector2 = Vector2.ZERO
@@ -86,8 +87,10 @@ func to_dict() -> Dictionary:
 		"behaviour": behaviour,
 		"cooldown": cooldown,
 		"corpse_until_tick": corpse_until_tick,
+		"facing": facing,
 		"health": health,
 		"harvested": harvested,
+		"hurtboxes": hurtboxes,
 		"id": id,
 		"invulnerable": invulnerable,
 		"kind": int(kind),
@@ -96,6 +99,7 @@ func to_dict() -> Dictionary:
 		"radius": radius,
 		"slot": slot,
 		"stack": stack.to_dict(),
+		"standing_front": standing_front,
 		"velocity": velocity,
 		"weapon_id": weapon_id,
 	}
@@ -111,6 +115,9 @@ static func from_dict(data: Dictionary):
 	actor.behaviour = data.get("behaviour", "")
 	actor.cooldown = float(data.get("cooldown", 0.0))
 	actor.corpse_until_tick = int(data.get("corpse_until_tick", -1))
+	actor.facing = int(data.get("facing", 1))
+	actor.standing_front = bool(data.get("standing_front", false))
+	actor.hurtboxes.assign(data.get("hurtboxes", []))
 	actor.health = float(data.get("health", 0.0))
 	actor.harvested = bool(data.get("harvested", false))
 	actor.organ_id = data.get("organ_id", "")

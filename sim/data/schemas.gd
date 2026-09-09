@@ -120,6 +120,7 @@ const ENEMY := {
 	"name": {"type": TYPE_STRING},
 	"base_stats": STAT_BLOCK,
 	"radius": HITBOX,
+	"hurtboxes": {"type": TYPE_ARRAY, "element_type": TYPE_RECT2, "required": false},
 	"behaviour": {"type": TYPE_STRING, "values": BEHAVIOURS, "required": false, "default": "charger"},
 	"organ_drops": {"type": TYPE_ARRAY, "element_schema": ORGAN_DROP, "required": false, "default": []},
 	"zones": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},

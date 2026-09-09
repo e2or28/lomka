@@ -1,4 +1,5 @@
 extends RefCounted
+const ShotGeometry = preload("res://sim/shot_geometry.gd")
 ## Снаряд. Летит по прямой на своей высоте — падения нет. Долетев до
 ## заявленной дальности, не гаснет, а переворачивается через себя и
 ## проходит ещё отрезок (приём Mr. P из Brawl Stars) — дуга с падением
@@ -16,6 +17,7 @@ var owner_id: int = 0
 var owner_kind: int = 0
 
 var position: Vector2 = Vector2.ZERO
+var projection_offset := Vector2.ZERO
 var velocity: Vector2 = Vector2.ZERO
 var damage: float = 0.0
 var radius: float = 6.0
@@ -34,9 +36,16 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 	var projectile := new()
 	projectile.id = p_id
 	projectile.kind = p_kind
+	if p_kind == "folder":
+		projectile.radius = 17.0
 	projectile.owner_id = owner.id
 	projectile.owner_kind = int(owner.kind)
 	projectile.position = owner.position
+	var side: int = owner.facing
+	if absf(direction.x) > 0.2:
+		side = 1 if direction.x > 0 else -1
+	var front: bool = owner.standing_front and owner.velocity.length() < 12.0 and absf(direction.x) <= 0.2
+	projectile.projection_offset = ShotGeometry.offset(p_kind, direction, side, front)
 	projectile.damage = float(stats.get("damage", 0.0))
 	projectile.pierce = maxi(0, int(stats.get("pierce", 0.0)))
 	projectile.bounces = maxi(0, int(stats.get("bounces", 0.0)))
@@ -56,6 +65,14 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 
 func total_range() -> float:
 	return straight_range + tumble_range
+
+
+static func hop(tumble: float) -> float:
+	return 0.0 if tumble < 0.0 else sin(clampf(tumble, 0.0, 1.0) * PI) * 7.0
+
+
+func flight_offset() -> Vector2:
+	return projection_offset - Vector2(0, hop(tumble_progress()))
 
 
 func tumbling() -> bool:
@@ -164,6 +181,7 @@ func to_dict() -> Dictionary:
 		"owner_kind": owner_kind,
 		"pierce": pierce,
 		"position": position,
+		"projection_offset": projection_offset,
 		"radius": radius,
 		"straight_range": straight_range,
 		"travelled": travelled,
@@ -186,6 +204,7 @@ static func from_dict(data: Dictionary):
 	projectile.owner_kind = int(data.get("owner_kind", 0))
 	projectile.pierce = int(data.get("pierce", 0))
 	projectile.position = data.get("position", Vector2.ZERO)
+	projectile.projection_offset = data.get("projection_offset", Vector2.ZERO)
 	projectile.radius = float(data.get("radius", 6.0))
 	projectile.straight_range = float(data.get("straight_range", 0.0))
 	projectile.travelled = float(data.get("travelled", 0.0))

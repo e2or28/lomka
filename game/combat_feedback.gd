@@ -8,7 +8,6 @@ var shots := {}
 var hits := {}
 var falls := {}
 var impacts: Array[Dictionary] = []
-var projectile_offsets := {}
 
 
 func clear() -> void:
@@ -16,7 +15,6 @@ func clear() -> void:
 	hits.clear()
 	falls.clear()
 	impacts.clear()
-	projectile_offsets.clear()
 
 
 func shot(event: Dictionary, at: Vector2) -> void:
@@ -24,7 +22,6 @@ func shot(event: Dictionary, at: Vector2) -> void:
 	record["age"] = 0.0
 	record["at"] = at
 	shots[event.actor_id] = record
-	projectile_offsets[event.projectile_id] = at - Vector2(event.position)
 
 
 func hit(event: Dictionary, at: Vector2) -> void:

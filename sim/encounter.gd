@@ -64,6 +64,7 @@ static func add_enemy(state: RunState, enemy_id: String, position: Vector2) -> A
 	var actor := Actor.new(state.take_id(), Actor.Kind.ENEMY)
 	actor.archetype = enemy_id
 	actor.behaviour = record.get("behaviour", "charger")
+	actor.hurtboxes.assign(record.get("hurtboxes", []))
 	actor.radius = float(record.get("radius", actor.radius))
 	actor.position = position
 	actor.stack.base = record.get("base_stats", {}).duplicate()

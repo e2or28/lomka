@@ -26,10 +26,8 @@ const CLERK := {
 ## Различаются повадкой (behaviour, разбирается в sim/tick.gd), а не только
 ## числами: одинаковые по поведению враги в толпе не читаются.
 ##
-## radius — круг хитбокса. Чем тело тяжелее и медленнее, тем он больше:
-## в толстяка легче попасть и труднее от него увернуться. Числа стартовые,
-## под заглушку monster.png; с настоящими спрайтами радиус приезжает
-## вместе с каждым.
+## radius задаёт след на полу, hurtboxes — видимое тело для снарядов.
+## Пока обычные враги используют один рисунок, зоны урона у них одинаковы.
 const TEST_MONSTER := {
 	"id": "test_monster",
 	"name": "Монстр",
@@ -41,6 +39,7 @@ const TEST_MONSTER := {
 		"friction": 1400.0,
 	},
 	"radius": 24.0,
+	"hurtboxes": [Rect2(-36, -86, 72, 84)],
 	"behaviour": "charger",
 	"organ_drops": [],
 	"zones": ["dev_room"],
@@ -58,6 +57,7 @@ const RUNNER := {
 		"friction": 2200.0,
 	},
 	"radius": 18.0,
+	"hurtboxes": [Rect2(-36, -86, 72, 84)],
 	"behaviour": "harrier",
 	"organ_drops": [{"organ": "courier_heart", "chance": 1.0}],
 	"zones": ["dev_room"],
@@ -75,6 +75,7 @@ const HEAVY := {
 		"friction": 700.0,
 	},
 	"radius": 34.0,
+	"hurtboxes": [Rect2(-36, -86, 72, 84)],
 	"behaviour": "bruiser",
 	"organ_drops": [{"organ": "coward_heart", "chance": 1.0}],
 	"zones": ["dev_room"],
@@ -89,6 +90,8 @@ const TANDEM := {
 		"projectile_speed": 340.0, "range": 1200.0,
 	},
 	"radius": 92.0,
+	"hurtboxes": [Rect2(-270, -68, 418, 90), Rect2(-128, -112, 226, 48),
+		Rect2(-84, -218, 140, 110), Rect2(-282, -76, 164, 18)],
 	"organ_drops": [{"organ": "armored_spine", "chance": 1.0}],
 	"zones": ["dev_room"], "tier": 3,
 }
@@ -114,6 +117,9 @@ static func validate_all() -> PackedStringArray:
 	var errors := Schemas.validate_records("character", CHARACTERS)
 	errors.append_array(Schemas.validate_records("enemy", ENEMIES))
 	for id in ENEMIES:
+		for rect in ENEMIES[id].get("hurtboxes", []):
+			if typeof(rect) == TYPE_RECT2 and (rect.size.x <= 0 or rect.size.y <= 0):
+				errors.append("enemy '%s': hurtbox must have positive size" % id)
 		for drop in ENEMIES[id].get("organ_drops", []):
 			if Organs.organ(drop["organ"]).is_empty():
 				errors.append("enemy '%s': unknown organ %s" % [id, drop["organ"]])

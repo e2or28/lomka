@@ -20,9 +20,7 @@ func _test_bestiary_matches_schema() -> bool:
 	return true
 
 
-## Хитбокс — круг на позиции тела, радиус приходит из бестиария. Общий
-## радиус на всех означал бы, что в Начальника попасть ровно так же
-## трудно, как в Курьера, каких бы размеров их ни нарисовали.
+## Размер следа на полу приходит из бестиария и определяет касания.
 func _test_hitbox_comes_from_the_bestiary() -> bool:
 	var state := Arena.solo(SEED)
 	var heavy := Encounter.add_enemy(state, "heavy", Vector2(300, 0))
@@ -36,10 +34,9 @@ func _test_hitbox_comes_from_the_bestiary() -> bool:
 	return true
 
 
-## Круг больше — попадание засчитывается дальше от центра. Это и есть вся
-## система: снаряд против суммы двух радиусов. Тики считаны так, чтобы
-## снаряд успел пройти мимо, а враг — не успел сойти с места.
-func _test_bigger_body_is_hit_from_further() -> bool:
+## Одна и та же заглушка у курьера и начальника имеет одну зону урона.
+## Напольный радиус не должен превращать видимую часть курьера в пустоту.
+func _test_same_visible_body_has_same_projectile_hitbox() -> bool:
 	var hit := PackedStringArray()
 	for enemy_id in ["runner", "heavy"]:
 		var state := Arena.duel(SEED, enemy_id, Vector2(34.0, 32.0))
@@ -50,8 +47,8 @@ func _test_bigger_body_is_hit_from_further() -> bool:
 		if enemy.health < before:
 			hit.append(enemy_id)
 
-	eq(", ".join(hit), "heavy",
-		"мимо на 32 пикселя задело не тех, кого надо: [%s]" % ", ".join(hit))
+	eq(", ".join(hit), "runner, heavy",
+		"видимая часть тела не принимает снаряд: [%s]" % ", ".join(hit))
 	return true
 
 

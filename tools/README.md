@@ -11,6 +11,7 @@
 |---|---|
 | `tools/status.sh` | Состояние проекта одной командой: гит, тесты, стенд, объём. С неё начинается сессия |
 | `Godot --path . --script res://tools/preview_combat.gd` | Снимок четырёх направлений, снарядов, попаданий и падения: `.cache/combat-preview.png` |
+| `Godot --path . --script res://tools/preview_hitboxes.gd` | Зоны урона и напольные круги всех врагов: `.cache/hitbox-preview.png` |
 | `Godot --path . --script res://tools/preview_walk.gd` | Все кадры ходьбы и обе стороны: `.cache/walk-preview.png`; `-- --frames` сохраняет 60 кадров для клипа |
 | `Godot --path . --script res://tools/preview_tank.gd` | Отдача танка: `.cache/tank-preview.png`; `-- --frames` сохраняет 120 кадров езды, подготовки и выстрела |
 | `Godot --path . --script res://tools/preview_arms.gd` | Контрольный снимок рук и оружия: `.cache/arms-preview.png`; нужен запуск с окном |

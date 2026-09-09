@@ -14,7 +14,6 @@ const Projectile = preload("res://sim/projectile.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CharacterPose = preload("res://game/character_pose.gd")
-const Aim = preload("res://sim/aim.gd")
 const CombatFeedback = preload("res://game/combat_feedback.gd")
 const ArmPose = preload("res://game/arm_pose.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
@@ -23,6 +22,7 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const TankArt = preload("res://game/tank_art.gd")
+const Hitboxes = preload("res://sim/hitboxes.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
 const LootArt = preload("res://game/loot_art.gd")
@@ -71,9 +71,7 @@ var state: RunState = null
 var origin := Vector2.ZERO
 var textures: Dictionary = {}
 
-## В представлении, а не в состоянии забега: попадание считается по
-## положению тела, а не по нарисованной руке, и гонять фазу шага по сети
-## незачем.
+## Фаза шага косметическая; сторону тела представление читает из актора.
 var stride_phase: Dictionary = {}
 var facing: Dictionary = {}
 
@@ -112,39 +110,18 @@ func advance(delta: float) -> void:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
-		var shooting := bool(firing.get(actor.id, false))
-		facing[actor.id] = CharacterPose.aiming_facing(
-			actor.aim, actor.velocity, shooting, facing.get(actor.id, 1))
-		standing_front[actor.id] = CharacterPose.stand_front(
-			actor.aim, actor.velocity, shooting,
-			bool(standing_front.get(actor.id, false)))
+		facing[actor.id] = actor.facing
+		standing_front[actor.id] = actor.standing_front
 
 	var live_projectiles := {}
 	for projectile in state.projectiles:
 		live_projectiles[projectile.id] = true
 		projectile_age[projectile.id] = float(projectile_age.get(projectile.id, 0.0)) + delta
-		if not feedback.projectile_offsets.has(projectile.id):
-			feedback.projectile_offsets[projectile.id] = _restored_emission_offset(projectile)
 
 	for id in projectile_age.keys():
 		if live_projectiles.has(id):
 			continue
 		projectile_age.erase(id)
-	for id in feedback.projectile_offsets.keys():
-		if not live_projectiles.has(id):
-			feedback.projectile_offsets.erase(id)
-
-
-func _restored_emission_offset(projectile: Projectile) -> Vector2:
-	var owner := state.actor_by_id(projectile.owner_id)
-	if owner != null and owner.kind == Actor.Kind.PLAYER and projectile.kind in ["bullet", "folder"]:
-		var weapon := "colt" if projectile.kind == "bullet" else "suitcase"
-		var aim := Aim.snap(projectile.velocity.normalized())
-		var pose := _player_pose(owner, aim, weapon, 0.0)
-		if not pose.is_empty():
-			return ArmPose.emission(pose.frame, pose.motion, weapon,
-				CharacterPose.weapon_offset(weapon, Vector2.ZERO, false), pose.side, aim) - PLAYER_ROOT
-	return Vector2(0, -PROJECTILE_FLIGHT)
 
 
 func _sync_animation_state() -> void:
@@ -180,9 +157,12 @@ func consume_events(events: Array[Dictionary]) -> void:
 					var grip := CharacterPose.weapon_offset(event.weapon, Vector2.ZERO, false)
 					at = event.position - PLAYER_ROOT + CharacterPose.idle_bob(actor.velocity.length(), breath) + ArmPose.emission(
 						pose.frame, pose.motion, event.weapon, grip, pose.side, event.aim)
+			if event.has("projection_offset"):
+				at = event.position + event.projection_offset
 			feedback.shot(event, at)
 		elif event.type == "hit":
 			var at: Vector2 = event.position - Vector2(0, _sprite_height(actor) * 0.55)
+			at = event.get("impact_position", at)
 			feedback.hit(event, at)
 
 
@@ -257,15 +237,18 @@ func _reachable_pickup():
 	return Pickup.nearest(state, actor)
 
 
+func _projectile_at(projectile: Projectile) -> Vector2:
+	return origin + projectile.position + projectile.flight_offset()
+
+
 func _draw_projectile(projectile: Projectile) -> void:
 	var ground_at := origin + projectile.position
 	var age := float(projectile_age.get(projectile.id, 0.0))
 
 	var tumble := projectile.tumble_progress()
-	_draw_projectile_shadow(ground_at, tumble)
+	_draw_projectile_shadow(ground_at + Vector2(projectile.projection_offset.x, 0), tumble)
 
-	var emission_offset: Vector2 = feedback.projectile_offsets.get(projectile.id, Vector2(0, -PROJECTILE_FLIGHT))
-	var at := ground_at + emission_offset - Vector2(0, ProjectilePose.hop(tumble))
+	var at := _projectile_at(projectile)
 	var turn_direction := -1.0 if projectile.velocity.x < 0.0 else 1.0
 
 	# Вращается то, что бросают. Пуля не крутится, а летит носом вперёд:
@@ -351,13 +334,15 @@ func _draw_actor(actor: Actor) -> void:
 	if actor.invulnerable > 0.0:
 		draw_arc(at, actor.radius + 10.0, 0, TAU, 24, Color(1, 1, 1, 0.35), 1.5)
 
-	# Круг попаданий не совпадает с силуэтом намеренно, и на глаз это не
-	# проверить: подбирать радиусы можно только видя их. Заливка нужна,
-	# чтобы круг читался пятном на полу, а не обручем перед телом — он и
-	# есть след на полу, тело стоит НАД ним.
+	# Напольный круг отвечает за движение и касание. Зоны урона врага
+	# рисуются из тех же данных, по которым симуляция проверяет снаряд.
 	if show_hitboxes:
 		draw_circle(at, actor.radius, Color(1, 0.3, 0.3, 0.16))
 		draw_arc(at, actor.radius, 0, TAU, 32, Color(1, 0.35, 0.35, 0.9), 1.5)
+		for rect in Hitboxes.rectangles(actor):
+			rect.position += origin
+			draw_rect(rect, Color(1, 0.7, 0.2, 0.12))
+			draw_rect(rect, Color(1, 0.7, 0.2, 0.9), false, 1.0)
 
 	if is_player:
 		draw_string(ThemeDB.fallback_font, at + Vector2(-6, -_sprite_height(actor) - 24.0),
@@ -413,8 +398,8 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 		aim = actor.aim
 	var speed := actor.velocity.length()
 	var phase: float = stride_phase.get(actor.id, 0.0)
-	var front := bool(standing_front.get(actor.id, false))
-	if weapon == "colt" and aim != Vector2.ZERO:
+	var front := bool(standing_front.get(actor.id, actor.standing_front))
+	if aim != Vector2.ZERO and (weapon == "colt" or absf(aim.x) > 0.2):
 		front = false
 	var names := CharacterPose.stand_names(weapon)
 	var gait := ""
@@ -430,7 +415,7 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 	if chosen == "":
 		return {}
 	var side := 0 if front else CharacterPose.aiming_facing(aim, actor.velocity,
-		aim != Vector2.ZERO, int(facing.get(actor.id, 1)))
+		aim != Vector2.ZERO, int(facing.get(actor.id, actor.facing)))
 	var progress := -1.0
 	if matching_shot:
 		progress = float(recent.age) / CharacterPose.THROW_TIME

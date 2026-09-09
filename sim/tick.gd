@@ -21,6 +21,8 @@ const Corpses = preload("res://sim/corpses.gd")
 const Items = preload("res://sim/items.gd")
 const Shooting = preload("res://sim/shooting.gd")
 const Abilities = preload("res://sim/abilities.gd")
+const Hitboxes = preload("res://sim/hitboxes.gd")
+const BodyFacing = preload("res://sim/body_facing.gd")
 
 ## Плавающий шаг сделал бы сверку хоста с клиентом невоспроизводимой.
 const DELTA := 1.0 / 60.0
@@ -48,6 +50,7 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 		var owner := state.actor_by_id(projectile.owner_id)
 		events.append({"type": "shot", "actor_id": projectile.owner_id,
 			"projectile_id": projectile.id, "kind": projectile.kind,
+			"projection_offset": projectile.projection_offset,
 			"position": projectile.position, "direction": projectile.velocity.normalized(),
 			"aim": owner.aim, "weapon": owner.weapon_id})
 	_move_bodies(state, events)
@@ -92,6 +95,8 @@ static func _drive_players(state: RunState, commands: Dictionary) -> void:
 		Organs.update_threat(state, actor, slot)
 		var stats := actor.stack.compute()
 		actor.velocity = Motion.step_velocity(actor.velocity, move, stats, DELTA)
+		actor.facing = BodyFacing.aiming_side(actor.aim, actor.velocity, firing, actor.facing)
+		actor.standing_front = BodyFacing.front(actor.aim, actor.velocity, firing, actor.standing_front)
 
 		Shooting.advance(state, actor, slot, stats, firing)
 
@@ -263,6 +268,8 @@ static func _hit_segment(state: RunState, projectile: Projectile, from: Vector2,
 		if not projectile.can_hit(actor): continue
 		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0 and state.slots[actor.slot].downed: continue
 		var fraction := Projectile.hit_fraction(from, to, actor.position, projectile.radius + actor.radius)
+		if not actor.hurtboxes.is_empty():
+			fraction = Hitboxes.hit_fraction(projectile, from, to, actor)
 		if fraction != INF: hits.append({"actor": actor, "fraction": fraction})
 	hits.sort_custom(func(a, b): return a.fraction < b.fraction if a.fraction != b.fraction else a.actor.id < b.actor.id)
 	for hit in hits:
@@ -271,7 +278,8 @@ static func _hit_segment(state: RunState, projectile: Projectile, from: Vector2,
 		var actor: Actor = hit.actor
 		var health_before := actor.health
 		var finished := actor.take_damage(projectile.damage)
-		_record_hit(events, actor, health_before, projectile.kind, (to - from).normalized(), projectile.id)
+		_record_hit(events, actor, health_before, projectile.kind, (to - from).normalized(), projectile.id,
+			projectile.position + projectile.flight_offset())
 		if finished and actor.kind == Actor.Kind.PLAYER and actor.slot >= 0: _knock_down(state, actor)
 		projectile.hit_ids.append(actor.id)
 		if projectile.pierce <= 0: return true
@@ -305,13 +313,15 @@ static func _touch_damage(state: RunState, events: Array[Dictionary]) -> void:
 
 
 static func _record_hit(events: Array[Dictionary], actor: Actor, health_before: float,
-		kind: String, direction: Vector2, projectile_id: int = -1) -> void:
+		kind: String, direction: Vector2, projectile_id: int = -1, impact_position: Vector2 = Vector2.INF) -> void:
 	if actor.health >= health_before:
 		return
 	events.append({"type": "hit", "actor_id": actor.id, "kind": kind,
 		"position": actor.position, "direction": direction,
 		"damage": health_before - actor.health, "fallen": actor.health <= 0.0,
 		"projectile_id": projectile_id})
+	if impact_position != Vector2.INF:
+		events[-1]["impact_position"] = impact_position
 
 
 ## Тело остаётся живым при нулевом здоровье намеренно: упавшего поднимает

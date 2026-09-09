@@ -2,12 +2,14 @@ extends RefCounted
 ## Поза персонажа: чистые функции от скорости, фазы шага и перезарядки —
 ## ни узлов, ни системных часов, поэтому проверяется тестом.
 ##
-## Живёт в game/, а не в sim/: попадание считается по положению тела, а не
-## по нарисованной руке, и гонять фазу шага по сети незачем.
+## Фаза шага и отдача остаются в представлении. Сторона тела общая
+## с симуляцией: она определяет точку выпуска снаряда.
 ##
 ## На ходу персонаж всегда в профиль: кадров ходьбы вверх и вниз в наборе
 ## нет. Разворачивается он на остановке — лицом к зрителю, если последним
 ## шёл по вертикали, и тем боком, которым шёл, если по горизонтали.
+
+const BodyFacing = preload("res://sim/body_facing.gd")
 
 const STRIDE := 96.0
 
@@ -18,7 +20,7 @@ const IDLE_PERIOD := 2.6
 ## машет непрерывно.
 const THROW_TIME := 0.18
 
-const WALK_THRESHOLD := 12.0
+const WALK_THRESHOLD := BodyFacing.MOVE_THRESHOLD
 const WALK_FRAMES := 6
 
 
@@ -88,28 +90,20 @@ static func front_stand_names(weapon_id: String) -> PackedStringArray:
 ## лица лежит правее волос затылка. Перепутано один раз, персонаж ходил
 ## спиной вперёд.
 static func facing(velocity: Vector2, previous: int) -> int:
-	if absf(velocity.x) < WALK_THRESHOLD:
-		return previous
-	return 1 if velocity.x > 0.0 else -1
+	return BodyFacing.side(velocity, previous)
 
 
 ## Голова не отдельный слой в профиле, поэтому по прицелу доворачивается
 ## всё тело, а не только голова, как в Isaac.
 static func aiming_facing(aim: Vector2, velocity: Vector2, firing: bool, previous: int) -> int:
-	if firing and absf(aim.x) > 0.2:
-		return 1 if aim.x > 0.0 else -1
-	return facing(velocity, previous)
+	return BodyFacing.aiming_side(aim, velocity, firing, previous)
 
 
 ## Лицом к зрителю персонаж встаёт после ходьбы по вертикали. Стрельба
 ## вбок разворачивает его в профиль, стрельба вверх и вниз — нет: как и
 ## взгляд, поза слушает прицел раньше движения.
 static func stand_front(aim: Vector2, velocity: Vector2, firing: bool, previous: bool) -> bool:
-	if firing and absf(aim.x) > 0.2:
-		return false
-	if velocity.length() < WALK_THRESHOLD:
-		return previous
-	return absf(velocity.y) > absf(velocity.x)
+	return BodyFacing.front(aim, velocity, firing, previous)
 
 
 static func use_walk_frames(speed: float) -> bool:

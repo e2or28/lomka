@@ -1,4 +1,5 @@
 extends RefCounted
+const Projectile = preload("res://sim/projectile.gd")
 ## Вид летящего снаряда: переворот и тень. Падение по дуге отсюда убрано —
 ## снаряд, шлёпающийся на пол, обрывал атаку там, где игрок ждал продолжения.
 
@@ -23,9 +24,7 @@ static func rotation(age: float, tumble: float) -> float:
 
 
 static func hop(tumble: float) -> float:
-	if tumble < 0.0:
-		return 0.0
-	return sin(clampf(tumble, 0.0, 1.0) * PI) * 7.0
+	return Projectile.hop(tumble)
 
 
 static func shadow_scale(tumble: float) -> float:

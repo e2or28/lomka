@@ -44,17 +44,6 @@ func _test_point_blank_hit_reaches_view_without_changing_save() -> bool:
 	return true
 
 
-func _test_launch_offset_does_not_follow_shooter_after_firing() -> bool:
-	var f := Feedback.new()
-	f.shot({"actor_id": 1, "projectile_id": 9, "position": Vector2(10, 20), "kind": "bullet"}, Vector2(35, -60))
-	var offset: Vector2 = f.projectile_offsets[9]
-	f.shot({"actor_id": 1, "projectile_id": 10, "position": Vector2(200, 30), "kind": "folder"}, Vector2(210, -20))
-	f.advance(1)
-	eq(f.projectile_offsets[9], offset, "смена оружия сдвинула уже летящую пулю")
-	eq(f.shots.size(), 0, "зависла вспышка выстрела")
-	return true
-
-
 func _test_old_room_events_are_discarded() -> bool:
 	var view := View.new()
 	view.state = Arena.solo("room-clear")
@@ -85,13 +74,13 @@ func _test_view_uses_muzzle_for_launch_and_freezes_it_after_turning() -> bool:
 		view.textures[name] = ImageTexture.create_from_image(Image.load_from_file("res://art/" + name + ".png"))
 	var events := Tick.step(state, {0: Command.from_axes(0, Vector2.ZERO, Vector2.UP, Command.BTN_FIRE)})
 	view.consume_events(events)
-	var id := state.projectiles[0].id
-	var at: Vector2 = view.feedback.projectile_offsets[id]
+	var shot = state.projectiles[0]
+	var at: Vector2 = shot.projection_offset
 	check(at.y < -100, "вертикальная пуля появилась на общей высоте вместо поднятого дула")
 	player.aim = Vector2.DOWN
 	Arsenal.equip(player, "suitcase")
 	view.advance(0.06)
-	eq(view.feedback.projectile_offsets[id], at, "пуля последовала за новой позой или оружием")
+	eq(shot.projection_offset, at, "пуля последовала за новой позой или оружием")
 	var pose := view._player_pose(player)
 	eq(pose.aim, Vector2.ZERO, "выстрел кольта запустил бросок нового чемодана")
 	view.free()
