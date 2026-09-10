@@ -96,12 +96,46 @@ const TANDEM := {
 	"zones": ["dev_room"], "tier": 3,
 }
 
+const OIL_BARON := {
+	"id": "oil_baron", "name": "Нефтяной барон", "behaviour": "oil_baron",
+	"base_stats": {"health": 420.0, "damage": 16.0, "move_speed": 0.0,
+		"acceleration": 0.0, "friction": 1200.0, "projectile_speed": 280.0, "range": 1200.0},
+	"radius": 110.0,
+	"hurtboxes": [Rect2(-180, -38, 360, 38), Rect2(-78, -170, 155, 136),
+		Rect2(-180, -130, 80, 92), Rect2(-149, -291, 307, 57), Rect2(147, -326, 44, 143)],
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 3,
+}
+const SOLDIER := {
+	"id": "soldier", "name": "Солдат", "behaviour": "rifleman",
+	"base_stats": {"health": 48.0, "damage": 8.0, "move_speed": 100.0,
+		"acceleration": 1000.0, "friction": 1800.0, "projectile_speed": 430.0, "range": 850.0},
+	"radius": 22.0, "hurtboxes": [Rect2(-23, -115, 46, 113), Rect2(-24, -154, 49, 45)],
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 2,
+}
+const SOLDIER_DARK := {
+	"id": "soldier_dark", "name": "Солдат", "behaviour": "rifleman",
+	"base_stats": SOLDIER.base_stats,
+	"radius": 22.0, "hurtboxes": SOLDIER.hurtboxes,
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 2,
+}
+const ICE_AGENT := {
+	"id": "ice_agent", "name": "Агент ICE", "behaviour": "baton",
+	"base_stats": {"health": 62.0, "damage": 14.0, "move_speed": 135.0,
+		"acceleration": 1400.0, "friction": 2200.0},
+	"radius": 24.0, "hurtboxes": [Rect2(-26, -113, 52, 111), Rect2(-27, -150, 55, 42)],
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 2,
+}
+
 const CHARACTERS := {"clerk": CLERK}
 const ENEMIES := {
 	"test_monster": TEST_MONSTER,
 	"runner": RUNNER,
 	"heavy": HEAVY,
 	"tandem": TANDEM,
+	"oil_baron": OIL_BARON,
+	"soldier": SOLDIER,
+	"soldier_dark": SOLDIER_DARK,
+	"ice_agent": ICE_AGENT,
 }
 
 

@@ -36,7 +36,7 @@ const ORGAN_SLOTS: Array[String] = [
 
 ## Повадки врагов. Закрытый список: опечатка в поведении иначе даёт врага,
 ## который молча стоит на месте.
-const BEHAVIOURS: Array[String] = ["charger", "harrier", "bruiser", "tank"]
+const BEHAVIOURS: Array[String] = ["charger", "harrier", "bruiser", "tank", "oil_baron", "rifleman", "baton"]
 
 ## Операции соответствуют Modifier.Op по порядку.
 const OPS: Array[String] = ["add", "mul", "set"]

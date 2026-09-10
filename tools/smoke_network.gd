@@ -86,6 +86,17 @@ func _execute(request: Dictionary) -> void:
 				var actor = session.state.actor_of_slot(slot.index)
 				actor.position = RoomMap.door(session.state.room, "north") + Vector2(0, actor.radius + 1 + slot.index * 38)
 				actor.velocity = Vector2.ZERO
+		"fixture_baron_door":
+			assert(session.is_host() and session.running)
+			session.state.room = RoomMap.make("north")
+			session.state.actors = session.state.living(Actor.Kind.PLAYER)
+			session.state.projectiles.clear()
+			session.state.pickups.clear()
+			session.state.pending_spawns.clear()
+			session.state.encounter_waves.clear()
+			for actor in session.state.actors:
+				actor.position = RoomMap.door(session.state.room, "north") + Vector2(0, actor.radius + 1 + actor.slot * 38)
+				actor.velocity = Vector2.ZERO
 		"ready": session.set_ready(bool(request.get("value", true)))
 		"start": result = session.start("network-smoke")
 		"restart": session.restart()
@@ -124,6 +135,10 @@ func _status() -> Dictionary:
 		response.waves = session.state.encounter_waves.size()
 		response.pending = session.state.pending_spawns.size()
 		response.projectiles = session.state.projectiles.size()
+		response.enemy_types = []
+		for enemy in session.state.living(Actor.Kind.ENEMY): response.enemy_types.append(enemy.archetype)
+		response.projectile_types = []
+		for shot in session.state.projectiles: response.projectile_types.append(shot.kind)
 		response.slots = []
 		for slot in session.state.slots:
 			var actor = session.state.actor_of_slot(slot.index)

@@ -172,6 +172,29 @@ def smoke(directory: Path, peers: list[Peer]):
     host.call("stop")
     print("ok: real door movement transfers the party and replicates enemies/waves", flush=True)
 
+    host.call("fixture_baron_door")
+    host.call("pump", y=-1)
+    arrived = host.until(lambda s: s["room"] == "oil_baron", "north door into oil baron room")
+    host.call("pump")
+    roster = ["ice_agent", "ice_agent", "oil_baron", "soldier", "soldier_dark"]
+    for client in clients:
+        entered = client.until(lambda s: s["room"] == "oil_baron", "oil baron room snapshot")
+        check(sorted(entered["enemy_types"]) == roster, "new room lost boss or a guard")
+    host.until(lambda s: "oil_drop" in s["projectile_types"], "oil baron fan after windup")
+    for client in clients:
+        client.until(lambda s: "oil_drop" in s["projectile_types"], "oil fan replication")
+    host.call("stop")
+    boss_fight = host.call()
+    copies = [client.call() for client in clients]
+    common = {key for key in boss_fight["history"] if int(key.split(":")[1]) >= arrived["tick"]}
+    for copy in copies:
+        common &= set(copy["history"])
+    check(len(common) >= 8, "not enough common oil baron snapshots")
+    for key in common:
+        check(len({boss_fight["history"][key], *(copy["history"][key] for copy in copies)}) == 1,
+              f"oil baron authoritative hash mismatch at {key}")
+    print("ok: oil baron room, four guards and telegraphed oil fan match on all four peers", flush=True)
+
     # Queue real movement in the old run before restart, then inject a valid
     # sequence number carrying the old generation after clients received begin.
     for client in clients:

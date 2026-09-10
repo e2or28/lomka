@@ -5,6 +5,7 @@ const Encounter = preload("res://sim/encounter.gd")
 const Bestiary = preload("res://sim/bestiary.gd")
 const Actor = preload("res://sim/actor.gd")
 const Fnv = preload("res://sim/core/fnv.gd")
+const RoomMap = preload("res://sim/room_map.gd")
 const TELEGRAPH_TICKS := 90
 const SAFE_DISTANCE := 220.0
 
@@ -21,6 +22,16 @@ static func begin(state) -> void:
 	var wave: Array = []
 	match state.room.id:
 		"south": return
+		"oil_baron":
+			var roster_ids: Array = RoomMap.ROSTERS["oil_baron"]
+			var positions := [Vector2(0, 20), Vector2(-340, -140), Vector2(340, -140),
+				Vector2(-350, 100), Vector2(350, 100)]
+			for i in roster_ids.size():
+				var at: Vector2 = positions[i]
+				if not _safe_from_players(state, at):
+					at = _position(state, rng, float(Bestiary.enemy(roster_ids[i]).radius), [])
+				if at != Vector2.INF: Encounter.add_enemy(state, roster_ids[i], at)
+			return
 		"north": roster = ["tandem"]
 		"center":
 			roster = ["test_monster", "runner", "heavy"]

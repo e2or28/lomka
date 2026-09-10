@@ -22,6 +22,7 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const TankArt = preload("res://game/tank_art.gd")
+const GuardArt = preload("res://game/guard_art.gd")
 const Hitboxes = preload("res://sim/hitboxes.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
@@ -193,6 +194,7 @@ func _draw() -> void:
 			continue
 		if actor.behaviour == "tank" and actor.attack_ticks > 0:
 			_draw_tank_warning(actor)
+		if GuardArt.handles(actor): GuardArt.warning(self, actor, origin)
 		_draw_actor(actor)
 	for projectile in state.projectiles:
 		_draw_projectile(projectile)
@@ -263,8 +265,13 @@ func _draw_projectile(projectile: Projectile) -> void:
 		angle = ProjectilePose.rotation(age, tumble) * turn_direction
 	draw_set_transform(at, angle, Vector2.ONE)
 
-	var paper: Texture2D = textures.get(projectile.kind)
-	if projectile.kind == "tank_shell":
+	var paper: Texture2D = textures.get("bullet" if projectile.kind == "rifle_bullet" else projectile.kind)
+	if projectile.kind == "oil_drop":
+		draw_line(Vector2(-19, 0), Vector2.ZERO, Color(0.18, 0.12, 0.05, 0.65), 12)
+		draw_circle(Vector2.ZERO, 11, Color(0.82, 0.51, 0.19))
+		draw_circle(Vector2.ZERO, 8, Color(0.06, 0.045, 0.04))
+		draw_circle(Vector2(2, -3), 2.5, Color(0.58, 0.43, 0.24))
+	elif projectile.kind == "tank_shell":
 		draw_line(Vector2(-22, 0), Vector2.ZERO, Color(1, 0.35, 0.08, 0.45), 8)
 		draw_circle(Vector2.ZERO, 11, Color(0.15, 0.12, 0.07))
 		draw_circle(Vector2(3, 0), 7, Color(1, 0.6, 0.22))
@@ -357,6 +364,8 @@ func _draw_actor(actor: Actor) -> void:
 func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
+	if GuardArt.handles(actor):
+		return GuardArt.draw(self, textures, actor, at, tint)
 
 	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	if sprite == null:
@@ -466,9 +475,10 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 
 
 func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
-	if actor.behaviour == "tank":
+	if actor.behaviour in ["tank", "oil_baron"]:
 		return _draw_sprite(actor, at, tint)
 	var texture: Texture2D = textures.get("player_side_stand") if actor.kind == Actor.Kind.PLAYER else textures.get(actor.archetype, textures.get("monster"))
+	if GuardArt.handles(actor): texture = textures.get(GuardArt.frame(actor))
 	if texture == null:
 		return false
 	var progress := feedback.fall_progress(actor.id)
@@ -476,6 +486,7 @@ func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
 		tint *= Color.WHITE.lerp(Color(0.6, 0.55, 0.52), progress)
 	var size := texture.get_size()
 	var root := PLAYER_ROOT if actor.kind == Actor.Kind.PLAYER else Vector2(size.x * 0.5, size.y)
+	if GuardArt.handles(actor): root = GuardArt.ROOT
 	var center := Vector2(0, -root.y * 0.5 * (1.0 - progress))
 	var direction := 1.0
 	if feedback.falls.has(actor.id) and Vector2(feedback.falls[actor.id].direction).x < 0:
@@ -520,6 +531,8 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 	var maximum: float = actor.max_health()
 	if maximum <= 0.0:
 		return
+	if actor.behaviour == "oil_baron":
+		return
 	_draw_bar(at + Vector2(-BAR.x * 0.5, -_sprite_height(actor) - 10.0), BAR,
 		actor.health / maximum, color.lightened(0.2))
 
@@ -561,6 +574,7 @@ func _sprite_height(actor: Actor) -> float:
 		return PLAYER_HEIGHT
 	if actor.behaviour == "tank":
 		return TANK_ROOT.y
+	if GuardArt.handles(actor): return 330.0 if actor.behaviour == "oil_baron" else GuardArt.HEIGHT
 	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	return sprite.get_size().y if sprite != null else BODY.y
 
@@ -571,6 +585,9 @@ func _map_origin(viewport: Vector2) -> Vector2:
 	var image_rect := RoomArt.image_rect(state.room, texture.get_size())
 	var player := state.actor_of_slot(inspected_slot)
 	var target := player.position if player != null else Vector2.ZERO
+	# Качалка выше обычного врага. У входа камера держит её целиком,
+	# но продолжает следить за игроком у верхней и нижней границ.
+	if state.room.id == "oil_baron": target.y = clampf(-30.0, target.y - 310.0, target.y + 200.0)
 	# Место под тело HUD: ноги у нижней стены должны оставаться видны.
 	var usable := viewport - Vector2(0, 120)
 	var result := usable * 0.5 - target

@@ -116,7 +116,7 @@ func _test_party_transfer_does_not_revive_or_bounce() -> bool:
 
 func _test_lower_boundary_matches_black_outline_and_stops_bodies() -> bool:
 	# Чёрный контур над лицевой полосой замерен в исходных PNG, вне дверей.
-	var outline := {"south": 890, "center": 890, "north": 890, "west": 1386, "east": 1386}
+	var outline := {"south": 890, "center": 890, "north": 890, "west": 1386, "east": 1386, "oil_baron": 890}
 	for id in Map.IDS:
 		var room = Map.make(id)
 		var inset := RoomArt.floor_inset(id)

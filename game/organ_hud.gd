@@ -123,19 +123,19 @@ func _draw_reinforcements(viewport: Vector2) -> void:
 func _draw_boss(viewport: Vector2) -> void:
 	var boss = null
 	for actor in state.actors:
-		if actor.archetype == "tandem" and actor.alive:
+		if actor.archetype in ["tandem", "oil_baron"] and actor.alive:
 			boss = actor
 			break
 	if boss == null:
 		return
 	var at := Vector2(viewport.x * 0.5 - 208, 20)
 	_panel(Rect2(at, Vector2(416, 66)), Color(0.48, 0.27, 0.18))
-	_text(at + Vector2(15, 24), "ТАНДЕМ  /  МИНИ-БОСС", 14, ACCENT)
+	_text(at + Vector2(15, 24), "НЕФТЯНОЙ БАРОН" if boss.archetype == "oil_baron" else "ТАНДЕМ  /  МИНИ-БОСС", 14, ACCENT)
 	_text(at + Vector2(306, 24), "%.0f / %.0f" % [boss.health, boss.max_health()], 12)
 	draw_rect(Rect2(at + Vector2(15, 39), Vector2(386, 10)), Color(0.22, 0.14, 0.12))
 	draw_rect(Rect2(at + Vector2(15, 39), Vector2(386 * boss.health / boss.max_health(), 10)), ACCENT)
 	if boss.attack_ticks > 0:
-		_text(at + Vector2(114, 85), "ВЫСТРЕЛ — УХОДИ С ЛИНИИ", 13, ACCENT)
+		_text(at + Vector2(114, 85), "ЗАЛП — УХОДИ С ЛИНИЙ" if boss.archetype == "oil_baron" else "ВЫСТРЕЛ — УХОДИ С ЛИНИИ", 13, ACCENT)
 
 
 func _short_name(id: String) -> String:
@@ -271,12 +271,13 @@ func _draw_map(viewport: Vector2) -> void:
 	_panel(Rect2(at, Vector2(186, 178)))
 	_text(at + Vector2(12, 23), RoomMap.NAMES[state.room.id], 16)
 	var positions := {"center": Vector2(0, 0), "north": Vector2(0, -1),
-		"south": Vector2(0, 1), "west": Vector2(-1, 0), "east": Vector2(1, 0)}
+		"south": Vector2(0, 1), "west": Vector2(-1, 0), "east": Vector2(1, 0),
+		"oil_baron": Vector2(0, -2)}
 	for id in RoomMap.IDS:
-		var cell: Vector2 = at + Vector2(80, 71) + positions[id] * 27
+		var cell: Vector2 = at + Vector2(80, 84) + positions[id] * 24
 		var color := MINT if id == state.room.id else MUTED.darkened(0.55)
 		if id != state.room.id and state.room_states.has(id): color = MUTED
 		draw_rect(Rect2(cell, Vector2(23, 20)), color)
-		if id == "north": _text(cell + Vector2(7, 15), "!", 14, INK)
+		if id in ["north", "oil_baron"]: _text(cell + Vector2(7, 15), "!", 14, INK)
 	_text(at + Vector2(12, 138), "Проходы открыты" if state.room_cleared() else "Зачисти комнату для выхода", 11, MINT if state.room_cleared() else ACCENT)
 	_text(at + Vector2(12, 159), "↑ Главный зал" if state.room.id == "south" else "Иди к зелёной стрелке", 11, MUTED)

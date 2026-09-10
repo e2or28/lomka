@@ -2,19 +2,21 @@ extends RefCounted
 
 const Room = preload("res://sim/room.gd")
 
-const IDS := ["south", "center", "north", "west", "east"]
+const IDS := ["south", "center", "north", "west", "east", "oil_baron"]
 const NAMES := {"south": "Приёмная", "center": "Главный зал", "north": "Тандем",
-	"west": "Курьерская", "east": "Архив"}
+	"west": "Курьерская", "east": "Архив", "oil_baron": "Нефтяной барон"}
 const LINKS := {
 	"south": {"north": "center"},
 	"center": {"south": "south", "north": "north", "west": "west", "east": "east"},
-	"north": {"south": "center"}, "west": {"east": "center"}, "east": {"west": "center"},
+	"north": {"south": "center", "north": "oil_baron"}, "west": {"east": "center"}, "east": {"west": "center"},
+	"oil_baron": {"south": "north"},
 }
 const DIRECTIONS := {"north": Vector2.UP, "south": Vector2.DOWN,
 	"west": Vector2.LEFT, "east": Vector2.RIGHT}
 const OPPOSITE := {"north": "south", "south": "north", "west": "east", "east": "west"}
 const ROSTERS := {"south": [], "center": ["test_monster", "runner", "heavy"],
-	"north": ["tandem"], "west": ["runner", "runner"], "east": ["heavy", "test_monster"]}
+	"north": ["tandem"], "west": ["runner", "runner"], "east": ["heavy", "test_monster"],
+	"oil_baron": ["oil_baron", "soldier", "soldier_dark", "ice_agent", "ice_agent"]}
 
 ## Постоянный лут первого этажа: раскладывается при первом входе в комнату
 ## и больше не создаётся. Генерации по сиду ещё нет — она придёт на M3.

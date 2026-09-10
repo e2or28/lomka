@@ -10,6 +10,7 @@
 | Команда | Что делает |
 |---|---|
 | `tools/status.sh` | Состояние проекта одной командой: гит, тесты, стенд, объём. С неё начинается сессия |
+| `Godot --path . --script res://tools/preview_oil_baron.gd` | Новая комната и три фазы боя в `.cache/oil-baron-*.png` |
 | `Godot --path . --script res://tools/preview_combat.gd` | Снимок четырёх направлений, снарядов, попаданий и падения: `.cache/combat-preview.png` |
 | `Godot --path . --script res://tools/preview_hitboxes.gd` | Зоны урона и напольные круги всех врагов: `.cache/hitbox-preview.png` |
 | `Godot --path . --script res://tools/preview_walk.gd` | Все кадры ходьбы и обе стороны: `.cache/walk-preview.png`; `-- --frames` сохраняет 60 кадров для клипа |
@@ -47,6 +48,7 @@ Godot может напечатать ошибку вложенного вызо
 | `python3 tools/import_sprite.py ВХОД ВЫХОД` | Растянутая картинка → спрайт в нативном разрешении: находит сетку апскейла, вырезает фон, чистит крошку JPEG. `--height N`, `--step S`, `--keep-bg` |
 | `python3 tools/import_room.py ВХОД ВЫХОД --inner X0,Y0,X1,Y1` | Нарисованная комната → фон под игровую зону: пол садится ровно на `Room.bounds`, стены остаются снаружи. Печатает отступ для `WorldView.ROOM_INSET` |
 | `tools/pull_art.sh` | Забрать исходники с Google Drive Саши в `art/_inbox/` |
+| `python3 tools/import_oil_baron.py` | Партия босса: девять спрайтов из десяти сохранённых оригиналов; общая опора стоек и замаха |
 | `tools/watch_art.sh [СЕК]` | Следить за Drive и печатать строку на каждый новый файл. Написан под слежение Клода, не для чтения глазами |
 | `python3 tools/import_frames.py ПРЕФИКС ВХОД...` | Набор кадров → общий холст: один рост на весь набор, посадка по полу и центру туловища. `--height N`, `--canvas WxH`, `--root-y N`, `--torso-x N` |
 | `python3 tools/make_icon.py art/player.png ФАЙЛ` | Квадратная иконка из спрайта |

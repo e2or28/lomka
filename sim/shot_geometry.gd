@@ -3,6 +3,8 @@ extends RefCounted
 # Смещения от опоры тела в плоскости видимого полёта. Хранятся в снаряде:
 # поворот стрелка, смена оружия и загрузка не меняют уже выпущенную траекторию.
 static func offset(kind: String, direction: Vector2, side: int, front: bool) -> Vector2:
+	if kind == "oil_drop": return Vector2(0, -70)
+	if kind == "rifle_bullet": return Vector2(30 * side, -62)
 	if kind == "bullet":
 		if absf(direction.x) > 0.2:
 			return Vector2(26.0 * signf(direction.x), -85.0)

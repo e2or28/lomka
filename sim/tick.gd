@@ -19,6 +19,7 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
+const GuardAttacks = preload("res://sim/guard_attacks.gd")
 const Corpses = preload("res://sim/corpses.gd")
 const Items = preload("res://sim/items.gd")
 const Shooting = preload("res://sim/shooting.gd")
@@ -47,7 +48,7 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	Director.advance(state, events)
 	Abilities.advance(state, commands)
 	_drive_players(state, commands)
-	_drive_enemies(state)
+	_drive_enemies(state, events)
 	for projectile in state.projectiles:
 		if projectile.id < first_new_id:
 			continue
@@ -106,11 +107,21 @@ static func _drive_players(state: RunState, commands: Dictionary) -> void:
 		Shooting.advance(state, actor, slot, stats, firing)
 
 
-static func _drive_enemies(state: RunState) -> void:
+static func _drive_enemies(state: RunState, events: Array[Dictionary]) -> void:
 	for actor in state.actors:
 		if not actor.alive or actor.kind != Actor.Kind.ENEMY:
 			continue
 		var target := _nearest_target(state, actor)
+		if GuardAttacks.PROFILES.has(actor.behaviour):
+			if GuardAttacks.drive(state, actor, target, DELTA):
+				for player in state.living(Actor.Kind.PLAYER):
+					if state.slots[player.slot].downed or not GuardAttacks.in_swing(actor, player): continue
+					var health_before := player.health
+					if player.take_damage(float(actor.stack.compute().get("damage", 0.0))):
+						_knock_down(state, player)
+					_record_hit(events, player, health_before, "baton", actor.attack_aim)
+					if player.health < health_before: player.invulnerable = HIT_INVULNERABILITY
+			continue
 		if actor.behaviour == "tank":
 			Miniboss.drive(state, actor, target, DELTA)
 			continue
@@ -299,6 +310,7 @@ static func _touch_damage(state: RunState, events: Array[Dictionary]) -> void:
 	for enemy in state.actors:
 		if not enemy.alive or enemy.kind != Actor.Kind.ENEMY:
 			continue
+		if GuardAttacks.PROFILES.has(enemy.behaviour): continue
 		var damage := float(enemy.stack.compute().get("damage", 0.0))
 		if damage <= 0.0:
 			continue

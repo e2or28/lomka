@@ -18,7 +18,8 @@ func title() -> String:
 
 func _test_bestiary_matches_schema() -> bool:
 	no_errors(Bestiary.validate_all(), "записи бестиария не прошли схему")
-	eq(Bestiary.ENEMIES.size(), 4, "ожидались три врага и мини-босс")
+	for id in ["test_monster", "runner", "heavy", "tandem", "oil_baron", "soldier", "soldier_dark", "ice_agent"]:
+		check(Bestiary.ENEMIES.has(id), "потерян враг " + id)
 	return true
 
 
@@ -34,7 +35,9 @@ func _test_every_enemy_declares_a_known_behaviour() -> bool:
 
 func _test_behaviours_actually_differ() -> bool:
 	var tracks := {}
-	for id in Bestiary.ENEMIES:
+	# Здесь различаются траектории преследователей; стрелки могут стоять
+	# на месте, их предупреждение и попадания проверяет test_oil_baron.gd.
+	for id in ["test_monster", "runner", "heavy"]:
 		var state := Arena.duel(SEED, id, Vector2(260, 0))
 		var enemy := Arena.enemies(state)[0]
 		var path := PackedFloat32Array()
