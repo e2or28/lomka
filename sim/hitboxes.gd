@@ -4,7 +4,7 @@ static func rectangles(actor) -> Array[Rect2]:
 	var result: Array[Rect2] = []
 	for source in actor.hurtboxes:
 		var rect: Rect2 = source
-		if actor.behaviour == "tank" and actor.aim.x > 0.0:
+		if (actor.behaviour == "tank" and actor.aim.x > 0.0) or (actor.behaviour != "tank" and actor.facing < 0):
 			rect.position.x = -rect.end.x
 		rect.position += actor.position
 		result.append(rect)

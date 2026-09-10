@@ -35,7 +35,7 @@ func _initialize() -> void:
 	gallery = Gallery.new()
 	gallery.state = Arena.solo("hitbox-gallery")
 	gallery.show_hitboxes = true
-	for name in ["monster", "tandem"]:
+	for name in ["monster", "test_monster", "runner", "heavy", "tandem"]:
 		gallery.textures[name] = art.get_texture(name)
 	for i in 3:
 		var id: String = ["test_monster", "runner", "heavy"][i]

@@ -27,7 +27,7 @@ const CLERK := {
 ## числами: одинаковые по поведению враги в толпе не читаются.
 ##
 ## radius задаёт след на полу, hurtboxes — видимое тело для снарядов.
-## Пока обычные враги используют один рисунок, зоны урона у них одинаковы.
+## Зоны тела соответствуют отдельным спрайтам, обращённым вправо.
 const TEST_MONSTER := {
 	"id": "test_monster",
 	"name": "Монстр",
@@ -39,7 +39,7 @@ const TEST_MONSTER := {
 		"friction": 1400.0,
 	},
 	"radius": 24.0,
-	"hurtboxes": [Rect2(-36, -86, 72, 84)],
+	"hurtboxes": [Rect2(-25, -78, 46, 76), Rect2(-5, -110, 29, 35)],
 	"behaviour": "charger",
 	"organ_drops": [],
 	"zones": ["dev_room"],
@@ -57,7 +57,7 @@ const RUNNER := {
 		"friction": 2200.0,
 	},
 	"radius": 18.0,
-	"hurtboxes": [Rect2(-36, -86, 72, 84)],
+	"hurtboxes": [Rect2(-28, -80, 47, 48), Rect2(0, -106, 29, 32), Rect2(-26, -36, 50, 34)],
 	"behaviour": "harrier",
 	"organ_drops": [{"organ": "courier_heart", "chance": 1.0}],
 	"zones": ["dev_room"],
@@ -75,7 +75,7 @@ const HEAVY := {
 		"friction": 700.0,
 	},
 	"radius": 34.0,
-	"hurtboxes": [Rect2(-36, -86, 72, 84)],
+	"hurtboxes": [Rect2(-49, -118, 98, 85), Rect2(-6, -146, 37, 39), Rect2(-47, -38, 94, 36)],
 	"behaviour": "bruiser",
 	"organ_drops": [{"organ": "coward_heart", "chance": 1.0}],
 	"zones": ["dev_room"],

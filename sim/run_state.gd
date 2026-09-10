@@ -29,6 +29,8 @@ var projectiles: Array[Projectile] = []
 var pickups: Array[Pickup] = []
 var room: Room = null
 var room_states: Dictionary = {}
+var pending_spawns: Array[Dictionary] = []
+var encounter_waves: Array = []
 
 ## Не выводится из длины массива: иначе после смерти тела номер
 ## переиспользуется, и снаряд попадает не в того, кого целил.
@@ -72,6 +74,7 @@ func living(kind: Actor.Kind) -> Array[Actor]:
 
 
 func room_cleared() -> bool:
+	if not pending_spawns.is_empty() or not encounter_waves.is_empty(): return false
 	for actor in actors:
 		if actor.alive and actor.kind == Actor.Kind.ENEMY:
 			return false
@@ -114,8 +117,10 @@ func to_dict() -> Dictionary:
 		slots_out.append(slot.to_dict())
 	return {
 		"actors": actors_out,
+		"encounter_waves": encounter_waves.duplicate(true),
 		"heat": heat,
 		"next_id": next_id,
+		"pending_spawns": pending_spawns.duplicate(true),
 		"pickups": pickups_out,
 		"projectiles": projectiles_out,
 		"rng": rng.to_dict(),
@@ -136,6 +141,8 @@ func state_hash() -> int:
 
 static func from_dict(data: Dictionary):
 	var state := new(data.get("run_seed", ""))
+	state.pending_spawns.assign(data.get("pending_spawns", []))
+	state.encounter_waves = data.get("encounter_waves", []).duplicate(true)
 	state.next_id = int(data.get("next_id", 1))
 	state.rng = RngStreams.from_dict(data.get("rng", {}))
 	state.room = Room.from_dict(data.get("room", {}))

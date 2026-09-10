@@ -1,5 +1,7 @@
 extends RefCounted
 
+const Director = preload("res://sim/encounter_director.gd")
+const Revive = preload("res://sim/revive.gd")
 const RunState = preload("res://sim/run_state.gd")
 const Actor = preload("res://sim/actor.gd")
 const Pickup = preload("res://sim/pickup.gd")
@@ -40,6 +42,7 @@ static func _enter(state: RunState, direction: String) -> void:
 	# в следующую комнату лежащим на полу предыдущей.
 	for slot in state.slots:
 		Abilities.finish(state, slot)
+		Revive.cancel(slot)
 	var next: String = RoomMap.exits(state.room)[direction]
 	var enemies: Array = []
 	var pickups: Array = []
@@ -48,19 +51,12 @@ static func _enter(state: RunState, direction: String) -> void:
 		if actor.kind == Actor.Kind.PLAYER: party.append(actor)
 		else: enemies.append(actor.to_dict())
 	for pickup in state.pickups: pickups.append(pickup.to_dict())
-	state.room_states[state.room.id] = {"actors": enemies, "pickups": pickups}
+	state.room_states[state.room.id] = {"actors": enemies, "pickups": pickups,
+		"pending_spawns": state.pending_spawns.duplicate(true), "encounter_waves": state.encounter_waves.duplicate(true)}
 	state.actors = party.duplicate()
 	state.pickups.clear()
 	state.projectiles.clear()
 	state.room = RoomMap.make(next)
-	if state.room_states.has(next):
-		for record in state.room_states[next]["actors"]: state.actors.append(Actor.from_dict(record))
-		for record in state.room_states[next]["pickups"]: state.pickups.append(Pickup.from_dict(record))
-	else:
-		var roster: Array = RoomMap.ROSTERS[next]
-		for i in roster.size():
-			Encounter.add_enemy(state, roster[i], state.room.enemy_spawn(i))
-		_place_loot(state)
 	var arrival: String = RoomMap.OPPOSITE[direction]
 	var inward: Vector2 = -RoomMap.DIRECTIONS[arrival]
 	var at := RoomMap.door(state.room, arrival)
@@ -72,6 +68,14 @@ static func _enter(state: RunState, direction: String) -> void:
 		actor.attack_ticks = 0
 		state.slots[actor.slot].harvest_target = -1
 		state.slots[actor.slot].harvest_ticks = 0
+	if state.room_states.has(next):
+		for record in state.room_states[next]["actors"]: state.actors.append(Actor.from_dict(record))
+		for record in state.room_states[next]["pickups"]: state.pickups.append(Pickup.from_dict(record))
+		state.pending_spawns.assign(state.room_states[next].get("pending_spawns", []))
+		state.encounter_waves = state.room_states[next].get("encounter_waves", []).duplicate(true)
+	else:
+		Director.begin(state)
+		_place_loot(state)
 	Corpses.advance(state)
 
 

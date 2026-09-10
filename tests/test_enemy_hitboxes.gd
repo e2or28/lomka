@@ -10,6 +10,19 @@ const Art = preload("res://game/art_library.gd")
 func title() -> String:
 	return "попадания в силуэт"
 
+func _test_new_enemy_heads_hit_on_both_facing_sides() -> bool:
+	for id in ["test_monster", "runner", "heavy"]:
+		for side in [-1, 1]:
+			var state := Arena.duel("new-head", id, Vector2.ZERO)
+			var enemy := Arena.enemies(state)[0]
+			enemy.facing = side
+			var y := -132.0 if id == "heavy" else -98.0
+			var shot: Projectile = Projectile.spawn(state.take_id(), state.actor_of_slot(0), Vector2.DOWN, {}, "")
+			var events: Array[Dictionary] = []
+			check(Tick._hit_segment(state, shot, Vector2(side * 12, y - 4), Vector2(side * 12, y + 4), events),
+				"голова не принимает урон после разворота: %s/%d" % [id, side])
+	return true
+
 
 func _test_visible_bullet_crossing_upper_body_hits_every_enemy() -> bool:
 	for id in ["test_monster", "runner", "heavy", "tandem"]:

@@ -44,6 +44,10 @@ static func build() -> RunState:
 	second.position = Vector2(-7.75, 40.0)
 	second.health = 0.0
 	state.slots[1].downed = true
+	state.slots[0].revive_target = second.id
+	state.slots[0].revive_ticks = 123
+	state.pending_spawns.append({"id": "runner", "position": Vector2(240, -180), "spawn_tick": 4411})
+	state.encounter_waves = [["heavy"]]
 
 	var wounded := state.living(Actor.Kind.ENEMY)[0]
 	wounded.health = 12.0

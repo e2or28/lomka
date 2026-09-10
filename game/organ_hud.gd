@@ -4,6 +4,7 @@ const RoomMap = preload("res://sim/room_map.gd")
 const RunState = preload("res://sim/run_state.gd")
 const Organs = preload("res://sim/organs.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
+const Revive = preload("res://sim/revive.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Pickup = preload("res://sim/pickup.gd")
 const Items = preload("res://sim/items.gd")
@@ -19,6 +20,9 @@ const GAP := 5.0
 
 var state: RunState = null
 var player_index := 0
+var keyboard_slot := 0
+var network_mode := false
+var can_restart := true
 
 
 func _ready() -> void:
@@ -53,19 +57,20 @@ func _draw() -> void:
 	var hp := clampf(player.health / maxf(1, player.max_health()), 0, 1)
 	draw_rect(Rect2(176, 53, 96, 8), Color(0.2, 0.22, 0.21))
 	draw_rect(Rect2(176, 53, 96 * hp, 8), MINT)
-	if player_index == 0:
+	if player_index == keyboard_slot:
 		_text(Vector2(20, 105), "WASD · идти    Стрелки · стрелять", 12)
 		_text(Vector2(20, 123), "F · извлечь   E · подобрать   Пробел · перерыв   1 · отладка", 12)
 	else:
 		_text(Vector2(20, 105), "Левый стик · идти    Правый · стрелять", 12)
 		_text(Vector2(20, 123), "X · извлечь   A · подобрать   LB · перерыв   1 · отладка", 12)
-	if state.occupied_count() > 1:
+	if state.occupied_count() > 1 and not network_mode:
 		_text(Vector2(310, 105), "V · игрок и камера", 12, MINT)
 	_panel(Rect2(viewport.x - 204, 18, 186, 68), ACCENT.darkened(0.5))
 	_text(Vector2(viewport.x - 188, 40), "РОЗЫСК / HEAT", 12, ACCENT)
 	_text(Vector2(viewport.x - 188, 69), "%03d" % state.heat, 28, PAPER)
 	_draw_map(viewport)
 	_draw_boss(viewport)
+	_draw_reinforcements(viewport)
 	if Organs.has_behaviour(slot, "keep_moving"):
 		var remaining := maxf(0, (180.0 - slot.stationary_ticks) / 60.0)
 		var text := "Сердце курьера · двигайся"
@@ -104,7 +109,15 @@ func _draw() -> void:
 		var at := Vector2(viewport.x * 0.5 - 230, viewport.y * 0.5 - 48)
 		_panel(Rect2(at, Vector2(460, 96)), ACCENT)
 		_text(at + Vector2(30, 39), "ЗАБЕГ ОКОНЧЕН", 28, ACCENT)
-		_text(at + Vector2(30, 70), "R — начать заново", 16)
+		_text(at + Vector2(30, 70), "R — начать заново" if can_restart else "Ведущий может начать новый забег", 16)
+
+
+func _draw_reinforcements(viewport: Vector2) -> void:
+	if state.pending_spawns.is_empty(): return
+	var remaining := maxf(0.0, (float(state.pending_spawns[0].spawn_tick) - state.tick) / 60.0)
+	var at := Vector2(viewport.x * 0.5 - 200, 100)
+	_panel(Rect2(at, Vector2(400, 44)), ACCENT)
+	_text(at + Vector2(14, 28), "ПОДКРЕПЛЕНИЕ · %d · через %.1f с" % [state.pending_spawns.size(), remaining], 16, ACCENT)
 
 
 func _draw_boss(viewport: Vector2) -> void:
@@ -178,7 +191,7 @@ func _draw_context(player, slot, row: Vector2, hovered: String, hovered_item: St
 		var corpse = Harvest.nearest(state, player)
 		if corpse != null:
 			var record := Organs.organ(corpse.organ_id)
-			title = ("F" if player_index == 0 else "X") + "  ДЕРЖАТЬ  ·  " + record["name"]
+			title = ("F" if player_index == keyboard_slot else "X") + "  ДЕРЖАТЬ  ·  " + record["name"]
 			description = record["description"]
 			compare = _instead_of(slot, record["slot"])
 			footer = "+%d HEAT  ·  1 с без движения и стрельбы" % record["heat"]
@@ -186,7 +199,7 @@ func _draw_context(player, slot, row: Vector2, hovered: String, hovered_item: St
 				progress = float(slot.harvest_ticks) / Harvest.DURATION_TICKS
 		else:
 			var nearest = Pickup.nearest(state, player)
-			var key := "E" if player_index == 0 else "A"
+			var key := "E" if player_index == keyboard_slot else "A"
 			if nearest != null and nearest.kind == Pickup.KIND_ORGAN:
 				var record := Organs.organ(nearest.content_id)
 				title = key + "  УСТАНОВИТЬ  ·  " + record["name"]
@@ -212,6 +225,23 @@ func _draw_context(player, slot, row: Vector2, hovered: String, hovered_item: St
 		compare = ""
 		footer = "Органы разных слотов работают вместе, одного слота — вытесняют друг друга."
 		progress = 0.0
+	var teammate = Revive.nearest(state, player) if not slot.downed else null
+	if teammate != null:
+		title = ("E" if player_index == keyboard_slot else "A") + "  ДЕРЖАТЬ · ПОДНЯТЬ P%d" % (teammate.slot + 1)
+		description = "5 секунд рядом без движения и стрельбы"
+		compare = ""
+		footer = "Отпустишь кнопку или отойдёшь — подъём начнётся заново."
+		progress = float(slot.revive_ticks) / Revive.DURATION_TICKS
+	elif slot.downed:
+		title = "ВЫ УПАЛИ · ждите товарища"
+		description = "Товарищ может поднять вас за 5 секунд, удерживая E / A рядом."
+		compare = ""
+		footer = "После подъёма: 30% здоровья и короткая защита от урона."
+		progress = 0.0
+		for helper in state.slots:
+			if helper.revive_target == player.id:
+				progress = float(helper.revive_ticks) / Revive.DURATION_TICKS
+				title = "ВАС ПОДНИМАЕТ P%d" % (helper.index + 1)
 	if title == "":
 		return
 	var height := 128.0 if compare != "" else 104.0

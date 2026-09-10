@@ -7,8 +7,7 @@ var index: int = 0
 var occupied: bool = false
 var character_id: String = ""
 
-## Поднимает товарищ, простояв рядом; на переходе в зону поднимаются
-## автоматически.
+## Поднимает товарищ; переход между комнатами не лечит.
 var downed: bool = false
 
 ## -1, если слот пуст.
@@ -30,6 +29,8 @@ var cover_direction: Vector2 = Vector2.RIGHT
 
 var organs: Dictionary = {}
 var stationary_ticks: int = 0
+var revive_target: int = -1
+var revive_ticks: int = 0
 var harvest_target: int = -1
 var harvest_ticks: int = 0
 var harvest_spent: bool = false
@@ -59,6 +60,8 @@ func to_dict() -> Dictionary:
 		"items": items.duplicate(),
 		"occupied": occupied,
 		"organs": organs.duplicate(),
+		"revive_target": revive_target,
+		"revive_ticks": revive_ticks,
 		"skill_cooldown_ticks": skill_cooldown_ticks,
 		"skill_held": skill_held,
 		"stationary_ticks": stationary_ticks,
@@ -79,6 +82,8 @@ static func from_dict(data: Dictionary):
 	slot.cover_health = float(data.get("cover_health", 0.0))
 	slot.cover_position = data.get("cover_position", Vector2.ZERO)
 	slot.cover_direction = data.get("cover_direction", Vector2.RIGHT)
+	slot.revive_target = int(data.get("revive_target", -1))
+	slot.revive_ticks = int(data.get("revive_ticks", 0))
 	slot.harvest_target = int(data.get("harvest_target", -1))
 	slot.harvest_ticks = int(data.get("harvest_ticks", 0))
 	slot.harvest_spent = bool(data.get("harvest_spent", false))

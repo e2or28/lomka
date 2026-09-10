@@ -11,7 +11,7 @@ const SaveGame = preload("res://sim/save/save_game.gd")
 const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_14.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_15.bin"
 
 
 func title() -> String:
@@ -57,13 +57,16 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 	eq(loaded.actor_of_slot(0).weapon_id, "suitcase", "оружие в руках прочиталось не то")
 	eq(loaded.actor_of_slot(0).radius, 16.0, "хитбокс прочитался не тот")
 	eq(loaded.slots[1].downed, true, "признак падения прочитался не тот")
+	eq(loaded.slots[0].revive_ticks, 123, "подъём потерян")
+	eq(loaded.pending_spawns[0].spawn_tick, 4411, "предупреждение потеряно")
+	eq(loaded.encounter_waves, [["heavy"]], "остаток волн потерян")
 	eq(loaded.living(Actor.Kind.ENEMY).size(), 2, "враги прочитались не все")
 	eq(loaded.projectiles.size(), 1, "снаряд в полёте потерян")
 	return true
 
 
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), 5851717666378504468,
+	eq(ReferenceRun.build().state_hash(), -1873061013569089930,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

@@ -84,6 +84,7 @@ var standing_front: Dictionary = {}
 var firing: Dictionary = {}
 var show_hitboxes := false
 var inspected_slot := 0
+var keyboard_slot := 0
 var projectile_age: Dictionary = {}
 var breath := 0.0
 
@@ -126,7 +127,9 @@ func advance(delta: float) -> void:
 
 func _sync_animation_state() -> void:
 	var room_id := state.room.id if state != null else ""
-	if state == _animation_state and room_id == _animation_room:
+	if state != null and _animation_state != null and state.run_seed == _animation_state.run_seed \
+			and state.tick >= _animation_state.tick and room_id == _animation_room:
+		_animation_state = state
 		return
 	_animation_state = state
 	_animation_room = room_id
@@ -139,13 +142,14 @@ func _sync_animation_state() -> void:
 	feedback.clear()
 
 
-func consume_events(events: Array[Dictionary]) -> void:
+func consume_events(events: Array) -> void:
 	_sync_animation_state()
 	if state == null:
 		return
 	for event in events:
 		if event.room_id != state.room.id:
 			continue
+		if event.type != "shot" and event.type != "hit": continue
 		var actor := state.actor_by_id(event.actor_id)
 		if actor == null:
 			continue
@@ -171,13 +175,14 @@ func _draw() -> void:
 		return
 	draw_rect(get_viewport_rect(), Color(0.035, 0.04, 0.045))
 	_draw_room()
+	_draw_spawn_markers()
 	var actors := state.actors.duplicate()
 	actors.sort_custom(func(a, b): return a.position.y < b.position.y)
 	for actor in actors:
 		if not actor.alive:
 			_draw_actor(actor)
 	var reachable = _reachable_pickup()
-	var key := "E" if inspected_slot == 0 else "A"
+	var key := "E" if inspected_slot == keyboard_slot else "A"
 	for pickup in state.pickups:
 		LootArt.draw(self, textures, pickup, origin + pickup.position, pickup == reachable, key)
 	for slot in state.slots:
@@ -315,7 +320,7 @@ func _draw_actor(actor: Actor) -> void:
 			var player := state.actor_of_slot(inspected_slot)
 			if player != null and player.alive and not state.slots[inspected_slot].downed \
 					and Harvest.nearest(state, player) == actor:
-				var key := "F" if inspected_slot == 0 else "X"
+				var key := "F" if inspected_slot == keyboard_slot else "X"
 				var caption := key + " · ИЗВЛЕЧЬ"
 				if actor.corpse_until_tick >= 0:
 					caption += " · %d с" % ceili(float(actor.corpse_until_tick - state.tick) / 60.0)
@@ -364,8 +369,23 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		return true
 	var size := sprite.get_size()
-	draw_texture(sprite, at - Vector2(size.x * 0.5, size.y), tint)
+	draw_set_transform(at, 0.0, Vector2(actor.facing, 1.0))
+	draw_texture(sprite, -Vector2(size.x * 0.5, size.y), tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return true
+
+
+func _draw_spawn_markers() -> void:
+	for pending in state.pending_spawns:
+		var at: Vector2 = origin + pending.position
+		var remaining := maxf(0.0, float(pending.spawn_tick - state.tick) / 90.0)
+		var color := Color(0.96, 0.40, 0.18, 0.75)
+		draw_circle(at, 30.0, Color(0.8, 0.16, 0.05, 0.14))
+		draw_arc(at, 30.0, -PI * 0.5, -PI * 0.5 + TAU * (1.0 - remaining), 40, color, 3.0)
+		draw_line(at + Vector2(-10, -10), at + Vector2(10, 10), color, 2.0)
+		draw_line(at + Vector2(-10, 10), at + Vector2(10, -10), color, 2.0)
+		draw_string(ThemeDB.fallback_font, at + Vector2(-34, -39), "ПОДКРЕПЛЕНИЕ",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, color)
 
 
 func _draw_tank_warning(actor: Actor) -> void:

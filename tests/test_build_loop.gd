@@ -15,6 +15,8 @@ func title() -> String:
 	return "игровой цикл сборок"
 
 func _walk(state, direction: String) -> void:
+	state.pending_spawns.clear()
+	state.encounter_waves.clear()
 	for enemy in Arena.enemies(state): enemy.take_damage(10000)
 	var normal: Vector2 = Map.DIRECTIONS[direction]
 	state.actor_of_slot(0).position = Map.door(state.room, direction) - normal * 16

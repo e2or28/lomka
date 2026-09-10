@@ -5,6 +5,8 @@ extends RefCounted
 ## Порядок фаз менять нельзя: от него зависит, попал снаряд до или после
 ## того, как цель сдвинулась.
 
+const Revive = preload("res://sim/revive.gd")
+const Director = preload("res://sim/encounter_director.gd")
 const Motion = preload("res://sim/motion.gd")
 const RunState = preload("res://sim/run_state.gd")
 const CommandLog = preload("res://sim/input/command_log.gd")
@@ -41,6 +43,8 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	var events: Array[Dictionary] = []
 	var first_new_id := state.next_id
 	var room_id := state.room.id
+	commands = Revive.prepare(state, commands)
+	Director.advance(state, events)
 	Abilities.advance(state, commands)
 	_drive_players(state, commands)
 	_drive_enemies(state)
@@ -57,6 +61,7 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	_take_pickups(state, commands)
 	_fly_projectiles(state, events)
 	_touch_damage(state, events)
+	Revive.advance(state, events)
 	Harvest.advance(state, commands)
 	Corpses.advance(state)
 	_tick_timers(state)
@@ -85,7 +90,7 @@ static func _drive_players(state: RunState, commands: Dictionary) -> void:
 			aim = command.aim_vector()
 			firing = command.pressed(Command.BTN_FIRE)
 
-		if slot.downed:
+		if slot.downed or slot.revive_target >= 0:
 			move = Vector2.ZERO
 			firing = false
 
@@ -114,6 +119,7 @@ static func _drive_enemies(state: RunState) -> void:
 			var offset := target.position - actor.position
 			if offset != Vector2.ZERO:
 				actor.aim = offset.normalized()
+				if not is_zero_approx(offset.x): actor.facing = 1 if offset.x > 0.0 else -1
 			move = _behaviour_move(actor, offset, state.tick, actor.radius + target.radius)
 		var stats := actor.stack.compute()
 		actor.velocity = Motion.step_velocity(actor.velocity, move, stats, DELTA)
@@ -327,6 +333,7 @@ static func _record_hit(events: Array[Dictionary], actor: Actor, health_before: 
 ## Тело остаётся живым при нулевом здоровье намеренно: упавшего поднимает
 ## товарищ, и мёртвое тело поднимать было бы некому.
 static func _knock_down(state: RunState, actor) -> void:
+	Revive.cancel(state.slots[actor.slot])
 	state.slots[actor.slot].downed = true
 	state.slots[actor.slot].charge_ticks = 0
 	Abilities.finish(state, state.slots[actor.slot])

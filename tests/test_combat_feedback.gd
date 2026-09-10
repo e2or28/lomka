@@ -52,6 +52,23 @@ func _test_old_room_events_are_discarded() -> bool:
 	view.free()
 	return true
 
+func _test_snapshots_preserve_animation_and_wave_events_have_no_actor() -> bool:
+	var view := View.new()
+	view.state = Arena.solo("network-animation")
+	view.consume_events([{"type": "wave_warning", "room_id": "", "count": 2}])
+	view.stride_phase[1] = 0.5
+	view.feedback.shots[1] = {"age": 0.1}
+	view.state = Arena.after_save(view.state)
+	view.state.tick += 3
+	view.consume_events([])
+	eq(view.stride_phase.get(1), 0.5, "снапшот сбросил шаг на первый кадр")
+	check(view.feedback.shots.has(1), "снапшот стёр незавершённую вспышку")
+	view.state.room.id = "other"
+	view.consume_events([])
+	check(view.feedback.shots.is_empty(), "переход оставил вспышку из старой комнаты")
+	view.free()
+	return true
+
 
 func _test_fall_direction_survives_the_hit_flash() -> bool:
 	var f := Feedback.new()

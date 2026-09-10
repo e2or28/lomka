@@ -22,6 +22,9 @@ const ArtLibrary = preload("res://game/art_library.gd")
 const DebugOverlay = preload("res://game/debug_overlay.gd")
 const ScaleReference = preload("res://game/scale_reference.gd")
 const OrganHud = preload("res://game/organ_hud.gd")
+const NetworkSession = preload("res://game/network_session.gd")
+const LobbyPanel = preload("res://game/lobby_panel.gd")
+const SoundEffects = preload("res://game/sound_effects.gd")
 
 ## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми 4.
 const SPRITES: Array[String] = [
@@ -31,7 +34,7 @@ const SPRITES: Array[String] = [
 	"player_colt_stand", "player_colt_front",
 	"player_colt_walk_1", "player_colt_walk_2", "player_colt_walk_3",
 	"player_colt_walk_4", "player_colt_walk_5", "player_colt_walk_6",
-	"monster", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
+	"monster", "test_monster", "runner", "heavy", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
 	"courier_heart", "armored_spine",
 	"room_start", "room_center", "room_north", "room_south", "room_west", "room_east", "tandem",
 ]
@@ -47,6 +50,9 @@ var _art: ArtLibrary = null
 var _overlay: DebugOverlay = null
 var _scale_ref: ScaleReference = null
 var _organ_hud: OrganHud = null
+var _network: NetworkSession
+var _lobby: LobbyPanel
+var _sounds: SoundEffects
 
 var _active_slots := 1
 var _origin := Vector2.ZERO
@@ -76,6 +82,18 @@ func _ready() -> void:
 	add_child(hud_layer)
 	_organ_hud = OrganHud.new()
 	hud_layer.add_child(_organ_hud)
+	_sounds = SoundEffects.new()
+	add_child(_sounds)
+	_network = NetworkSession.new()
+	_network.name = "NetworkSession"
+	add_child(_network)
+	_network.state_changed.connect(_accept_network_state)
+	_network.ended.connect(func(): _active_slots = 1; _reset())
+	_lobby = LobbyPanel.new()
+	_lobby.session = _network
+	add_child(_lobby)
+	_lobby.volume.set_value_no_signal(_sounds.volume * 100)
+	_lobby.volume_changed.connect(_sounds.set_volume)
 
 	_reload_art()
 	_reset()
@@ -85,11 +103,30 @@ func _ready() -> void:
 
 
 func _reset() -> void:
-	_state = RoomTravel.start(SEED, _active_slots)
+	_state = RoomTravel.start("%s/%d" % [SEED, Time.get_ticks_usec()], _active_slots)
 	_view.state = _state
 	_view.inspected_slot = 0
+	_view.keyboard_slot = 0
 	_organ_hud.state = _state
 	_organ_hud.player_index = 0
+	_organ_hud.keyboard_slot = 0
+	_organ_hud.network_mode = false
+	_organ_hud.can_restart = true
+	_sounds.reset()
+
+
+func _accept_network_state(state: RunState, events: Array) -> void:
+	_state = state
+	_view.state = state
+	_view.inspected_slot = _network.local_slot
+	_view.keyboard_slot = _network.local_slot
+	_organ_hud.state = state
+	_organ_hud.player_index = _network.local_slot
+	_organ_hud.keyboard_slot = _network.local_slot
+	_organ_hud.network_mode = true
+	_organ_hud.can_restart = _network.is_host()
+	_view.consume_events(events)
+	_sounds.consume(state, events, _network.local_slot)
 
 
 func _recenter() -> void:
@@ -99,6 +136,15 @@ func _recenter() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if _network.active:
+		if _network.running:
+			var command = InputReader.read(0, _state.tick)
+			if _lobby.is_open(): command = Command.from_axes(_state.tick, Vector2.ZERO, Vector2.ZERO)
+			_network.step(command)
+			var actor := _state.actor_of_slot(_network.local_slot)
+			if actor != null: _view.firing[actor.id] = command.pressed(Command.BTN_FIRE)
+		return
+	if _lobby.is_open(): return
 	var commands := {}
 	for i in _active_slots:
 		var command: Command = InputReader.read(i, _state.tick)
@@ -111,6 +157,7 @@ func _physics_process(_delta: float) -> void:
 		if commands.has(i) and slot.actor_id >= 0:
 			_view.firing[slot.actor_id] = commands[i].pressed(Command.BTN_FIRE)
 	_view.consume_events(events)
+	_sounds.consume(_state, events, _organ_hud.player_index)
 
 
 
@@ -200,6 +247,7 @@ func _readout() -> String:
 
 
 func _on_stat_changed(stat: String, value: float) -> void:
+	if _network.active: return
 	for actor in _state.actors:
 		if actor.kind == Actor.Kind.PLAYER:
 			actor.stack.base[stat] = value
@@ -218,6 +266,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# На кириллице event.keycode нулевой — см. «Ловушки» в CLAUDE.md.
 	var code: int = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+	if _lobby.is_open():
+		if code == KEY_ESCAPE: _lobby.panel.hide()
+		return
+	if _network.active:
+		if code == KEY_ESCAPE:
+			_lobby.toggle()
+		elif code == KEY_R and _network.is_host():
+			_network.restart()
+		elif code == KEY_4:
+			_reload_art()
+		return
 
 	# Цифры, а не F-клавиши: на ноутбуке те лежат под Fn, и одной рукой
 	# на них не попасть. Спавн ушёл под Shift, чтобы освободить ряд.

@@ -17,6 +17,8 @@ func title() -> String:
 
 
 func _clear(state) -> void:
+	state.pending_spawns.clear()
+	state.encounter_waves.clear()
 	for actor in state.actors:
 		if actor.kind == Actor.Kind.ENEMY:
 			actor.alive = false
