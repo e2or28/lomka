@@ -88,14 +88,14 @@ func _execute(request: Dictionary) -> void:
 				actor.velocity = Vector2.ZERO
 		"fixture_baron_door":
 			assert(session.is_host() and session.running)
-			session.state.room = RoomMap.make("north")
+			session.state.room = RoomMap.make("center")
 			session.state.actors = session.state.living(Actor.Kind.PLAYER)
 			session.state.projectiles.clear()
 			session.state.pickups.clear()
 			session.state.pending_spawns.clear()
 			session.state.encounter_waves.clear()
 			for actor in session.state.actors:
-				actor.position = RoomMap.door(session.state.room, "north") + Vector2(0, actor.radius + 1 + actor.slot * 38)
+				actor.position = RoomMap.door(session.state.room, "west") + Vector2(actor.radius + 1 + actor.slot * 38, 0)
 				actor.velocity = Vector2.ZERO
 		"ready": session.set_ready(bool(request.get("value", true)))
 		"start": result = session.start("network-smoke")

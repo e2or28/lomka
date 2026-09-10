@@ -66,7 +66,8 @@ static func _enter(state: RunState, direction: String) -> void:
 		var entry: Vector2 = at + inward * (76 + i * 38)
 		if next == "oil_baron":
 			# Два ряда оставляют четырём игрокам дистанцию до качалки.
-			entry = at + inward * (76 + (i / 2) * 38) + Vector2((i % 2) * 140 - 70, 0)
+			var tangent := Vector2(-inward.y, inward.x)
+			entry = at + inward * (76 + (i / 2) * 38) + tangent * ((i % 2) * 140 - 70)
 		actor.position = state.room.clamp_body(entry, actor.radius)
 		actor.velocity = Vector2.ZERO
 		actor.attack_ticks = 0

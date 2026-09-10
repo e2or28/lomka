@@ -173,8 +173,8 @@ def smoke(directory: Path, peers: list[Peer]):
     print("ok: real door movement transfers the party and replicates enemies/waves", flush=True)
 
     host.call("fixture_baron_door")
-    host.call("pump", y=-1)
-    arrived = host.until(lambda s: s["room"] == "oil_baron", "north door into oil baron room")
+    host.call("pump", x=-1)
+    arrived = host.until(lambda s: s["room"] == "oil_baron", "west door into oil baron room")
     host.call("pump")
     roster = ["ice_agent", "ice_agent", "oil_baron", "soldier", "soldier_dark"]
     for client in clients:

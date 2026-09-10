@@ -25,7 +25,7 @@ func _walk(state, direction: String) -> void:
 func _test_every_item_and_competing_eyes_reachable_without_debug_keys() -> bool:
 	var state = Travel.start("лут", 1)
 	var found := {}
-	for direction in ["", "north", "west", "east", "east"]:
+	for direction in ["", "north", "west", "west", "east", "east", "east"]:
 		if direction != "": _walk(state, direction)
 		for pickup in state.pickups:
 			if pickup.kind in ["item", "organ"]: found[pickup.content_id] = true

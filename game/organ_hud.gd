@@ -271,8 +271,8 @@ func _draw_map(viewport: Vector2) -> void:
 	_panel(Rect2(at, Vector2(186, 178)))
 	_text(at + Vector2(12, 23), RoomMap.NAMES[state.room.id], 16)
 	var positions := {"center": Vector2(0, 0), "north": Vector2(0, -1),
-		"south": Vector2(0, 1), "west": Vector2(-1, 0), "east": Vector2(1, 0),
-		"oil_baron": Vector2(0, -2)}
+		"south": Vector2(0, 1), "west": Vector2(-2, 0), "east": Vector2(1, 0),
+		"oil_baron": Vector2(-1, 0)}
 	for id in RoomMap.IDS:
 		var cell: Vector2 = at + Vector2(80, 84) + positions[id] * 24
 		var color := MINT if id == state.room.id else MUTED.darkened(0.55)

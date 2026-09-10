@@ -7,9 +7,9 @@ const NAMES := {"south": "Приёмная", "center": "Главный зал", 
 	"west": "Курьерская", "east": "Архив", "oil_baron": "Нефтяной барон"}
 const LINKS := {
 	"south": {"north": "center"},
-	"center": {"south": "south", "north": "north", "west": "west", "east": "east"},
-	"north": {"south": "center", "north": "oil_baron"}, "west": {"east": "center"}, "east": {"west": "center"},
-	"oil_baron": {"south": "north"},
+	"center": {"south": "south", "north": "north", "west": "oil_baron", "east": "east"},
+	"north": {"south": "center"}, "west": {"east": "oil_baron"}, "east": {"west": "center"},
+	"oil_baron": {"east": "center", "west": "west"},
 }
 const DIRECTIONS := {"north": Vector2.UP, "south": Vector2.DOWN,
 	"west": Vector2.LEFT, "east": Vector2.RIGHT}
@@ -55,7 +55,7 @@ static func make(id: String) -> Room:
 	room.enemy_spawns = [Vector2(0, -100), Vector2(-240, -160), Vector2(240, -160)]
 	if id == "north": room.enemy_spawns = [Vector2(0, 60)]
 	# Выступы у боковых дверей: проём между двумя прямоугольниками остаётся свободен.
-	if id == "center":
+	if id in ["center", "oil_baron"]:
 		room.blockers = [Rect2(-672, -150, 42, 100), Rect2(629, -150, 43, 100),
 			Rect2(-672, 35, 42, 105), Rect2(629, 35, 43, 105)]
 	elif id == "west":
@@ -74,8 +74,8 @@ static func door(room: Room, direction: String) -> Vector2:
 	match direction:
 		"north": at.y = room.bounds.position.y
 		"south": at.y = room.bounds.end.y
-		"west": at = Vector2(room.bounds.position.x, -7 if room.id == "center" else -15)
-		"east": at = Vector2(room.bounds.end.x, -7 if room.id == "center" else -15)
+		"west": at = Vector2(room.bounds.position.x, -7 if room.id in ["center", "oil_baron"] else -15)
+		"east": at = Vector2(room.bounds.end.x, -7 if room.id in ["center", "oil_baron"] else -15)
 	return at
 
 

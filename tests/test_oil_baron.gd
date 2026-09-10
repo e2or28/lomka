@@ -84,10 +84,10 @@ func _test_dead_enemies_cancel_pending_attacks() -> bool:
 
 func _test_new_room_has_every_mob_and_stays_cleared_after_revisit() -> bool:
 	if not check(Map.IDS.has("oil_baron"), "нет шестой комнаты"): return true
-	var state := Encounter.dev_room("baron-room", 4, 0, Map.make("north"))
-	state.actor_of_slot(0).position = Map.door(state.room, "north") + Vector2(0, 16)
-	Travel.advance(state, {0: Command.from_axes(0, Vector2.UP, Vector2.ZERO)})
-	eq(state.room.id, "oil_baron", "комната недоступна за Тандемом")
+	var state := Encounter.dev_room("baron-room", 4, 0, Map.make("center"))
+	state.actor_of_slot(0).position = Map.door(state.room, "west") + Vector2(16, 0)
+	Travel.advance(state, {0: Command.from_axes(0, Vector2.LEFT, Vector2.ZERO)})
+	eq(state.room.id, "oil_baron", "комната недоступна слева от главного зала")
 	var roster: Array[String] = []
 	for enemy in Arena.enemies(state): roster.append(enemy.archetype)
 	roster.sort()
@@ -98,12 +98,12 @@ func _test_new_room_has_every_mob_and_stays_cleared_after_revisit() -> bool:
 		for player in Arena.players(state):
 			check(enemy.position.distance_to(player.position) >= Director.SAFE_DISTANCE, "враг появился у игрока")
 		enemy.take_damage(10000)
-	state.actor_of_slot(0).position = Map.door(state.room, "south") - Vector2(0, 16)
-	Travel.advance(state, {0: Command.from_axes(0, Vector2.DOWN, Vector2.ZERO)})
-	eq(state.room.id, "north", "нет обратного прохода")
+	state.actor_of_slot(0).position = Map.door(state.room, "east") - Vector2(16, 0)
+	Travel.advance(state, {0: Command.from_axes(0, Vector2.RIGHT, Vector2.ZERO)})
+	eq(state.room.id, "center", "нет обратного прохода в главный зал")
 	var saved := Arena.after_save(state)
-	saved.actor_of_slot(0).position = Map.door(saved.room, "north") + Vector2(0, 16)
-	Travel.advance(saved, {0: Command.from_axes(0, Vector2.UP, Vector2.ZERO)})
+	saved.actor_of_slot(0).position = Map.door(saved.room, "west") + Vector2(16, 0)
+	Travel.advance(saved, {0: Command.from_axes(0, Vector2.LEFT, Vector2.ZERO)})
 	check(saved.room_cleared(), "босс или охрана воскресли после возврата")
 	return true
 
