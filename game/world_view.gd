@@ -22,6 +22,7 @@ const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const TankArt = preload("res://game/tank_art.gd")
+const OilBaronArt = preload("res://game/oil_baron_art.gd")
 const GuardArt = preload("res://game/guard_art.gd")
 const Hitboxes = preload("res://sim/hitboxes.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
@@ -92,6 +93,7 @@ var breath := 0.0
 var _animation_state: RunState = null
 var _arms := CharacterArms.new()
 var _tank_art := TankArt.new()
+var _oil_art := OilBaronArt.new()
 var feedback := CombatFeedback.new()
 var _animation_room := ""
 
@@ -364,6 +366,9 @@ func _draw_actor(actor: Actor) -> void:
 func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
+	if actor.behaviour == "oil_baron" and textures.get("oil_baron") != null:
+		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath)
+		return true
 	if GuardArt.handles(actor):
 		return GuardArt.draw(self, textures, actor, at, tint)
 
