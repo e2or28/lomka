@@ -317,7 +317,7 @@ func _draw_actor(actor: Actor) -> void:
 			return
 	var flash := feedback.flash(actor.id)
 	tint *= Color(1 + flash * 1.8, 1 + flash * 1.2, 1 + flash * 0.7)
-	var visual_at := at + feedback.offset(actor.id, 0.25 if actor.behaviour == "tank" else 1.0)
+	var visual_at := at + feedback.offset(actor.id, 0.0 if actor.behaviour == "oil_baron" else (0.25 if actor.behaviour == "tank" else 1.0))
 	var drawn := _draw_fallen(actor, visual_at, tint) if not actor.alive or downed else _draw_sprite(actor, visual_at, tint)
 	if not drawn:
 		var box := Rect2(at - BODY * 0.5, BODY)
@@ -367,7 +367,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
 	if actor.behaviour == "oil_baron" and textures.get("oil_baron") != null:
-		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath)
+		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath, feedback.flash(actor.id))
 		return true
 	if GuardArt.handles(actor):
 		return GuardArt.draw(self, textures, actor, at, tint)
