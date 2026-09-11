@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Импорт партии Саши от 9 сентября; исходники сохраняются рядом с игрой."""
+"""Импорт партии Саши от 9 сентября; исходники сохраняются рядом с игрой.
+
+ICE отсюда ушёл: 10 сентября он перерисован заново, и его кадры собирает
+import_oil_baron_2.py. Исходники сомбреро остались в oil_baron_source/.
+"""
 from pathlib import Path
 
 import numpy as np
@@ -8,16 +12,11 @@ from import_sprite import decode_rgba, encode, resize_to_height, trim
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "art/oil_baron_source"
-# Верх сомбреро замерен отдельно: поднятая дубинка не уменьшает тело.
 FRAMES = {
     "soldier": ("af8c76aa-5075-4358-a9cd-5abafbd411d3.png", 0),
     "soldier_front": ("01137e46-714d-4bb4-a9d3-7c59b696580a.png", 0),
     "soldier_dark": ("be728592-a995-4643-854f-9a0bdcc9ba10.png", 0),
     "soldier_dark_front": ("c37bde92-f3a1-42e1-a678-69dbc27daa52.png", 0),
-    "ice_agent": ("ice_agent_sombrero_side_godot.png", 0),
-    "ice_agent_front": ("ice_agent_sombrero_godot_cropped.png", 0),
-    "ice_agent_windup": ("ice_agent_sombrero_windup_side_godot.png", 155),
-    "ice_agent_windup_front": ("ice_agent_sombrero_windup_front_godot.png", 198),
 }
 
 

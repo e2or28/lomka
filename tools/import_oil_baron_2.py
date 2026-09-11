@@ -13,8 +13,9 @@ BARON_SOURCE = ROOT / "art/oil_baron_source/3c7b93b3-863d-4147-ace2-d5f4182b1f2e
 # Охрана этой партии стреляет с колена, и рост тут больше не мера: боец на
 # колене ниже стоящего на треть, а нормировка по росту сделала бы из него
 # великана вровень со стоящим. Мерой служит головной убор — он один и тот же
-# в любой позе. Числа сняты с уже принятых кадров: каска на soldier*.png и
-# расстояние от полей сомбреро до пола на ice_agent*.png.
+# в любой позе. Числа сняты с кадров 9 сентября: каска на soldier*.png и
+# расстояние от полей сомбреро до пола на тогдашних ice_agent*.png, которые
+# этот же импортёр теперь перезаписывает.
 HELMET = 43.0
 SOMBRERO_DROP = 146.0
 
@@ -27,10 +28,13 @@ GUARDS = {
     "soldier_dark_kneel_front": "чёрный солдат_спереди_оружие_опущено(1).png",
 }
 
+# ICE перерисован заново и заменяет кадры 9 сентября — те остались только
+# исходниками, и их больше не воспроизводит import_oil_baron.py.
 ICE = {
-    "ice_agent_ready": "ice_idle.png",
-    "ice_agent_swing": "ice_attack_side.png",
-    "ice_agent_swing_front": "ice_attack_front.png",
+    "ice_agent": "ice_idle.png",
+    "ice_agent_front": "ice_idle_front.png",
+    "ice_agent_windup": "ice_attack_side.png",
+    "ice_agent_windup_front": "ice_attack_front.png",
 }
 
 BARON = {
@@ -87,6 +91,13 @@ def place(rgb, mask, scale, center_x, bottom, name):
     valid = (sy >= 0) & (sy < height) & (sx >= 0) & (sx < width)
     out[valid, :3] = rgb[sy[valid], sx[valid]]
     out[valid, 3] = np.where(mask[sy[valid], sx[valid]], 255, 0)
+    # Выборка может промахнуться мимо подошвы шириной в один исходный
+    # пиксель, и боец повисает над полом. Опора восстанавливается уже на
+    # готовом кадре — так же, как в импортёре партии 9 сентября.
+    shift = 194 - int(np.where(out[:, :, 3] > 0)[0].max())
+    if shift > 0:
+        out[shift:] = out[:-shift].copy()
+        out[:shift] = 0
     encode(out, ROOT / f"art/{name}.png")
     drawn = np.where(out[:, :, 3] > 0)[0]
     print(f"{name}: 160×200, опора (80,194), высота силуэта {drawn.max() - drawn.min() + 1}")
