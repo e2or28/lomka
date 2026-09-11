@@ -24,6 +24,7 @@ const Miniboss = preload("res://sim/miniboss.gd")
 const TankArt = preload("res://game/tank_art.gd")
 const OilBaronArt = preload("res://game/oil_baron_art.gd")
 const GuardArt = preload("res://game/guard_art.gd")
+const VerticalGait = preload("res://game/vertical_gait.gd")
 const Hitboxes = preload("res://sim/hitboxes.gd")
 const Arsenal = preload("res://sim/arsenal.gd")
 const OrganArt = preload("res://game/organ_art.gd")
@@ -81,6 +82,7 @@ var facing: Dictionary = {}
 ## решается только для стойки. Одним значением это не выразить — при
 ## развороте к зрителю пришлось бы забыть, каким боком он шёл.
 var standing_front: Dictionary = {}
+var vertical_facing: Dictionary = {}
 
 ## Ставится стендом: симуляция про представление не знает.
 var firing: Dictionary = {}
@@ -94,6 +96,7 @@ var _animation_state: RunState = null
 var _arms := CharacterArms.new()
 var _tank_art := TankArt.new()
 var _oil_art := OilBaronArt.new()
+var _gait := VerticalGait.new()
 var feedback := CombatFeedback.new()
 var _animation_room := ""
 
@@ -139,9 +142,11 @@ func _sync_animation_state() -> void:
 	stride_phase.clear()
 	facing.clear()
 	standing_front.clear()
+	vertical_facing.clear()
 	projectile_age.clear()
 	_arms.clear()
 	_tank_art.clear()
+	_gait.clear()
 	feedback.clear()
 
 
@@ -459,6 +464,36 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 	return {"frame": chosen, "gait": gait, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
 
 
+## Кадр вертикальной ходьбы или "" — тогда рисует прежняя профильная поза.
+func vertical_frame(actor: Actor, aim: Vector2) -> String:
+	var previous := String(vertical_facing.get(actor.id, ""))
+	var frame := VerticalGait.facing(actor.velocity, aim, previous)
+	vertical_facing[actor.id] = frame
+	if textures.get(frame) == null:
+		return ""
+	# Анфасный покой остаётся за штатной позой: у него свои кадры с оружием
+	# в руке, а вид со спины без походки рисовать больше нечем.
+	if frame == VerticalGait.FRONT and not CharacterPose.use_walk_frames(actor.velocity.length()):
+		return ""
+	return frame
+
+
+## Смотрящий в спину видит позвоночник поверх тела, смотрящий в лицо —
+## сердце: орган остаётся с той стороны, с которой на героя смотрят.
+func _draw_vertical(actor: Actor, canvas: Vector2, tint: Color, pose: Dictionary,
+		organs: Dictionary, frame: String) -> bool:
+	var back := frame == VerticalGait.BACK
+	if not back:
+		OrganArt.draw_body(self, textures, organs, canvas, 0, tint, breath, true)
+	var phase: float = stride_phase.get(actor.id, 0.0)
+	var moving := CharacterPose.use_walk_frames(actor.velocity.length())
+	if not _gait.draw(self, textures, actor.id, canvas + PLAYER_ROOT, tint, frame,
+			phase, moving, pose.weapon):
+		return false
+	OrganArt.draw_body(self, textures, organs, canvas, 0, tint, breath, back)
+	return true
+
+
 func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var pose := _player_pose(actor)
 	if pose.is_empty():
@@ -466,6 +501,9 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var side: int = pose.side
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(actor.velocity.length(), breath)
 	var organs: Dictionary = state.slots[actor.slot].organs if actor.slot >= 0 else {}
+	var vertical := vertical_frame(actor, pose.aim)
+	if vertical != "":
+		return _draw_vertical(actor, canvas, tint, pose, organs, vertical)
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, true)
 	var body_transform := Transform2D(0.0, canvas)
 	if side < 0:
