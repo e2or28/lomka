@@ -6,6 +6,7 @@ const Map = preload("res://sim/room_map.gd")
 const Director = preload("res://sim/encounter_director.gd")
 const Tick = preload("res://sim/tick.gd")
 const Command = preload("res://sim/input/command.gd")
+const Attacks = preload("res://sim/guard_attacks.gd")
 var game
 
 func _initialize() -> void:
@@ -46,5 +47,22 @@ func preview() -> void:
 			await process_frame
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://.cache/oil-baron-death-%d.png" % shot)
+	var agent = null
+	for actor in game._state.actors:
+		if actor.behaviour == "baton":
+			agent = actor
+	if agent != null:
+		agent.attack_ticks = 0
+		agent.standing_front = false
+		var phases := [0.0, 0.11, 0.3, 0.57]
+		for i in phases.size():
+			agent.cooldown = Attacks.PROFILES.baton.recovery - phases[i]
+			game._view.feedback.hit({"actor_id": 900 + i, "kind": "oil_drop", "damage": 16.0,
+				"direction": Vector2.LEFT, "fallen": false}, agent.position + Vector2(150, -30))
+			game._view.feedback.impacts[-1].age = phases[i] * 0.6
+			game._view.queue_redraw()
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://.cache/oil-baron-strike-%d.png" % i)
 	print("OIL BARON PREVIEW OK")
 	quit()

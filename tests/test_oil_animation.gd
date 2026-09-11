@@ -2,6 +2,8 @@ extends "res://tests/framework/test_case.gd"
 ## Класс: поведение. Механизм работает, опоры и точка атаки остаются устойчивыми.
 const OilBaronArt = preload("res://game/oil_baron_art.gd")
 const Actor = preload("res://sim/actor.gd")
+const GuardArt = preload("res://game/guard_art.gd")
+const Attacks = preload("res://sim/guard_attacks.gd")
 
 func title() -> String: return "анимации барона"
 func _test_pump_moves_with_fixed_base() -> bool:
@@ -69,4 +71,42 @@ func _test_drop_leaves_the_muzzle_straight_and_keeps_its_volume() -> bool:
 	check(seen > 1.0, "капля летит неподвижным шариком")
 	eq(drop.speck(0.05, 0).z, 0.0, "брызги отрываются раньше вылета")
 	check(drop.speck(0.9, 0).z > 0.0 and drop.speck(0.9, 0).x < 0.0, "брызги не отстают от капли")
+	return true
+
+func _test_baton_strikes_down_and_returns_on_its_own() -> bool:
+	var agent = Actor.new()
+	agent.id = 3
+	agent.behaviour = "baton"
+	agent.archetype = "ice_agent"
+	agent.attack_ticks = 12
+	eq(GuardArt.strike_age(agent), -1.0, "замах уже считается ударом")
+	eq(GuardArt.frame(agent), "ice_agent_windup", "замах потерял свой кадр")
+	agent.attack_ticks = 0
+	agent.cooldown = Attacks.PROFILES.baton.recovery
+	var lean := 0.0
+	for i in 40:
+		agent.cooldown = Attacks.PROFILES.baton.recovery - i * 0.02
+		if agent.cooldown <= 0.0: break
+		var now := GuardArt.strike_lean(GuardArt.strike_age(agent))
+		if i == 0: almost_eq(now, 0.0, "удар начинается с наклона", 1e-3)
+		lean = maxf(lean, now)
+	check(lean > 0.3, "дубинка не доходит вниз")
+	agent.cooldown = 0.0
+	eq(GuardArt.strike_lean(GuardArt.strike_age(agent)), 0.0, "боец остался в наклоне после удара")
+	eq(GuardArt.frame(agent), "ice_agent", "после удара не вернулась стойка")
+	for y in [130.0, 194.0]:
+		eq(GuardArt.strike_point(Vector2(80, y), 0.42), Vector2(80, y), "удар отрывает ноги от пола")
+	check(GuardArt.strike_point(Vector2(80, 40), 0.42).x > 80.0, "корпус не валится вперёд")
+	return true
+
+func _test_oil_splash_falls_and_fades() -> bool:
+	var drop = load("res://game/oil_drop_art.gd")
+	if drop == null or not drop.can_instantiate(): return true
+	var start: Vector3 = drop.splash_drop(0, 0.0, Vector2.RIGHT)
+	var late: Vector3 = drop.splash_drop(0, 0.8, Vector2.RIGHT)
+	check(late.z < start.z and late.z > 0.0, "капли всплеска не тают")
+	check(late.y > start.y, "нефть висит в воздухе, а не оседает")
+	check(Vector2(late.x, late.y).length() > Vector2(start.x, start.y).length(), "всплеск не разлетается")
+	for i in 10:
+		eq(drop.splash_drop(i, 1.0, Vector2.UP).z, 0.0, "всплеск не гаснет к концу")
 	return true

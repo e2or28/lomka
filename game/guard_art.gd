@@ -2,8 +2,18 @@ extends RefCounted
 
 const Attacks = preload("res://sim/guard_attacks.gd")
 const ShotGeometry = preload("res://sim/shot_geometry.gd")
+const SpriteMesh = preload("res://game/sprite_mesh.gd")
 const ROOT := Vector2(80, 194)
 const HEIGHT := 156.0
+## Дубинка идёт вниз быстро, а корпус возвращается медленно: удар должен
+## читаться как удар, а не как покачивание.
+const STRIKE := 0.11
+const RECOVER := 0.46
+## Пояс: ниже него кадр стоит на месте, выше — валится вперёд.
+const WAIST := 124.0
+## Сетка на бойца, а не одна на всех: агентов двое, бить они могут
+## одновременно, и общий меш второй из них затёр бы первому до отрисовки.
+static var _surfaces: Dictionary = {}
 const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front"]
 
@@ -12,10 +22,39 @@ static func handles(actor) -> bool:
 	return Attacks.PROFILES.has(actor.behaviour)
 
 
+## Время, прошедшее с удара дубинкой, или -1 вне удара. Отсчёт идёт от
+## остатка восстановления, а не от своего таймера: сейв и сеть сохраняют
+## cooldown, и фаза после загрузки совпадает с тем, что было до неё.
+static func strike_age(actor) -> float:
+	if not actor.alive or actor.behaviour != "baton" or actor.attack_ticks > 0:
+		return -1.0
+	var age: float = float(Attacks.PROFILES.baton.recovery) - float(actor.cooldown)
+	return age if actor.cooldown > 0.0 and age < STRIKE + RECOVER else -1.0
+
+
+## Наклон корпуса: вниз за STRIKE, обратно за RECOVER.
+static func strike_lean(age: float) -> float:
+	if age < 0.0:
+		return 0.0
+	if age < STRIKE:
+		return smoothstep(0.0, STRIKE, age) * 0.42
+	return lerpf(0.42, 0.0, smoothstep(STRIKE, STRIKE + RECOVER, age))
+
+
+## Кадр замаха валится вперёд вокруг пояса — дубинка описывает дугу вниз.
+## Ноги остаются на месте: боец бьёт, а не падает.
+static func strike_point(p: Vector2, lean: float) -> Vector2:
+	if lean == 0.0 or p.y >= WAIST:
+		return p
+	var bend := 1.0 - smoothstep(64.0, WAIST, p.y)
+	var pivot := Vector2(ROOT.x, WAIST)
+	return pivot + (p - pivot).rotated(lean * bend)
+
+
 static func frame(actor) -> String:
 	var name: String = actor.archetype
 	if actor.behaviour == "oil_baron": return name
-	if actor.alive and actor.behaviour == "baton" and (actor.attack_ticks > 0 or actor.cooldown > 0.98):
+	if actor.alive and actor.behaviour == "baton" and (actor.attack_ticks > 0 or strike_age(actor) >= 0.0):
 		name += "_windup"
 	if actor.standing_front: name += "_front"
 	return name
@@ -31,7 +70,23 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 	var side: float = 1.0 if actor.standing_front or actor.behaviour == "oil_baron" else float(actor.facing)
 	if not actor.alive: tint *= Color(0.48, 0.43, 0.39)
 	view.draw_set_transform(at, 0.0, Vector2(side, 1))
-	view.draw_texture(sprite, -root_for(actor, sprite.get_size()), tint)
+	var lean := strike_lean(strike_age(actor))
+	# Анфас бьёт на зрителя, и поворот вокруг пояса там читается слабо:
+	# наклон уменьшен, зато корпус заметнее оседает.
+	if actor.standing_front: lean *= 0.45
+	if lean != 0.0:
+		var surface: SpriteMesh = _surfaces.get(actor.id)
+		if surface == null:
+			surface = SpriteMesh.new()
+			_surfaces[actor.id] = surface
+		surface.prepare(sprite.get_size())
+		var root := root_for(actor, sprite.get_size())
+		var vertices := PackedVector2Array()
+		for p in surface.points:
+			vertices.append(strike_point(p, lean) - root + Vector2(0, lean * 9.0))
+		surface.draw(view, sprite, vertices, tint)
+	else:
+		view.draw_texture(sprite, -root_for(actor, sprite.get_size()), tint)
 	view.draw_set_transform(Vector2.ZERO)
 	return true
 
@@ -58,3 +113,7 @@ static func warning(view: Node2D, actor, origin: Vector2) -> void:
 			var direction: Vector2 = actor.attack_aim.rotated(angle)
 			view.draw_dashed_line(from, from + direction * reach, color, 1.5, 13)
 	view.draw_arc(at, actor.radius + 7, -PI / 2, -PI / 2 + TAU * strength, 32, color, 3)
+
+
+static func clear() -> void:
+	_surfaces.clear()

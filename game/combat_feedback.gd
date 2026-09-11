@@ -1,5 +1,7 @@
 extends RefCounted
 
+const OilDropArt = preload("res://game/oil_drop_art.gd")
+
 const HOLD_AIM := 0.24
 const FALL_TIME := 0.32
 const MAX_IMPACTS := 96
@@ -53,6 +55,7 @@ func advance(delta: float) -> void:
 
 
 static func duration(kind: String) -> float:
+	if kind == "oil_drop": return 0.42
 	return 0.28 if kind == "folder" else (0.16 if kind == "bullet" else 0.23)
 
 
@@ -90,6 +93,9 @@ func draw_impacts(view: Node2D, origin: Vector2) -> void:
 		if progress >= 1:
 			continue
 		var at: Vector2 = origin + h.at
+		if h.kind == "oil_drop":
+			OilDropArt.splash(view, at, Vector2(h.direction), progress)
+			continue
 		var color := Color(1, 0.81, 0.42, 1.0 - progress)
 		if h.kind == "folder":
 			color = Color(0.95, 0.87, 0.68, 1.0 - progress)

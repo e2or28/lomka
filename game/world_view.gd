@@ -149,6 +149,7 @@ func _sync_animation_state() -> void:
 	_tank_art.clear()
 	_gait.clear()
 	_oil_art.clear()
+	GuardArt.clear()
 	feedback.clear()
 
 

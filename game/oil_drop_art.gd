@@ -66,3 +66,37 @@ static func draw(view: Node2D, age: float) -> void:
 	blob(view, center, RADIUS, size, SKIN)
 	blob(view, center, 8.0, size, CORE)
 	blob(view, center + Vector2(2, -3), 2.5, size, Color(0.58, 0.43, 0.24))
+
+
+## Всплеск: нефть не искрит, как пуля или папка, а разлетается каплями и
+## оседает пятном. Индекс задаёт каплю, progress — общий ход всплеска.
+## Возвращает смещение от точки попадания и радиус капли.
+static func splash_drop(index: int, progress: float, direction: Vector2) -> Vector3:
+	var spread := direction.angle() + PI + (index - 4.5) * 0.36
+	var reach := 14.0 + (index % 3) * 11.0
+	var flight := smoothstep(0.0, 0.8, progress)
+	var at := Vector2.RIGHT.rotated(spread) * reach * (0.35 + flight * 1.9)
+	# Капля тяжёлая: разлетевшись, она проседает к полу, а не гаснет в воздухе.
+	at.y += flight * flight * 15.0
+	return Vector3(at.x, at.y, maxf(0.0, (5.4 - (index % 3) * 1.1) * (1.0 - progress)))
+
+
+static func splash(view: Node2D, at: Vector2, direction: Vector2, progress: float) -> void:
+	var fade := 1.0 - progress
+	var pool := smoothstep(0.0, 0.55, progress) * 23.0
+	# Первый миг — корона от удара тяжёлой капли. Тёмная, а не оранжевая:
+	# дерутся на песке, и подсветка цвета самой нефти на нём терялась.
+	var crown := 1.0 - smoothstep(0.0, 0.32, progress)
+	if crown > 0.0:
+		blob(view, at, 9.0 + crown * 14.0, Vector2(1.0, 0.62), Color(CORE, crown * 0.6))
+	view.draw_colored_polygon(PackedVector2Array([
+		at + Vector2(-pool, 2), at + Vector2(-pool * 0.6, 5),
+		at + Vector2(pool * 0.6, 5), at + Vector2(pool, 2),
+		at + Vector2(pool * 0.5, -1), at + Vector2(-pool * 0.5, -1)]),
+		Color(CORE, fade * 0.75))
+	for i in 10:
+		var drop := splash_drop(i, progress, direction)
+		if drop.z <= 0.0:
+			continue
+		blob(view, at + Vector2(drop.x, drop.y), drop.z, Vector2.ONE,
+			Color(SKIN if i % 4 == 0 else CORE, fade))
