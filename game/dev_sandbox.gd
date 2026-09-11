@@ -37,7 +37,7 @@ const SPRITES: Array[String] = [
 	"monster", "test_monster", "runner", "heavy", "folder", "bullet", "suitcase", "colt", "colt_top", "colt_ground",
 	"courier_heart", "armored_spine",
 	"room_start", "room_center", "room_north", "room_south", "room_west", "room_east", "tandem", "room_oil_baron",
-	"oil_baron", "soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
+	"oil_baron", "oil_baron_down", "soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front",
 ]
 

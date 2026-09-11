@@ -33,5 +33,18 @@ func preview() -> void:
 			await process_frame
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://.cache/oil-baron-combat-%d.png" % i)
+	var baron = null
+	for actor in game._state.actors:
+		if actor.behaviour == "oil_baron":
+			baron = actor
+	if baron != null:
+		baron.alive = false
+		for shot in 4:
+			for step in 27:
+				game._view.advance(1.0 / 60.0)
+			game._view.queue_redraw()
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://.cache/oil-baron-death-%d.png" % shot)
 	print("OIL BARON PREVIEW OK")
 	quit()

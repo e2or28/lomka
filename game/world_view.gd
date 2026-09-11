@@ -18,6 +18,7 @@ const CombatFeedback = preload("res://game/combat_feedback.gd")
 const ArmPose = preload("res://game/arm_pose.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
+const OilDropArt = preload("res://game/oil_drop_art.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
@@ -147,6 +148,7 @@ func _sync_animation_state() -> void:
 	_arms.clear()
 	_tank_art.clear()
 	_gait.clear()
+	_oil_art.clear()
 	feedback.clear()
 
 
@@ -274,10 +276,7 @@ func _draw_projectile(projectile: Projectile) -> void:
 
 	var paper: Texture2D = textures.get("bullet" if projectile.kind == "rifle_bullet" else projectile.kind)
 	if projectile.kind == "oil_drop":
-		draw_line(Vector2(-19, 0), Vector2.ZERO, Color(0.18, 0.12, 0.05, 0.65), 12)
-		draw_circle(Vector2.ZERO, 11, Color(0.82, 0.51, 0.19))
-		draw_circle(Vector2.ZERO, 8, Color(0.06, 0.045, 0.04))
-		draw_circle(Vector2(2, -3), 2.5, Color(0.58, 0.43, 0.24))
+		OilDropArt.draw(self, age)
 	elif projectile.kind == "tank_shell":
 		draw_line(Vector2(-22, 0), Vector2.ZERO, Color(1, 0.35, 0.08, 0.45), 8)
 		draw_circle(Vector2.ZERO, 11, Color(0.15, 0.12, 0.07))
@@ -372,7 +371,8 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
 	if actor.behaviour == "oil_baron" and textures.get("oil_baron") != null:
-		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath, feedback.flash(actor.id))
+		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath, feedback.flash(actor.id),
+			textures.get("oil_baron_down"))
 		return true
 	if GuardArt.handles(actor):
 		return GuardArt.draw(self, textures, actor, at, tint)
