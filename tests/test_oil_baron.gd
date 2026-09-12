@@ -124,7 +124,7 @@ func _test_all_poses_have_art_and_camera_keeps_player_visible() -> bool:
 		# Опора на полу спрашивается только с тех, кто на нём стоит. Барон
 		# сидит на станке со своей рамкой, вертушка висит в воздухе,
 		# спускающийся — на канате.
-		if name not in ["oil_baron", "helicopter", "helicopter_wreck", "soldier_rope", "barrel"]:
+		if name not in ["oil_baron", "helicopter", "helicopter_wreck", "soldier_dark_rope", "barrel"]:
 			check(image.get_used_rect().position.y > 0, "дубинка обрезана верхом холста: " + name)
 			almost_eq(image.get_used_rect().end.y, GuardArt.ROOT.y + 1, "стопы потеряли опору: " + name)
 	var view := View.new()

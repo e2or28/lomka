@@ -24,7 +24,7 @@ const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "sold
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
 	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front",
-	"helicopter", "helicopter_wreck", "soldier_rope", "barrel"]
+	"helicopter", "helicopter_wreck", "soldier_dark_rope", "barrel"]
 
 
 static func handles(actor) -> bool:
@@ -94,12 +94,19 @@ static func stride_amount(actor) -> float:
 ## Имя кадра. Со словарём текстур недостающая поза откатывается к стойке:
 ## светлому солдату колено с опущенным оружием не нарисовали.
 ## Висящий на канате рисуется своим кадром: он держится за канат, а не
-## стоит в воздухе. Кадр один на обоих солдат — спуска светлого Саша не
-## рисовала, а видно его меньше двух секунд.
+## стоит в воздухе. Кадр ищется по архетипу, и достаточно положить в art/
+## файл «<кто>_rope.png», чтобы боец поехал вниз своим рисунком. Пока
+## такого нет — едет чужим: спуска светлого солдата Саша не рисовала, а
+## видно его меньше двух секунд.
+const RIDING_FALLBACK := "soldier_dark_rope"
+
 static func riding_frame(actor, textures: Dictionary) -> String:
-	if not Reinforcements.riding(actor) or textures.get("soldier_rope") == null:
+	if not Reinforcements.riding(actor):
 		return ""
-	return "soldier_rope"
+	var own: String = actor.archetype + "_rope"
+	if textures.get(own) != null:
+		return own
+	return RIDING_FALLBACK if textures.get(RIDING_FALLBACK) != null else ""
 
 
 static func frame(actor, textures: Dictionary = {}) -> String:

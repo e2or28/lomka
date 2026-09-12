@@ -237,8 +237,8 @@ def flying():
     rgb, mask = silhouette(SOURCE / "спускается по верёвке черный.png")
     ys, xs = np.where(mask)
     body = np.dstack((rgb, np.where(mask, 255, 0)))[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    encode(resize_to_height(body.astype(np.uint8), ROPE_BODY), ROOT / "art/soldier_rope.png")
-    print(f"soldier_rope: высота {ROPE_BODY}")
+    encode(resize_to_height(body.astype(np.uint8), ROPE_BODY), ROOT / "art/soldier_dark_rope.png")
+    print(f"soldier_dark_rope: высота {ROPE_BODY}")
 
 
 if __name__ == "__main__":
