@@ -27,6 +27,10 @@ var tumble_range: float = 0.0
 var pierce: int = 0
 var bounces: int = 0
 
+## Угловая скорость доводки, рад/с. Ноль у обычного снаряда: он летит прямо
+## и ни за кем не гонится.
+var homing: float = 0.0
+
 ## Без этого пробивающий снаряд бил бы одно тело каждый тик.
 var hit_ids: Array[int] = []
 
@@ -60,7 +64,21 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 
 	projectile.straight_range = float(stats.get("range", 0.0))
 	projectile.tumble_range = float(stats.get("tumble_range", 0.0))
+	projectile.homing = float(stats.get("homing", 0.0))
 	return projectile
+
+
+## Доводка на цель. Поворот ограничен по углу, поэтому ракету можно обойти
+## по дуге: она догоняет, но не приклеивается. Цель выбирается снаружи —
+## случайности здесь нет, иначе поток сместился бы и забег разошёлся.
+func steer(target: Vector2, delta: float) -> void:
+	if homing <= 0.0 or velocity == Vector2.ZERO:
+		return
+	var wanted := target - position
+	if wanted == Vector2.ZERO:
+		return
+	var turn := clampf(velocity.angle_to(wanted), -homing * delta, homing * delta)
+	velocity = velocity.rotated(turn)
 
 
 func total_range() -> float:
@@ -175,6 +193,7 @@ func to_dict() -> Dictionary:
 		"bounces": bounces,
 		"damage": damage,
 		"hit_ids": hit_ids,
+		"homing": homing,
 		"id": id,
 		"kind": kind,
 		"owner_id": owner_id,
@@ -198,6 +217,7 @@ static func from_dict(data: Dictionary):
 	for value in data.get("hit_ids", []):
 		ids.append(int(value))
 	projectile.hit_ids = ids
+	projectile.homing = float(data.get("homing", 0.0))
 	projectile.id = int(data.get("id", 0))
 	projectile.kind = data.get("kind", "")
 	projectile.owner_id = int(data.get("owner_id", 0))

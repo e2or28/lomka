@@ -127,6 +127,18 @@ const ICE_AGENT := {
 }
 
 const CHARACTERS := {"clerk": CLERK}
+## Летает и не касается пола: напольный радиус нужен только для того, чтобы
+## снаряд, прошедший мимо зон, не считался попаданием в пустоту.
+const GUNSHIP := {
+	"id": "gunship", "name": "Вертушка", "behaviour": "gunship",
+	"base_stats": {"health": 260.0, "damage": 18.0, "move_speed": 90.0,
+		"acceleration": 260.0, "friction": 300.0, "projectile_speed": 130.0,
+		"range": 3000.0, "homing": 1.5},
+	"radius": 70.0,
+	"hurtboxes": [Rect2(-233, -106, 424, 68), Rect2(-85, -148, 148, 47)],
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 3,
+}
+
 const ENEMIES := {
 	"test_monster": TEST_MONSTER,
 	"runner": RUNNER,
@@ -136,6 +148,7 @@ const ENEMIES := {
 	"soldier": SOLDIER,
 	"soldier_dark": SOLDIER_DARK,
 	"ice_agent": ICE_AGENT,
+	"gunship": GUNSHIP,
 }
 
 

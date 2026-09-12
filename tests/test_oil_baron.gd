@@ -115,7 +115,10 @@ func _test_all_poses_have_art_and_camera_keeps_player_visible() -> bool:
 		if not check(texture != null, "поза заменится заглушкой: " + name): continue
 		var image := texture.get_image()
 		check(image.get_used_rect().size.x > 20 and image.get_used_rect().size.y > 100, "пустая или обрезанная поза: " + name)
-		if name != "oil_baron":
+		# Опора на полу спрашивается только с тех, кто на нём стоит. Барон
+		# сидит на станке со своей рамкой, вертушка висит в воздухе,
+		# спускающийся — на канате.
+		if name not in ["oil_baron", "helicopter", "helicopter_wreck", "soldier_rope"]:
 			check(image.get_used_rect().position.y > 0, "дубинка обрезана верхом холста: " + name)
 			almost_eq(image.get_used_rect().end.y, GuardArt.ROOT.y + 1, "стопы потеряли опору: " + name)
 	var view := View.new()

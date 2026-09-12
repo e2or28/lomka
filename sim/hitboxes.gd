@@ -1,12 +1,18 @@
 extends RefCounted
 
+const Reinforcements = preload("res://sim/reinforcements.gd")
+
+## Зоны считаются здесь и для симуляции, и для отладочного показа, поэтому
+## подъём на канате учитывается тут же: иначе по висящему пришлось бы
+## стрелять в пол под ним.
 static func rectangles(actor) -> Array[Rect2]:
 	var result: Array[Rect2] = []
+	var lift := Vector2(0, -Reinforcements.rope_height(actor))
 	for source in actor.hurtboxes:
 		var rect: Rect2 = source
 		if (actor.behaviour == "tank" and actor.aim.x > 0.0) or (actor.behaviour != "tank" and actor.facing < 0):
 			rect.position.x = -rect.end.x
-		rect.position += actor.position
+		rect.position += actor.position + lift
 		result.append(rect)
 	return result
 

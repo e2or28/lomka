@@ -3,6 +3,7 @@ extends RefCounted
 const Attacks = preload("res://sim/guard_attacks.gd")
 const ShotGeometry = preload("res://sim/shot_geometry.gd")
 const SpriteMesh = preload("res://game/sprite_mesh.gd")
+const Reinforcements = preload("res://sim/reinforcements.gd")
 const ROOT := Vector2(80, 194)
 const HEIGHT := 156.0
 ## Дубинка идёт вниз быстро, а корпус возвращается медленно: удар должен
@@ -22,7 +23,8 @@ static var _surfaces: Dictionary = {}
 const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
 	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",
-	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front"]
+	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front",
+	"helicopter", "helicopter_wreck", "soldier_rope"]
 
 
 static func handles(actor) -> bool:
@@ -91,7 +93,21 @@ static func stride_amount(actor) -> float:
 
 ## Имя кадра. Со словарём текстур недостающая поза откатывается к стойке:
 ## светлому солдату колено с опущенным оружием не нарисовали.
+## Висящий на канате рисуется своим кадром: он держится за канат, а не
+## стоит в воздухе. Кадр один на обоих солдат — спуска светлого Саша не
+## рисовала, а видно его меньше двух секунд.
+static func riding_frame(actor, textures: Dictionary) -> String:
+	if not Reinforcements.riding(actor) or textures.get("soldier_rope") == null:
+		return ""
+	return "soldier_rope"
+
+
 static func frame(actor, textures: Dictionary = {}) -> String:
+	# Имя записи в бестиарии — gunship, а спрайт Саши называется вертушкой.
+	if actor.behaviour == "gunship":
+		return "helicopter" if actor.alive else "helicopter_wreck"
+	var riding := riding_frame(actor, textures)
+	if riding != "": return riding
 	var name: String = actor.archetype
 	if actor.behaviour == "oil_baron": return name
 	var pose := ""
@@ -107,7 +123,9 @@ static func frame(actor, textures: Dictionary = {}) -> String:
 
 
 static func root_for(actor, size: Vector2) -> Vector2:
-	return Vector2(size.x * 0.5, size.y) if actor.behaviour == "oil_baron" else ROOT
+	if actor.behaviour in ["oil_baron", "gunship"]:
+		return Vector2(size.x * 0.5, size.y)
+	return ROOT
 
 
 static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: Color,
@@ -116,8 +134,15 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 	var sprite: Texture2D = textures.get(chosen)
 	if sprite == null: return false
 	var side: float = 1.0 if actor.standing_front or actor.behaviour == "oil_baron" else float(actor.facing)
-	if not actor.alive: tint *= Color(0.48, 0.43, 0.39)
-	view.draw_set_transform(at, 0.0, Vector2(side, 1))
+	# Сбитая вертушка уже нарисована обломками, ещё и темнить её незачем.
+	if not actor.alive and actor.behaviour != "gunship": tint *= Color(0.48, 0.43, 0.39)
+	var lift := Reinforcements.rope_height(actor)
+	if lift > 0.0:
+		rope(view, at, lift, textures.get("rope"), tint)
+	var hover := Vector2.ZERO
+	if actor.behaviour == "gunship" and actor.alive:
+		hover = Vector2(0, sin(phase * 0.9) * 3.0)
+	view.draw_set_transform(at - Vector2(0, lift) + hover, 0.0, Vector2(side, 1))
 	var lean := strike_lean(strike_age(actor))
 	# Анфас бьёт на зрителя, и поворот вокруг пояса там читается слабо:
 	# наклон уменьшен, зато корпус заметнее оседает.
@@ -167,3 +192,17 @@ static func warning(view: Node2D, actor, origin: Vector2) -> void:
 
 static func clear() -> void:
 	_surfaces.clear()
+
+
+## Канат от рук бойца до высоты, на которой висит вертушка. Верх берётся от
+## точки высадки, а не от самой машины: она за время спуска смещается, и
+## канат отрывался бы от её брюха.
+static func rope(view: Node2D, at: Vector2, lift: float, texture: Texture2D, tint: Color) -> void:
+	var top := at - Vector2(0, Reinforcements.ROPE_HEIGHT)
+	var hands := at - Vector2(0, lift + HEIGHT * 0.86)
+	if texture == null:
+		view.draw_line(top, hands, Color(0.62, 0.52, 0.3, tint.a), 3.0)
+		return
+	var width := texture.get_width()
+	view.draw_texture_rect(texture, Rect2(top.x - width * 0.5, top.y, width, hands.y - top.y),
+		true, tint)

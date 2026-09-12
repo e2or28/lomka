@@ -86,5 +86,21 @@ func preview() -> void:
 			await process_frame
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://.cache/oil-baron-rifle-%d.png" % i)
+	var baron_alive = null
+	for actor in game._state.actors:
+		if actor.behaviour == "oil_baron":
+			baron_alive = actor
+	if baron_alive != null:
+		baron_alive.alive = true
+		baron_alive.health = baron_alive.max_health() * 0.4
+		baron_alive.call_ticks = 0
+		for shot in 9:
+			for step in 34:
+				Tick.step(game._state, {0: Command.from_axes(game._state.tick, Vector2.ZERO, Vector2.ZERO)})
+				game._view.advance(1.0 / 60.0)
+			game._view.queue_redraw()
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://.cache/oil-baron-call-%d.png" % shot)
 	print("OIL BARON PREVIEW OK")
 	quit()

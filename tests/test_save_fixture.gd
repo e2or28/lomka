@@ -11,7 +11,7 @@ const SaveGame = preload("res://sim/save/save_game.gd")
 const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_15.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_16.bin"
 
 
 func title() -> String:
@@ -66,7 +66,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 
 
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), -1873061013569089930,
+	eq(ReferenceRun.build().state_hash(), -4492566180228245688,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

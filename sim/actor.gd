@@ -49,6 +49,12 @@ var corpse_until_tick: int = -1
 var attack_ticks: int = 0
 var attack_aim: Vector2 = Vector2.ZERO
 
+## Нажатие кнопки подкрепления: тики до конца, -1 у того, кто уже вызвал.
+var call_ticks: int = 0
+
+## Спуск по канату: тики до земли. Ноль у всех, кто стоит на ней сам.
+var drop_ticks: int = 0
+
 
 func _init(p_id: int = 0, p_kind: Kind = Kind.PLAYER) -> void:
 	id = p_id
@@ -85,7 +91,9 @@ func to_dict() -> Dictionary:
 		"attack_aim": attack_aim,
 		"attack_ticks": attack_ticks,
 		"behaviour": behaviour,
+		"call_ticks": call_ticks,
 		"cooldown": cooldown,
+		"drop_ticks": drop_ticks,
 		"corpse_until_tick": corpse_until_tick,
 		"facing": facing,
 		"health": health,
@@ -113,7 +121,9 @@ static func from_dict(data: Dictionary):
 	actor.attack_aim = data.get("attack_aim", Vector2.ZERO)
 	actor.attack_ticks = int(data.get("attack_ticks", 0))
 	actor.behaviour = data.get("behaviour", "")
+	actor.call_ticks = int(data.get("call_ticks", 0))
 	actor.cooldown = float(data.get("cooldown", 0.0))
+	actor.drop_ticks = int(data.get("drop_ticks", 0))
 	actor.corpse_until_tick = int(data.get("corpse_until_tick", -1))
 	actor.facing = int(data.get("facing", 1))
 	actor.standing_front = bool(data.get("standing_front", false))

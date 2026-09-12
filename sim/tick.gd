@@ -20,6 +20,8 @@ const Harvest = preload("res://sim/harvest.gd")
 const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const GuardAttacks = preload("res://sim/guard_attacks.gd")
+const Reinforcements = preload("res://sim/reinforcements.gd")
+const Encounter = preload("res://sim/encounter.gd")
 const Corpses = preload("res://sim/corpses.gd")
 const Items = preload("res://sim/items.gd")
 const Shooting = preload("res://sim/shooting.gd")
@@ -46,6 +48,7 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	var room_id := state.room.id
 	commands = Revive.prepare(state, commands)
 	Director.advance(state, events)
+	Reinforcements.advance(state)
 	Abilities.advance(state, commands)
 	_drive_players(state, commands)
 	_drive_enemies(state, events)
@@ -112,6 +115,9 @@ static func _drive_enemies(state: RunState, events: Array[Dictionary]) -> void:
 		if not actor.alive or actor.kind != Actor.Kind.ENEMY:
 			continue
 		var target := _nearest_target(state, actor)
+		if actor.behaviour == "oil_baron" and Reinforcements.drive_call(state, actor):
+			Reinforcements.land(state, Encounter, actor.position.x)
+			events.append({"type": "reinforcements", "actor_id": actor.id})
 		if GuardAttacks.PROFILES.has(actor.behaviour):
 			if GuardAttacks.drive(state, actor, target, DELTA):
 				for player in state.living(Actor.Kind.PLAYER):
@@ -261,9 +267,26 @@ static func _swap_pickup(state: RunState, actor) -> void:
 
 ## Попадание проверяется после перемещения снаряда, но до перемещения тел в
 ## следующем тике — иначе быстрый снаряд проскочил бы сквозь цель.
+## Цель ракеты — ближайший стоящий на ногах игрок. Упавшего она не
+## добивает: он и так лежит, а подбежавшему на подъём прилетело бы дважды.
+static func _nearest_player(state: RunState, at: Vector2):
+	var nearest = null
+	var best := INF
+	for player in state.living(Actor.Kind.PLAYER):
+		if player.slot >= 0 and state.slots[player.slot].downed: continue
+		var distance := at.distance_squared_to(player.position)
+		if distance < best:
+			best = distance
+			nearest = player
+	return nearest
+
+
 static func _fly_projectiles(state: RunState, events: Array[Dictionary]) -> void:
 	var surviving: Array[Projectile] = []
 	for projectile in state.projectiles:
+		if projectile.homing > 0.0:
+			var chased = _nearest_player(state, projectile.position)
+			if chased != null: projectile.steer(chased.position, DELTA)
 		var flight := projectile.fly(DELTA, state.room)
 		var destination := projectile.position
 		var spent := false

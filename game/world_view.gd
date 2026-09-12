@@ -19,6 +19,7 @@ const ArmPose = preload("res://game/arm_pose.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
 const ProjectilePose = preload("res://game/projectile_pose.gd")
 const OilDropArt = preload("res://game/oil_drop_art.gd")
+const Reinforcements = preload("res://sim/reinforcements.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
@@ -91,6 +92,11 @@ var show_hitboxes := false
 var inspected_slot := 0
 var keyboard_slot := 0
 var projectile_age: Dictionary = {}
+## Шлейф ракеты живёт своим ходом: шесть кадров по кругу, скорость подобрана
+## так, чтобы пламя дрожало, а не мигало.
+const ROCKET_FRAMES := 6
+const ROCKET_FPS := 18.0
+
 var breath := 0.0
 
 var _animation_state: RunState = null
@@ -190,7 +196,7 @@ func _draw() -> void:
 	_draw_room()
 	_draw_spawn_markers()
 	var actors := state.actors.duplicate()
-	actors.sort_custom(func(a, b): return a.position.y < b.position.y)
+	actors.sort_custom(_draw_order)
 	for actor in actors:
 		if not actor.alive:
 			_draw_actor(actor)
@@ -278,6 +284,8 @@ func _draw_projectile(projectile: Projectile) -> void:
 	draw_set_transform(at, angle, Vector2.ONE)
 
 	var paper: Texture2D = textures.get("bullet" if projectile.kind == "rifle_bullet" else projectile.kind)
+	if projectile.kind == "rocket":
+		paper = textures.get("rocket_%d" % (int(age * ROCKET_FPS) % ROCKET_FRAMES + 1))
 	if projectile.kind == "oil_drop":
 		OilDropArt.draw(self, age)
 	elif projectile.kind == "tank_shell":
@@ -303,6 +311,16 @@ func _draw_projectile_shadow(at: Vector2, tumble: float) -> void:
 	draw_set_transform(at, 0.0, Vector2(scale, scale * 0.32))
 	draw_circle(Vector2.ZERO, PROJECTILE_SHADOW_RADIUS, Color(0.0, 0.0, 0.0, alpha))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Наземные тела перекрывают друг друга по глубине, а летающее идёт поверх
+## всех: вертушка висит выше качалки, и сортировка по опоре прятала её
+## за станок.
+static func _draw_order(first: Actor, second: Actor) -> bool:
+	var first_flies := first.behaviour == "gunship"
+	if first_flies != (second.behaviour == "gunship"):
+		return not first_flies
+	return first.position.y < second.position.y
 
 
 func _draw_actor(actor: Actor) -> void:
@@ -374,7 +392,10 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER:
 		return _draw_player(actor, at, tint)
 	if actor.behaviour == "oil_baron" and textures.get("oil_baron") != null:
-		_oil_art.draw(self, actor, textures.oil_baron, at, tint, breath, feedback.flash(actor.id),
+		var body: Texture2D = textures.oil_baron
+		if actor.alive and actor.call_ticks > 0 and textures.get("oil_baron_call") != null:
+			body = textures.oil_baron_call
+		_oil_art.draw(self, actor, body, at, tint, breath, feedback.flash(actor.id),
 			textures.get("oil_baron_down"))
 		return true
 	if GuardArt.handles(actor):

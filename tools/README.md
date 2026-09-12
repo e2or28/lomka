@@ -10,7 +10,7 @@
 | Команда | Что делает |
 |---|---|
 | `tools/status.sh` | Состояние проекта одной командой: гит, тесты, стенд, объём. С неё начинается сессия |
-| `Godot --path . --script res://tools/preview_oil_baron.gd` | Комната, три фазы боя, четыре кадра остановки барона, четыре фазы удара дубинкой со всплеском нефти и четыре фазы стрелка: `.cache/oil-baron-*.png` |
+| `Godot --path . --script res://tools/preview_oil_baron.gd` | Комната, три фазы боя, четыре кадра остановки барона, четыре фазы удара дубинкой со всплеском нефти, четыре фазы стрелка и девять кадров подкрепления с вертушкой: `.cache/oil-baron-*.png` |
 | `Godot --path . --script res://tools/preview_combat.gd` | Снимок четырёх направлений, снарядов, попаданий и падения: `.cache/combat-preview.png` |
 | `Godot --path . --script res://tools/preview_hitboxes.gd` | Зоны урона и напольные круги всех врагов: `.cache/hitbox-preview.png` |
 | `Godot --path . --script res://tools/preview_walk.gd` | Все кадры ходьбы и обе стороны: `.cache/walk-preview.png`; `-- --frames` сохраняет 60 кадров для клипа |
