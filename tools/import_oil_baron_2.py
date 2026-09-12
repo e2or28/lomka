@@ -42,6 +42,15 @@ BARON = {
     "oil_baron_down": "барон побеждён.png",
 }
 
+# Светлому солдату колена с опущенным оружием не нарисовали, а без него у
+# него нет фазы прицела. Кадр собирается из его же выстрела снятием
+# дульной вспышки: поза уже та, что нужна, и трогать рисунок не приходится.
+# Тёмному это не нужно — у него своя поза есть.
+AIMING = {
+    "soldier_kneel": "солдат_сбоку_на_колене_стреляет(1).png",
+    "soldier_kneel_front": "солдат_спереди_на_колене_стреляет(1).png",
+}
+
 
 def silhouette(path: Path):
     rgb, alpha = decode_rgba(path)
@@ -81,6 +90,44 @@ def headwear(mask, brim_threshold=0.0):
     return size, center, top + brim, bottom
 
 
+def without_flash(rgb, mask):
+    """Маска без дульной вспышки.
+
+    Вспышка отделена от ствола и висит в воздухе, поэтому вырезается целиком
+    как связная область оранжево-жёлтого. Заливка идёт от самой яркой точки:
+    порог по цвету одиночно цепляет и блики на снаряжении.
+    """
+    r, g, b = (rgb[:, :, i].astype(int) for i in range(3))
+    # Ядро вспышки выбелено почти до белого, и один оранжевый порог его не
+    # ловит: заливка обходила бы центр по кольцу и оставляла его на месте.
+    hot = mask & (r > 180) & (g > 110) & ((r - b > 60) | (b > 165))
+    if not hot.any():
+        return mask
+    ys, xs = np.where(hot)
+    # Старт ищется по оранжевости, а не по яркости: светлая кожа лица тоже
+    # проходит порог, и заливка от неё съедала лицо, оставляя вспышку.
+    start = int(np.argmax((r + g - 2 * b)[ys, xs]))
+    stack = [(int(ys[start]), int(xs[start]))]
+    flash = np.zeros_like(hot)
+    height, width = hot.shape
+    while stack:
+        y, x = stack.pop()
+        if y < 0 or x < 0 or y >= height or x >= width or flash[y, x] or not hot[y, x]:
+            continue
+        flash[y, x] = True
+        stack.extend([(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)])
+    # Свет размазан по краю: без запаса вокруг вспышки остаётся оранжевая
+    # кайма. Она не касается ствола, поэтому запас безопасен.
+    for _ in range(4):
+        grown = flash.copy()
+        grown[1:] |= flash[:-1]
+        grown[:-1] |= flash[1:]
+        grown[:, 1:] |= flash[:, :-1]
+        grown[:, :-1] |= flash[:, 1:]
+        flash = grown
+    return mask & ~flash
+
+
 def place(rgb, mask, scale, center_x, bottom, name):
     """Кадр в холст 160×200 с опорой (80,194), выборкой ближайшего пикселя."""
     out = np.zeros((200, 160, 4), dtype=np.uint8)
@@ -108,6 +155,11 @@ def main():
         rgb, mask = silhouette(SOURCE / filename)
         size, center, _, bottom = headwear(mask)
         place(rgb, mask, HELMET / size, center, bottom, name)
+
+    for name, filename in AIMING.items():
+        rgb, mask = silhouette(SOURCE / filename)
+        size, center, _, bottom = headwear(mask)
+        place(rgb, without_flash(rgb, mask), HELMET / size, center, bottom, name)
 
     for name, filename in ICE.items():
         rgb, mask = silhouette(SOURCE / filename)

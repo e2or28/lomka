@@ -126,15 +126,13 @@ func _test_rifleman_kneels_to_aim_and_shows_the_shot() -> bool:
 	eq(GuardArt.frame(soldier, full), "soldier_dark", "стрелок застыл в выстреле")
 	soldier.cooldown = 0.0
 	eq(GuardArt.frame(soldier, full), "soldier_dark", "стойка не вернулась")
-	# Светлому солдату колено не нарисовали: поза откатывается к стойке,
-	# и приседание делает уже деформация.
 	soldier.archetype = "soldier"
 	soldier.attack_ticks = Attacks.PROFILES.rifleman.windup
-	eq(GuardArt.frame(soldier, {"soldier": true, "soldier_fire": true}), "soldier",
-		"недостающая поза не откатилась к стойке")
-	check(GuardArt.crouch_point(Vector2(80, 100), 1.0).y > 100.0, "стрелок не приседает")
-	eq(GuardArt.crouch_point(Vector2(80, 194), 1.0), Vector2(80, 194), "приседание отрывает стопы")
-	eq(GuardArt.crouch_point(Vector2(80, 100), 0.0), Vector2(80, 100), "приседание идёт без прицела")
+	eq(GuardArt.frame(soldier, {"soldier": true, "soldier_kneel": true}), "soldier_kneel",
+		"светлый стрелок не встаёт на колено")
+	# Пока кадра нет вовсе, поза откатывается к стойке: стенд без арта
+	# рисует заглушки, а не падает.
+	eq(GuardArt.frame(soldier, {"soldier": true}), "soldier", "недостающая поза не откатилась к стойке")
 	return true
 
 func _test_guard_stride_lifts_one_leg_at_a_time() -> bool:

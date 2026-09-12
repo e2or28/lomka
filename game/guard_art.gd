@@ -21,7 +21,7 @@ const STRIDE_SPEED := 24.0
 static var _surfaces: Dictionary = {}
 const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
-	"soldier_dark_kneel", "soldier_dark_kneel_front",
+	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front"]
 
 
@@ -65,18 +65,6 @@ static func fire_age(actor) -> float:
 		return -1.0
 	var age: float = float(Attacks.PROFILES.rifleman.recovery) - float(actor.cooldown)
 	return age if actor.cooldown > 0.0 and age < FIRE_HOLD else -1.0
-
-
-## Приседание перед выстрелом. У тёмного солдата на это есть свой кадр,
-## у светлого его не нарисовали — там стойка оседает сама.
-static func crouch_point(p: Vector2, amount: float) -> Vector2:
-	if amount <= 0.0:
-		return p
-	var result := p
-	var knee := smoothstep(96.0, 176.0, p.y)
-	result.y += amount * 13.0 * (1.0 - knee)
-	result.x += amount * 5.0 * (1.0 - smoothstep(60.0, 130.0, p.y))
-	return result
 
 
 ## Шаг охраны. Кадров ходьбы в наборе нет, поэтому ноги отрываются от пола
@@ -135,12 +123,7 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 	# наклон уменьшен, зато корпус заметнее оседает.
 	if actor.standing_front: lean *= 0.45
 	var walk := stride_amount(actor)
-	# Приседает только тот, кому колено не нарисовали: у остальных под эту
-	# фазу есть свой кадр, и гнуть его поверх значит присесть дважды.
-	var crouch := 0.0
-	if actor.alive and actor.behaviour == "rifleman" and actor.attack_ticks > 0 and not chosen.contains("_kneel"):
-		crouch = 1.0 - float(actor.attack_ticks) / float(Attacks.PROFILES.rifleman.windup)
-	if lean != 0.0 or walk > 0.0 or crouch > 0.0:
+	if lean != 0.0 or walk > 0.0:
 		var surface: SpriteMesh = _surfaces.get(actor.id)
 		if surface == null:
 			surface = SpriteMesh.new()
@@ -149,7 +132,7 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 		var root := root_for(actor, sprite.get_size())
 		var vertices := PackedVector2Array()
 		for p in surface.points:
-			var moved := stride_point(crouch_point(p, crouch), phase, walk)
+			var moved := stride_point(p, phase, walk)
 			vertices.append(strike_point(moved, lean) - root + Vector2(0, lean * 9.0))
 		surface.draw(view, sprite, vertices, tint)
 	else:
