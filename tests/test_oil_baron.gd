@@ -89,14 +89,19 @@ func _test_new_room_has_every_mob_and_stays_cleared_after_revisit() -> bool:
 	Travel.advance(state, {0: Command.from_axes(0, Vector2.LEFT, Vector2.ZERO)})
 	eq(state.room.id, "oil_baron", "комната недоступна слева от главного зала")
 	var roster: Array[String] = []
-	for enemy in Arena.enemies(state): roster.append(enemy.archetype)
+	for enemy in Arena.enemies(state):
+		if enemy.behaviour != "prop": roster.append(enemy.archetype)
 	roster.sort()
 	eq(roster, ["ice_agent", "ice_agent", "oil_baron", "soldier", "soldier_dark"], "не вся охрана в комнате")
 	check(not state.room_cleared(), "дверь открыта во время боя")
 	for enemy in Arena.enemies(state):
 		eq(state.room.clamp_body(enemy.position, enemy.radius), enemy.position, "охранник в стене")
+		# Безопасная дистанция — про тех, кто побежит и выстрелит. Бочка
+		# стоит и ждёт попадания, её ставят там, где она на виду.
+		if enemy.behaviour == "prop": continue
 		for player in Arena.players(state):
-			check(enemy.position.distance_to(player.position) >= Director.SAFE_DISTANCE, "враг появился у игрока")
+			check(enemy.position.distance_to(player.position) >= Director.SAFE_DISTANCE,
+				"враг появился у игрока: " + enemy.archetype)
 		enemy.take_damage(10000)
 	state.actor_of_slot(0).position = Map.door(state.room, "east") - Vector2(16, 0)
 	Travel.advance(state, {0: Command.from_axes(0, Vector2.RIGHT, Vector2.ZERO)})
@@ -114,11 +119,12 @@ func _test_all_poses_have_art_and_camera_keeps_player_visible() -> bool:
 		var texture: Texture2D = art.get_texture(name)
 		if not check(texture != null, "поза заменится заглушкой: " + name): continue
 		var image := texture.get_image()
-		check(image.get_used_rect().size.x > 20 and image.get_used_rect().size.y > 100, "пустая или обрезанная поза: " + name)
+		var least := 60 if name == "barrel" else 100
+		check(image.get_used_rect().size.x > 20 and image.get_used_rect().size.y > least, "пустая или обрезанная поза: " + name)
 		# Опора на полу спрашивается только с тех, кто на нём стоит. Барон
 		# сидит на станке со своей рамкой, вертушка висит в воздухе,
 		# спускающийся — на канате.
-		if name not in ["oil_baron", "helicopter", "helicopter_wreck", "soldier_rope"]:
+		if name not in ["oil_baron", "helicopter", "helicopter_wreck", "soldier_rope", "barrel"]:
 			check(image.get_used_rect().position.y > 0, "дубинка обрезана верхом холста: " + name)
 			almost_eq(image.get_used_rect().end.y, GuardArt.ROOT.y + 1, "стопы потеряли опору: " + name)
 	var view := View.new()

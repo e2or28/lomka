@@ -38,7 +38,7 @@ const SPRITES: Array[String] = [
 	"courier_heart", "armored_spine",
 	"room_start", "room_center", "room_north", "room_south", "room_west", "room_east", "tandem", "room_oil_baron",
 	"oil_baron", "oil_baron_call", "oil_baron_down", "helicopter", "helicopter_wreck",
-	"soldier_rope", "rope", "rocket_1", "rocket_2", "rocket_3", "rocket_4", "rocket_5", "rocket_6",
+	"soldier_rope", "rope", "barrel", "rocket_1", "rocket_2", "rocket_3", "rocket_4", "rocket_5", "rocket_6",
 	"soldier", "soldier_front", "soldier_dark", "soldier_dark_front",
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
 	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",

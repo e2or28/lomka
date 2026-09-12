@@ -139,6 +139,17 @@ const GUNSHIP := {
 	"organ_drops": [], "zones": ["oil_baron"], "tier": 3,
 }
 
+## Обстановка, а не противник: стоит, не ходит и не бьёт. Здоровья ровно
+## столько, чтобы рвануть от одного попадания чем угодно.
+const OIL_BARREL := {
+	"id": "barrel", "name": "Бочка с нефтью", "behaviour": "prop",
+	"base_stats": {"health": 1.0, "damage": 0.0, "move_speed": 0.0,
+		"acceleration": 0.0, "friction": 0.0},
+	"radius": 26.0,
+	"hurtboxes": [Rect2(-26, -84, 52, 84)],
+	"organ_drops": [], "zones": ["oil_baron"], "tier": 1,
+}
+
 const ENEMIES := {
 	"test_monster": TEST_MONSTER,
 	"runner": RUNNER,
@@ -149,6 +160,7 @@ const ENEMIES := {
 	"soldier_dark": SOLDIER_DARK,
 	"ice_agent": ICE_AGENT,
 	"gunship": GUNSHIP,
+	"barrel": OIL_BARREL,
 }
 
 

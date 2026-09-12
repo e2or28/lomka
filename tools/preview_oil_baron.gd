@@ -96,11 +96,28 @@ func preview() -> void:
 		baron_alive.call_ticks = 0
 		for shot in 9:
 			for step in 34:
-				Tick.step(game._state, {0: Command.from_axes(game._state.tick, Vector2.ZERO, Vector2.ZERO)})
+				var call_events := Tick.step(game._state, {0: Command.from_axes(game._state.tick, Vector2.ZERO, Vector2.ZERO)})
+				game._view.consume_events(call_events)
 				game._view.advance(1.0 / 60.0)
 			game._view.queue_redraw()
 			await process_frame
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://.cache/oil-baron-call-%d.png" % shot)
+	var barrel = null
+	for actor in game._state.actors:
+		if actor.behaviour == "prop":
+			barrel = actor
+	if barrel != null:
+		game._state.actor_of_slot(0).position = barrel.position + Vector2(210, 0)
+		barrel.take_damage(1000.0)
+		for shot in 4:
+			for step in 8:
+				var blast_events := Tick.step(game._state, {0: Command.from_axes(game._state.tick, Vector2.ZERO, Vector2.ZERO)})
+				game._view.consume_events(blast_events)
+				game._view.advance(1.0 / 60.0)
+			game._view.queue_redraw()
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://.cache/oil-baron-blast-%d.png" % shot)
 	print("OIL BARON PREVIEW OK")
 	quit()

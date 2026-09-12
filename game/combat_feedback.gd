@@ -10,6 +10,9 @@ var shots := {}
 var hits := {}
 var falls := {}
 var impacts: Array[Dictionary] = []
+## Взрывы бочек живут дольше попаданий: у огня есть рост и опадание.
+var blasts: Array[Dictionary] = []
+const BLAST_TIME := 0.62
 
 
 func clear() -> void:
@@ -17,6 +20,11 @@ func clear() -> void:
 	hits.clear()
 	falls.clear()
 	impacts.clear()
+	blasts.clear()
+
+
+func explosion(event: Dictionary, at: Vector2) -> void:
+	blasts.append({"at": at, "radius": float(event.get("radius", 150.0)), "age": 0.0})
 
 
 func shot(event: Dictionary, at: Vector2) -> void:
@@ -43,6 +51,9 @@ func advance(delta: float) -> void:
 		shots[id].age += delta
 		if shots[id].age >= HOLD_AIM:
 			shots.erase(id)
+	for blast in blasts:
+		blast.age += delta
+	blasts = blasts.filter(func(e): return e.age < BLAST_TIME)
 	for impact in impacts:
 		impact.age += delta
 	impacts = impacts.filter(func(e): return e.age < maxf(duration(e.kind), FALL_TIME))
@@ -88,6 +99,9 @@ func fall_progress(actor_id: int) -> float:
 
 
 func draw_impacts(view: Node2D, origin: Vector2) -> void:
+	for blast in blasts:
+		OilDropArt.blast(view, origin + Vector2(blast.at), float(blast.age) / BLAST_TIME,
+			float(blast.radius))
 	for h in impacts:
 		var progress := clampf(float(h.age) / duration(h.kind), 0, 1)
 		if progress >= 1:

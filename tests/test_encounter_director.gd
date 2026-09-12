@@ -78,6 +78,8 @@ func _test_room_roles_scaling_and_rng_isolation() -> bool:
 				check(enemies.filter(func(e): return e.archetype == "runner").size() >= 2, "курьерская без бегунов")
 			elif id == "east":
 				eq(enemies[0].archetype, "heavy", "архив без тяжёлого врага")
+			# Бочки — обстановка, а не охрана: в составе их не считают.
+			enemies = enemies.filter(func(e): return e.behaviour != "prop")
 			if id == "oil_baron":
 				eq(enemies.size(), 5, "барон должен прийти с четырьмя охранниками при любом размере группы")
 			else:

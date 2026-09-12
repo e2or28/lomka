@@ -21,6 +21,7 @@ const RoomTravel = preload("res://sim/room_travel.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
 const GuardAttacks = preload("res://sim/guard_attacks.gd")
 const Reinforcements = preload("res://sim/reinforcements.gd")
+const Props = preload("res://sim/props.gd")
 const Encounter = preload("res://sim/encounter.gd")
 const Corpses = preload("res://sim/corpses.gd")
 const Items = preload("res://sim/items.gd")
@@ -65,6 +66,8 @@ static func step(state: RunState, commands: Dictionary) -> Array[Dictionary]:
 	_take_pickups(state, commands)
 	_fly_projectiles(state, events)
 	_touch_damage(state, events)
+	for fallen in Props.advance(state, events):
+		_knock_down(state, fallen)
 	Revive.advance(state, events)
 	Harvest.advance(state, commands)
 	Corpses.advance(state)
@@ -112,7 +115,7 @@ static func _drive_players(state: RunState, commands: Dictionary) -> void:
 
 static func _drive_enemies(state: RunState, events: Array[Dictionary]) -> void:
 	for actor in state.actors:
-		if not actor.alive or actor.kind != Actor.Kind.ENEMY:
+		if not actor.alive or actor.kind != Actor.Kind.ENEMY or Props.is_prop(actor):
 			continue
 		var target := _nearest_target(state, actor)
 		if actor.behaviour == "oil_baron" and Reinforcements.drive_call(state, actor):

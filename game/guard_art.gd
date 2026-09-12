@@ -24,11 +24,11 @@ const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "sold
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
 	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front",
-	"helicopter", "helicopter_wreck", "soldier_rope"]
+	"helicopter", "helicopter_wreck", "soldier_rope", "barrel"]
 
 
 static func handles(actor) -> bool:
-	return Attacks.PROFILES.has(actor.behaviour)
+	return Attacks.PROFILES.has(actor.behaviour) or actor.behaviour == "prop"
 
 
 ## Время, прошедшее с удара дубинкой, или -1 вне удара. Отсчёт идёт от
@@ -103,6 +103,8 @@ static func riding_frame(actor, textures: Dictionary) -> String:
 
 
 static func frame(actor, textures: Dictionary = {}) -> String:
+	if actor.behaviour == "prop":
+		return actor.archetype
 	# Имя записи в бестиарии — gunship, а спрайт Саши называется вертушкой.
 	if actor.behaviour == "gunship":
 		return "helicopter" if actor.alive else "helicopter_wreck"
@@ -123,13 +125,13 @@ static func frame(actor, textures: Dictionary = {}) -> String:
 
 
 static func root_for(actor, size: Vector2) -> Vector2:
-	if actor.behaviour in ["oil_baron", "gunship"]:
+	if actor.behaviour in ["oil_baron", "gunship", "prop"]:
 		return Vector2(size.x * 0.5, size.y)
 	return ROOT
 
 
 static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: Color,
-		phase: float = 0.0) -> bool:
+		phase: float = 0.0, squad: int = 0) -> bool:
 	var chosen := frame(actor, textures)
 	var sprite: Texture2D = textures.get(chosen)
 	if sprite == null: return false
@@ -163,6 +165,10 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 	else:
 		view.draw_texture(sprite, -root_for(actor, sprite.get_size()), tint)
 	view.draw_set_transform(Vector2.ZERO)
+	# Десант рисуется поверх корпуса, а не под ним: иначе он целиком уходит
+	# за обшивку, и проёма с бойцами не видно.
+	if squad > 0 and actor.alive:
+		cabin(view, textures, at + hover, side, tint, squad)
 	return true
 
 
@@ -206,3 +212,21 @@ static func rope(view: Node2D, at: Vector2, lift: float, texture: Texture2D, tin
 	var width := texture.get_width()
 	view.draw_texture_rect(texture, Rect2(top.x - width * 0.5, top.y, width, hands.y - top.y),
 		true, tint)
+
+
+## Десант в проёме вертушки: уменьшенный, потому что боец в полный рост
+## выше её борта и торчал бы над обшивкой во весь свой рост.
+const CABIN_SCALE := 0.42
+const CABIN_AT := Vector2(-26.0, -52.0)
+const CABIN_STEP := 30.0
+
+static func cabin(view: Node2D, textures: Dictionary, at: Vector2, side: float,
+		tint: Color, squad: int) -> void:
+	var seated: Texture2D = textures.get("soldier_kneel")
+	if seated == null:
+		return
+	for i in mini(squad, 2):
+		var offset := Vector2((CABIN_AT.x - i * CABIN_STEP) * side, CABIN_AT.y)
+		view.draw_set_transform(at + offset, 0.0, Vector2(side * CABIN_SCALE, CABIN_SCALE))
+		view.draw_texture(seated, -ROOT, tint)
+		view.draw_set_transform(Vector2.ZERO)

@@ -31,6 +31,10 @@ static func begin(state) -> void:
 				if not _safe_from_players(state, at):
 					at = _position(state, rng, float(Bestiary.enemy(roster_ids[i]).radius), [])
 				if at != Vector2.INF: Encounter.add_enemy(state, roster_ids[i], at)
+			# Бочки стоят по краям площадки: попал — рвануло, и достаётся
+			# тому, кто рядом, кем бы он ни был.
+			for at in [Vector2(-380, -60), Vector2(380, -60), Vector2(-300, 240), Vector2(300, 240)]:
+				Encounter.add_enemy(state, "barrel", at)
 			return
 		"north": roster = ["tandem"]
 		"center":

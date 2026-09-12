@@ -168,6 +168,9 @@ func consume_events(events: Array) -> void:
 	for event in events:
 		if event.room_id != state.room.id:
 			continue
+		if event.type == "explosion":
+			feedback.explosion(event, event.position)
+			continue
 		if event.type != "shot" and event.type != "hit": continue
 		var actor := state.actor_by_id(event.actor_id)
 		if actor == null:
@@ -399,7 +402,8 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 			textures.get("oil_baron_down"))
 		return true
 	if GuardArt.handles(actor):
-		return GuardArt.draw(self, textures, actor, at, tint, stride_phase.get(actor.id, 0.0))
+		return GuardArt.draw(self, textures, actor, at, tint, stride_phase.get(actor.id, 0.0),
+			_riding_count() if actor.behaviour == "gunship" else 0)
 
 	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	if sprite == null:
@@ -486,6 +490,15 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 		progress = progress_override
 	var motion := ArmPose.aimed_motion(chosen, weapon, phase, speed, progress, aim, side)
 	return {"frame": chosen, "gait": gait, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
+
+
+## Сколько бойцов ещё едет по канату: столько же сидит в проёме вертушки.
+func _riding_count() -> int:
+	var total := 0
+	for actor in state.actors:
+		if Reinforcements.riding(actor):
+			total += 1
+	return total
 
 
 ## Кадр вертикальной ходьбы или "" — тогда рисует прежняя профильная поза.

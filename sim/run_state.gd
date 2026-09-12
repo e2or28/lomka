@@ -76,7 +76,8 @@ func living(kind: Actor.Kind) -> Array[Actor]:
 func room_cleared() -> bool:
 	if not pending_spawns.is_empty() or not encounter_waves.is_empty(): return false
 	for actor in actors:
-		if actor.alive and actor.kind == Actor.Kind.ENEMY:
+		# Бочки и прочая обстановка не считаются: выход держат противники.
+		if actor.alive and actor.kind == Actor.Kind.ENEMY and actor.behaviour != "prop":
 			return false
 	return true
 

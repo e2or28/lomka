@@ -10,6 +10,8 @@ const Actor = preload("res://sim/actor.gd")
 const Director = preload("res://sim/encounter_director.gd")
 const Reinforcements = preload("res://sim/reinforcements.gd")
 const Projectile = preload("res://sim/projectile.gd")
+const Props = preload("res://sim/props.gd")
+const Bestiary = preload("res://sim/bestiary.gd")
 const SaveGame = preload("res://sim/save/save_game.gd")
 
 
@@ -138,4 +140,53 @@ func _test_landing_survives_a_save() -> bool:
 	for actor in loaded.actors:
 		if Reinforcements.riding(actor): riding += 1
 	eq(riding, 2, "спускающиеся потеряли канат при загрузке")
+	return true
+
+
+func _test_barrels_stand_aside_and_do_not_hold_the_exit() -> bool:
+	var state = _room()
+	var barrels := 0
+	for actor in state.actors:
+		if Props.is_prop(actor): barrels += 1
+	check(barrels >= 2, "в комнате барона нет бочек")
+	for actor in state.actors:
+		if not Props.is_prop(actor): continue
+		eq(actor.velocity, Vector2.ZERO, "бочка поехала")
+		eq(state.room.clamp_body(actor.position, actor.radius), actor.position, "бочка в стене")
+	# Обстановка не держит выход: комната считается зачищенной без неё.
+	for actor in state.actors:
+		if actor.kind == Actor.Kind.ENEMY and not Props.is_prop(actor):
+			actor.take_damage(100000.0)
+	_steps(state, 2)
+	check(state.room_cleared(), "бочки держат дверь закрытой")
+	return true
+
+
+func _test_barrel_blast_hurts_whoever_is_near() -> bool:
+	var state = _room()
+	var barrel = null
+	for actor in state.actors:
+		if Props.is_prop(actor): barrel = actor
+	if not check(barrel != null, "бочки нет"): return true
+	var player = state.actor_of_slot(0)
+	player.position = barrel.position + Vector2(Props.BLAST_RADIUS - 30.0, 0)
+	player.invulnerable = 0.0
+	var baron = _baron(state)
+	baron.position = barrel.position + Vector2(Props.BLAST_RADIUS + 400.0, 0)
+	var health: float = player.health
+	var baron_health: float = baron.health
+	barrel.take_damage(1000.0)
+	_steps(state, 1)
+	check(player.health < health, "взрыв не задел стоящего рядом")
+	almost_eq(baron.health, baron_health, "взрыв достал через полкомнаты")
+	for actor in state.actors:
+		check(not Props.is_prop(actor), "разорванная бочка осталась на сцене")
+	return true
+
+
+func _test_barrel_takes_any_hit() -> bool:
+	var record: Dictionary = Bestiary.ENEMIES["barrel"]
+	eq(record.behaviour, "prop", "бочка перестала быть обстановкой")
+	almost_eq(float(record.base_stats.health), 1.0, "бочку стало нужно расстреливать")
+	almost_eq(float(record.base_stats.move_speed), 0.0, "бочка научилась ходить")
 	return true

@@ -56,6 +56,9 @@ func _test_behaviours_actually_differ() -> bool:
 
 func _test_everyone_can_reach_the_player() -> bool:
 	for id in Bestiary.ENEMIES:
+		# Обстановка не противник: бочка стоит и ждёт, пока в неё попадут.
+		if Bestiary.ENEMIES[id].get("behaviour", "") == "prop":
+			continue
 		var state := Arena.duel(SEED, id, Vector2(320, 0))
 		var player := state.actor_of_slot(0)
 		var health := player.health
