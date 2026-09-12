@@ -52,6 +52,18 @@ AIMING = {
 }
 
 
+# Второй этап боя: вертолёт с подкреплением и его ракеты. Ракета нарисована
+# носом влево, а снаряды в игре летят носом вправо и доворачиваются по
+# скорости, поэтому кадры зеркалятся при импорте.
+ROCKET_HEIGHT = 20
+ROCKET_FRAMES = 6
+HELICOPTER_LENGTH = 480
+ROPE_WIDTH = 8
+# Висящий солдат выше стоящего: руки подняты над головой, и мерить его
+# ростом нельзя. Число снято по кадру и сверено глазами рядом со стойкой.
+ROPE_BODY = 178
+
+
 def silhouette(path: Path):
     rgb, alpha = decode_rgba(path)
     return rgb, alpha > 128
@@ -150,6 +162,52 @@ def place(rgb, mask, scale, center_x, bottom, name):
     print(f"{name}: 160×200, опора (80,194), высота силуэта {drawn.max() - drawn.min() + 1}")
 
 
+def frames_on_common_box(paths, height: int):
+    """Кадры с общего холста: одна рамка на всех, один масштаб.
+
+    Годится, только когда исходники нарисованы на одном холсте — тогда
+    общая рамка сохраняет и взаимное положение кадров.
+    """
+    frames = [silhouette(path) for path in paths]
+    boxes = [np.where(mask) for _, mask in frames]
+    top = min(int(ys.min()) for ys, _ in boxes)
+    bottom = max(int(ys.max()) for ys, _ in boxes)
+    left = min(int(xs.min()) for _, xs in boxes)
+    right = max(int(xs.max()) for _, xs in boxes)
+    out = []
+    for rgb, mask in frames:
+        frame = np.dstack((rgb, np.where(mask, 255, 0)))[top:bottom + 1, left:right + 1]
+        out.append(resize_to_height(frame.astype(np.uint8), height))
+    return out
+
+
+def frames_by_nose(paths, height: int):
+    """Кадры полёта, выровненные по носу ракеты.
+
+    Холсты у них разной ширины, а шлейф от кадра к кадру то длиннее, то
+    короче. Общая рамка по координатам холста тут не годится: она сдвигала
+    бы ракету внутри спрайта, и в полёте нос дёргался бы взад-вперёд.
+    Якорем служит сам нос и середина корпуса по высоте.
+    """
+    frames = []
+    for path in paths:
+        rgb, mask = silhouette(path)
+        ys, xs = np.where(mask)
+        frames.append((np.dstack((rgb, np.where(mask, 255, 0))).astype(np.uint8),
+                       int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())))
+    span = max(f[4] - f[3] + 1 for f in frames)
+    rows = max(f[2] - f[1] + 1 for f in frames)
+    out = []
+    for frame, top, bottom, left, _ in frames:
+        canvas = np.zeros((rows, span, 4), dtype=np.uint8)
+        cut = frame[top:bottom + 1, left:left + span]
+        offset = (rows - cut.shape[0]) // 2
+        canvas[offset:offset + cut.shape[0], :cut.shape[1]] = cut
+        # Ракета нарисована носом влево, снаряды в игре летят носом вправо.
+        out.append(resize_to_height(canvas, height)[:, ::-1])
+    return out
+
+
 def main():
     for name, filename in GUARDS.items():
         rgb, mask = silhouette(SOURCE / filename)
@@ -180,5 +238,39 @@ def main():
         print(f"{name}: {frame.shape[1]}×330, рамка общая с oil_baron.png")
 
 
+def flying():
+    rockets = [SOURCE / f"rocket_flight_frames/rocket_flight_frame_{i}.png"
+               for i in range(1, ROCKET_FRAMES + 1)]
+    for i, frame in enumerate(frames_by_nose(rockets, ROCKET_HEIGHT)):
+        encode(frame, ROOT / f"art/rocket_{i + 1}.png")
+        print(f"rocket_{i + 1}: {frame.shape[1]}×{frame.shape[0]}")
+
+    machines = [SOURCE / "вертушка.png", SOURCE / "разрушенная вертушка.png"]
+    _, mask = silhouette(machines[0])
+    ys, xs = np.where(mask)
+    height = round(HELICOPTER_LENGTH * (ys.max() - ys.min() + 1) / (xs.max() - xs.min() + 1))
+    # Вертолёт нарисован носом влево, а профильные кадры проекта смотрят
+    # вправо: зеркалится при импорте, как ракета.
+    for name, frame in zip(["helicopter", "helicopter_wreck"],
+                           frames_on_common_box(machines, height)):
+        encode(frame[:, ::-1], ROOT / f"art/{name}.png")
+        print(f"{name}: {frame.shape[1]}×{frame.shape[0]}")
+
+    rgb, mask = silhouette(SOURCE / "верёвка.png")
+    ys, xs = np.where(mask)
+    rope = np.dstack((rgb, np.where(mask, 255, 0)))[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    scale = ROPE_WIDTH / rope.shape[1]
+    encode(resize_to_height(rope.astype(np.uint8), max(1, round(rope.shape[0] * scale))),
+           ROOT / "art/rope.png")
+    print(f"rope: {ROPE_WIDTH} шириной")
+
+    rgb, mask = silhouette(SOURCE / "спускается по верёвке черный.png")
+    ys, xs = np.where(mask)
+    body = np.dstack((rgb, np.where(mask, 255, 0)))[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    encode(resize_to_height(body.astype(np.uint8), ROPE_BODY), ROOT / "art/soldier_rope.png")
+    print(f"soldier_rope: высота {ROPE_BODY}")
+
+
 if __name__ == "__main__":
     main()
+    flying()
