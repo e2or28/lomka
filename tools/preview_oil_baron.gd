@@ -64,5 +64,27 @@ func preview() -> void:
 			await process_frame
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png("res://.cache/oil-baron-strike-%d.png" % i)
+	var rifle = null
+	for actor in game._state.actors:
+		if actor.behaviour == "rifleman" and actor.archetype == "soldier":
+			rifle = actor
+	if rifle != null:
+		rifle.standing_front = false
+		rifle.velocity = Vector2.ZERO
+		var shots := [
+			{"ticks": Attacks.PROFILES.rifleman.windup, "cool": 0.0, "walk": 0.0},
+			{"ticks": 4, "cool": 0.0, "walk": 0.0},
+			{"ticks": 0, "cool": Attacks.PROFILES.rifleman.recovery, "walk": 0.0},
+			{"ticks": 0, "cool": 0.0, "walk": 160.0},
+		]
+		for i in shots.size():
+			rifle.attack_ticks = int(shots[i].ticks)
+			rifle.cooldown = float(shots[i].cool)
+			rifle.velocity = Vector2(float(shots[i].walk), 0)
+			game._view.stride_phase[rifle.id] = PI * 0.5
+			game._view.queue_redraw()
+			await process_frame
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png("res://.cache/oil-baron-rifle-%d.png" % i)
 	print("OIL BARON PREVIEW OK")
 	quit()

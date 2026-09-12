@@ -114,10 +114,12 @@ func advance(delta: float) -> void:
 			feedback.falls.erase(id)
 
 	for actor in state.actors:
-		if actor.kind != Actor.Kind.PLAYER or not actor.alive:
+		if not actor.alive:
 			continue
 		stride_phase[actor.id] = CharacterPose.advance_stride(
 			stride_phase.get(actor.id, 0.0), actor.velocity.length(), delta)
+		if actor.kind != Actor.Kind.PLAYER:
+			continue
 		facing[actor.id] = actor.facing
 		standing_front[actor.id] = actor.standing_front
 
@@ -376,7 +378,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 			textures.get("oil_baron_down"))
 		return true
 	if GuardArt.handles(actor):
-		return GuardArt.draw(self, textures, actor, at, tint)
+		return GuardArt.draw(self, textures, actor, at, tint, stride_phase.get(actor.id, 0.0))
 
 	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	if sprite == null:
@@ -522,7 +524,7 @@ func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.behaviour in ["tank", "oil_baron"]:
 		return _draw_sprite(actor, at, tint)
 	var texture: Texture2D = textures.get("player_side_stand") if actor.kind == Actor.Kind.PLAYER else textures.get(actor.archetype, textures.get("monster"))
-	if GuardArt.handles(actor): texture = textures.get(GuardArt.frame(actor))
+	if GuardArt.handles(actor): texture = textures.get(GuardArt.frame(actor, textures))
 	if texture == null:
 		return false
 	var progress := feedback.fall_progress(actor.id)

@@ -110,3 +110,49 @@ func _test_oil_splash_falls_and_fades() -> bool:
 	for i in 10:
 		eq(drop.splash_drop(i, 1.0, Vector2.UP).z, 0.0, "всплеск не гаснет к концу")
 	return true
+
+func _test_rifleman_kneels_to_aim_and_shows_the_shot() -> bool:
+	var soldier = Actor.new()
+	soldier.id = 5
+	soldier.behaviour = "rifleman"
+	soldier.archetype = "soldier_dark"
+	var full := {"soldier_dark": true, "soldier_dark_kneel": true, "soldier_dark_fire": true}
+	soldier.attack_ticks = Attacks.PROFILES.rifleman.windup
+	eq(GuardArt.frame(soldier, full), "soldier_dark_kneel", "стрелок целится стоя")
+	soldier.attack_ticks = 0
+	soldier.cooldown = Attacks.PROFILES.rifleman.recovery
+	eq(GuardArt.frame(soldier, full), "soldier_dark_fire", "выстрел не виден")
+	soldier.cooldown = Attacks.PROFILES.rifleman.recovery - GuardArt.FIRE_HOLD - 0.01
+	eq(GuardArt.frame(soldier, full), "soldier_dark", "стрелок застыл в выстреле")
+	soldier.cooldown = 0.0
+	eq(GuardArt.frame(soldier, full), "soldier_dark", "стойка не вернулась")
+	# Светлому солдату колено не нарисовали: поза откатывается к стойке,
+	# и приседание делает уже деформация.
+	soldier.archetype = "soldier"
+	soldier.attack_ticks = Attacks.PROFILES.rifleman.windup
+	eq(GuardArt.frame(soldier, {"soldier": true, "soldier_fire": true}), "soldier",
+		"недостающая поза не откатилась к стойке")
+	check(GuardArt.crouch_point(Vector2(80, 100), 1.0).y > 100.0, "стрелок не приседает")
+	eq(GuardArt.crouch_point(Vector2(80, 194), 1.0), Vector2(80, 194), "приседание отрывает стопы")
+	eq(GuardArt.crouch_point(Vector2(80, 100), 0.0), Vector2(80, 100), "приседание идёт без прицела")
+	return true
+
+func _test_guard_stride_lifts_one_leg_at_a_time() -> bool:
+	var guard = Actor.new()
+	guard.id = 6
+	guard.behaviour = "baton"
+	guard.velocity = Vector2(160, 0)
+	check(GuardArt.stride_amount(guard) > 0.5, "идущая охрана стоит на месте")
+	guard.velocity = Vector2(6, 0)
+	almost_eq(GuardArt.stride_amount(guard), 0.0, "стоящая охрана шагает")
+	guard.velocity = Vector2(160, 0)
+	guard.attack_ticks = 5
+	almost_eq(GuardArt.stride_amount(guard), 0.0, "охрана шагает во время замаха")
+	for i in 24:
+		var phase := TAU * i / 24.0
+		var left := GuardArt.stride_point(Vector2(66, 186), phase, 1.0)
+		var right := GuardArt.stride_point(Vector2(94, 186), phase, 1.0)
+		almost_eq(maxf(left.y, right.y), 186.0, "обе ноги охраны в воздухе", 1e-3)
+		check(minf(left.y, right.y) > 178.0, "нога охраны задрана выше колена")
+		eq(GuardArt.stride_point(Vector2(80, 194), phase, 0.0), Vector2(80, 194), "шаг идёт в покое")
+	return true
