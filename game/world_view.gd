@@ -8,6 +8,7 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const CoverArt = preload("res://game/cover_art.gd")
 const RescueArt = preload("res://game/rescue_art.gd")
 const PlayerActions = preload("res://game/player_actions.gd")
 const RoomArt = preload("res://game/room_art.gd")
@@ -111,6 +112,7 @@ var _gait := VerticalGait.new()
 var feedback := CombatFeedback.new()
 var actions := PlayerActions.new()
 var rescue := RescueArt.new()
+var cover_art := CoverArt.new()
 var _animation_room := ""
 
 
@@ -125,6 +127,7 @@ func advance(delta: float) -> void:
 	feedback.advance(delta)
 	actions.advance(state, delta)
 	rescue.advance(state, delta)
+	cover_art.advance(state, delta)
 	for id in feedback.falls.keys():
 		if state.actor_by_id(id) == null:
 			feedback.falls.erase(id)
@@ -172,6 +175,7 @@ func _sync_animation_state() -> void:
 	feedback.clear()
 	actions.clear()
 	rescue.clear()
+	cover_art.clear()
 
 
 func consume_events(events: Array) -> void:
@@ -233,6 +237,7 @@ func _draw() -> void:
 	for projectile in state.projectiles:
 		_draw_projectile(projectile)
 	feedback.draw_impacts(self, origin)
+	cover_art.draw_debris(self, textures.get("suitcase"), origin)
 	var inspected := state.actor_of_slot(inspected_slot)
 	if inspected != null:
 		var alpha := feedback.flash(inspected.id) * 0.28
@@ -648,18 +653,7 @@ func _draw_health(actor: Actor, at: Vector2, color: Color) -> void:
 
 ## Чемодан-укрытие: пока он стоит, его нет в руках владельца.
 func _draw_cover(slot) -> void:
-	var area := Abilities.rect(slot)
-	var rect := Rect2(origin + area.position, area.size)
-	draw_set_transform(rect.get_center() + Vector2(0, rect.size.y * 0.4), 0.0, Vector2(1.0, 0.34))
-	draw_circle(Vector2.ZERO, rect.size.x * 0.5, Color(0, 0, 0, 0.3))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	draw_rect(rect, Color(0.24, 0.16, 0.11), true)
-	draw_rect(rect, Color(0.08, 0.06, 0.05), false, 2.0)
-	var handle := Rect2(rect.get_center() - Vector2(rect.size.x * 0.18, rect.size.y * 0.5 + 6),
-		Vector2(rect.size.x * 0.36, 6))
-	draw_rect(handle, Color(0.14, 0.1, 0.08), true)
-	_draw_bar(rect.position + Vector2(0, -12), Vector2(rect.size.x, 4),
-		slot.cover_health / Abilities.COVER_HEALTH, Color(0.83, 0.62, 0.35))
+	cover_art.draw(self, textures.get("suitcase"), slot, origin)
 
 
 func _draw_charge(actor: Actor, at: Vector2) -> void:
