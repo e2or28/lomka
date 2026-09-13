@@ -8,6 +8,8 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const TankWreck = preload("res://game/tank_wreck.gd")
+const RoomEffects = preload("res://game/room_effects.gd")
 const LootFeedback = preload("res://game/loot_feedback.gd")
 const CoverArt = preload("res://game/cover_art.gd")
 const RescueArt = preload("res://game/rescue_art.gd")
@@ -115,6 +117,8 @@ var actions := PlayerActions.new()
 var rescue := RescueArt.new()
 var cover_art := CoverArt.new()
 var loot_feedback := LootFeedback.new()
+var tank_wreck := TankWreck.new()
+var room_effects := RoomEffects.new()
 var _animation_room := ""
 
 
@@ -131,6 +135,8 @@ func advance(delta: float) -> void:
 	rescue.advance(state, delta)
 	cover_art.advance(state, delta)
 	loot_feedback.advance(state, delta)
+	tank_wreck.advance(state.actors, delta)
+	room_effects.advance(state, delta)
 	for id in feedback.falls.keys():
 		if state.actor_by_id(id) == null:
 			feedback.falls.erase(id)
@@ -180,6 +186,8 @@ func _sync_animation_state() -> void:
 	rescue.clear()
 	cover_art.clear()
 	loot_feedback.clear()
+	tank_wreck.clear()
+	room_effects.clear()
 
 
 func consume_events(events: Array) -> void:
@@ -266,7 +274,7 @@ func _draw_room() -> void:
 		var texture: Texture2D = textures.get("room_" + state.room.id)
 		if texture != null:
 			RoomArt.draw(self, state.room, texture, origin)
-			RoomArt.draw_doors(self, state.room, state.room_cleared(), origin)
+			RoomArt.draw_doors(self, state.room, state.room_cleared(), origin, room_effects.open_progress)
 			return
 	var rect := Rect2(origin + state.room.bounds.position, state.room.bounds.size)
 
@@ -435,7 +443,10 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var side := -1.0 if actor.aim.x > 0.0 else 1.0
 		draw_set_transform(at, 0.0, Vector2(side, 1.0))
 		var color := tint if actor.alive else Color(0.45, 0.39, 0.35, 0.75 * tint.a)
-		_tank_art.draw(self, actor, sprite, color, breath)
+		if actor.alive:
+			_tank_art.draw(self, actor, sprite, color, breath)
+		else:
+			tank_wreck.draw(self, actor, sprite, color)
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		return true
 	var size := sprite.get_size()
