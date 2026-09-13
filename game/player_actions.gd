@@ -1,5 +1,6 @@
 extends RefCounted
 
+const CharacterArms = preload("res://game/character_arms.gd")
 const SpriteMesh = preload("res://game/sprite_mesh.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const ROOT := Vector2(64, 174)
@@ -7,11 +8,16 @@ const INSTALL_TIME := 0.7
 var installs := {}
 var _previous := {}
 var _surfaces := {}
+var _arm_surfaces := {}
+var _parts := {}
+var _arms := CharacterArms.new()
 
 func clear() -> void:
 	installs.clear()
 	_previous.clear()
 	_surfaces.clear()
+	_arm_surfaces.clear()
+	_parts.clear()
 
 func advance(state, delta: float) -> void:
 	for id in installs.keys():
@@ -36,27 +42,41 @@ func advance(state, delta: float) -> void:
 			_previous.erase(id)
 			installs.erase(id)
 			_surfaces.erase(id)
+			_arm_surfaces.erase(id)
 
-static func pose_point(p: Vector2, bend: float, reach: float) -> Vector2:
+static func pose_point(p: Vector2, bend: float, _reach: float, kneel: float = 0.0) -> Vector2:
 	var waist := Vector2(64, 112)
 	var upper := 1.0 - smoothstep(100.0, 133.0, p.y)
 	var point := p + ((p - waist).rotated(bend * 0.36) - (p - waist)) * upper
 	point.y += bend * 17.0 * (1.0 - smoothstep(120.0, 174.0, p.y))
-	var arm := smoothstep(76.0, 109.0, p.y) * (1.0 - smoothstep(119.0, 127.0, p.y))
-	arm *= 1.0 - smoothstep(55.0, 64.0, p.x)
-	point += Vector2(35, 9) * arm * reach
+	point.y += kneel * 30.0 * (1.0 - smoothstep(112.0, 174.0, p.y))
+	if p.y > 112.0:
+		point.x += sin(clampf((p.y - 112.0) / 62.0, 0.0, 1.0) * PI) * kneel * 12.0
 	return point
 
 func draw_pose(view: Node2D, texture: Texture2D, actor_id: int, at: Vector2,
-		tint: Color, side: int, bend: float, reach: float) -> bool:
+		tint: Color, side: int, bend: float, reach: float, kneel: float = 0.0) -> bool:
 	if texture == null: return false
-	if not _surfaces.has(actor_id): _surfaces[actor_id] = SpriteMesh.new()
-	var surface = _surfaces[actor_id]
-	surface.prepare(texture.get_size(), 2.0)
+	var key := texture.get_instance_id()
+	if not _parts.has(key):
+		_parts[key] = _arms._prepare(texture, "player_side_stand", texture)
+	if not _surfaces.has(actor_id):
+		_surfaces[actor_id] = SpriteMesh.new()
+		_arm_surfaces[actor_id] = SpriteMesh.new()
+	var body = _surfaces[actor_id]
+	var arm = _arm_surfaces[actor_id]
+	body.prepare(texture.get_size(), 3.0)
+	arm.prepare(texture.get_size(), 3.0)
 	var vertices := PackedVector2Array()
-	for p in surface.points: vertices.append(pose_point(p, bend, reach) - ROOT)
+	var arm_vertices := PackedVector2Array()
+	var shoulder := Vector2(50, 72)
+	var rotation := Transform2D(-0.65 * reach, shoulder - shoulder.rotated(-0.65 * reach))
+	for p in body.points:
+		vertices.append(pose_point(p, bend, 0.0, kneel) - ROOT)
+		arm_vertices.append(pose_point(rotation * p, bend, 0.0, kneel) - ROOT)
 	view.draw_set_transform(at, 0.0, Vector2(side, 1))
-	surface.draw(view, texture, vertices, tint)
+	body.draw(view, _parts[key].body, vertices, tint)
+	arm.draw(view, _parts[key].arm, arm_vertices, tint)
 	view.draw_set_transform(Vector2.ZERO)
 	return true
 

@@ -8,6 +8,7 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const RescueArt = preload("res://game/rescue_art.gd")
 const PlayerActions = preload("res://game/player_actions.gd")
 const RoomArt = preload("res://game/room_art.gd")
 const Actor = preload("res://sim/actor.gd")
@@ -109,6 +110,7 @@ var _oil_art := OilBaronArt.new()
 var _gait := VerticalGait.new()
 var feedback := CombatFeedback.new()
 var actions := PlayerActions.new()
+var rescue := RescueArt.new()
 var _animation_room := ""
 
 
@@ -122,6 +124,7 @@ func advance(delta: float) -> void:
 	_tank_art.advance(state.actors)
 	feedback.advance(delta)
 	actions.advance(state, delta)
+	rescue.advance(state, delta)
 	for id in feedback.falls.keys():
 		if state.actor_by_id(id) == null:
 			feedback.falls.erase(id)
@@ -168,6 +171,7 @@ func _sync_animation_state() -> void:
 	GuardArt.clear()
 	feedback.clear()
 	actions.clear()
+	rescue.clear()
 
 
 func consume_events(events: Array) -> void:
@@ -548,6 +552,10 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if pose.is_empty():
 		return false
 	var slot = state.slots[actor.slot]
+	if rescue.draw_helper(self, textures, actor, slot, at, tint, actions, state.actor_by_id(slot.revive_target)):
+		return true
+	if pose.aim == Vector2.ZERO and actor.velocity.length() < 1.0 and rescue.draw_rising(self, textures, actor, at, tint, actions):
+		return true
 	if pose.aim == Vector2.ZERO and actions.draw_actor(self, textures, actor, slot, at, tint):
 		actions.draw_install(self, textures, actor, at, origin)
 		return true
@@ -574,6 +582,8 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 
 
 func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
+	if actor.kind == Actor.Kind.PLAYER and actor.alive and state.slots[actor.slot].downed:
+		return rescue.draw_downed(self, textures.get("player_side_stand"), actor, at, tint, breath, feedback.fall_progress(actor.id))
 	if actor.behaviour in ["tank", "oil_baron"]:
 		return _draw_sprite(actor, at, tint)
 	var texture: Texture2D = textures.get("player_side_stand") if actor.kind == Actor.Kind.PLAYER else textures.get(actor.archetype, textures.get("monster"))
