@@ -8,6 +8,7 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const LootFeedback = preload("res://game/loot_feedback.gd")
 const CoverArt = preload("res://game/cover_art.gd")
 const RescueArt = preload("res://game/rescue_art.gd")
 const PlayerActions = preload("res://game/player_actions.gd")
@@ -113,6 +114,7 @@ var feedback := CombatFeedback.new()
 var actions := PlayerActions.new()
 var rescue := RescueArt.new()
 var cover_art := CoverArt.new()
+var loot_feedback := LootFeedback.new()
 var _animation_room := ""
 
 
@@ -128,6 +130,7 @@ func advance(delta: float) -> void:
 	actions.advance(state, delta)
 	rescue.advance(state, delta)
 	cover_art.advance(state, delta)
+	loot_feedback.advance(state, delta)
 	for id in feedback.falls.keys():
 		if state.actor_by_id(id) == null:
 			feedback.falls.erase(id)
@@ -176,6 +179,7 @@ func _sync_animation_state() -> void:
 	actions.clear()
 	rescue.clear()
 	cover_art.clear()
+	loot_feedback.clear()
 
 
 func consume_events(events: Array) -> void:
@@ -223,7 +227,7 @@ func _draw() -> void:
 	var reachable = _reachable_pickup()
 	var key := "E" if inspected_slot == keyboard_slot else "A"
 	for pickup in state.pickups:
-		LootArt.draw(self, textures, pickup, origin + pickup.position, pickup == reachable, key)
+		loot_feedback.draw_pickup(self, textures, pickup, origin + pickup.position, pickup == reachable, key)
 	for slot in state.slots:
 		if slot.cover_ticks > 0:
 			_draw_cover(slot)
@@ -238,6 +242,7 @@ func _draw() -> void:
 		_draw_projectile(projectile)
 	feedback.draw_impacts(self, origin)
 	cover_art.draw_debris(self, textures.get("suitcase"), origin)
+	loot_feedback.draw_takes(self, textures, state, origin)
 	var inspected := state.actor_of_slot(inspected_slot)
 	if inspected != null:
 		var alpha := feedback.flash(inspected.id) * 0.28
@@ -510,6 +515,9 @@ func _player_pose(actor: Actor, aim: Vector2 = Vector2.ZERO, weapon: String = ""
 	if progress_override > -2.0:
 		progress = progress_override
 	var motion := ArmPose.aimed_motion(chosen, weapon, phase, speed, progress, aim, side)
+	var swap := loot_feedback.switch_progress(actor.id)
+	if aim == Vector2.ZERO and swap >= 0.0:
+		motion.origin.y += sin(swap * PI) * 12.0
 	return {"frame": chosen, "gait": gait, "side": side, "motion": motion, "aim": aim, "weapon": weapon, "actor_id": actor.id}
 
 
@@ -545,9 +553,18 @@ func _draw_vertical(actor: Actor, canvas: Vector2, tint: Color, pose: Dictionary
 		OrganArt.draw_body(self, textures, organs, canvas, 0, tint, breath, true)
 	var phase: float = stride_phase.get(actor.id, 0.0)
 	var moving := CharacterPose.use_walk_frames(actor.velocity.length())
+	var swap := loot_feedback.switch_progress(actor.id)
 	if not _gait.draw(self, textures, actor.id, canvas + PLAYER_ROOT, tint, frame,
-			phase, moving, pose.weapon):
+			phase, moving, "" if swap >= 0.0 else pose.weapon):
 		return false
+	if swap >= 0.0:
+		var shown: String = loot_feedback.switches[actor.id].from if swap < 0.5 else pose.weapon
+		var weapon: Texture2D = textures.get(shown)
+		if weapon != null:
+			var hand := canvas + VerticalGait.hand(phase, moving, back) + Vector2(0, sin(swap * PI) * 12.0)
+			draw_set_transform(hand, PI * 0.5 if shown == "colt" else 0.0)
+			draw_texture(weapon, -CharacterPose.weapon_offset(shown, weapon.get_size(), false), tint)
+			draw_set_transform(Vector2.ZERO)
 	OrganArt.draw_body(self, textures, organs, canvas, 0, tint, breath, back)
 	return true
 
@@ -620,11 +637,13 @@ func _first_name(names: PackedStringArray) -> String:
 
 func _draw_weapon(canvas: Vector2, tint: Color, pose: Dictionary,
 		body_transform: Transform2D) -> void:
-	var texture: Texture2D = textures.get(pose.weapon)
+	var swap := loot_feedback.switch_progress(pose.actor_id) if pose.aim == Vector2.ZERO else -1.0
+	var shown: String = loot_feedback.switches[pose.actor_id].from if swap >= 0.0 and swap < 0.5 else pose.weapon
+	var texture: Texture2D = textures.get(shown)
 	if texture == null:
 		return
-	var grip := CharacterPose.weapon_offset(pose.weapon, texture.get_size(), false)
-	var attachment := ArmPose.weapon_transform(pose.frame, pose.motion, grip, pose.side, pose.weapon, pose.aim)
+	var grip := CharacterPose.weapon_offset(shown, texture.get_size(), false)
+	var attachment := ArmPose.weapon_transform(pose.frame, pose.motion, grip, pose.side, shown, pose.aim)
 	attachment.origin += canvas
 	draw_set_transform_matrix(attachment)
 	draw_texture(texture, Vector2.ZERO, tint)

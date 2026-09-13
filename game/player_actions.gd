@@ -2,6 +2,7 @@ extends RefCounted
 
 const CharacterArms = preload("res://game/character_arms.gd")
 const SpriteMesh = preload("res://game/sprite_mesh.gd")
+const Pickup = preload("res://sim/pickup.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const ROOT := Vector2(64, 174)
 const INSTALL_TIME := 0.7
@@ -35,8 +36,9 @@ func advance(state, delta: float) -> void:
 				if organ != "" and old.organs.get(socket, "") != organ:
 					installs[actor.id] = {"age": 0.0, "organ": organ, "socket": socket, "from": old.source}
 		var corpse = state.actor_by_id(slot.harvest_target)
+		var pickup = Pickup.nearest(state, actor)
 		_previous[actor.id] = {"organs": slot.organs.duplicate(),
-			"source": corpse.position if corpse != null else actor.position + Vector2(0, 18)}
+			"source": corpse.position if corpse != null else (pickup.position if pickup != null else actor.position + Vector2(0, 18))}
 	for id in _previous.keys():
 		if not live.has(id):
 			_previous.erase(id)

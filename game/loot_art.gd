@@ -14,12 +14,13 @@ const PAPER := Color(0.93, 0.88, 0.72)
 
 
 static func draw(view: Node2D, textures: Dictionary, pickup: Pickup, at: Vector2,
-		highlighted: bool, key: String) -> void:
+		highlighted: bool, key: String, lift: float = 0.0) -> void:
 	var ground: Texture2D = textures.get(pickup.content_id + "_ground")
 	view.draw_set_transform(at, 0.0, Vector2(1.0, 0.34))
 	view.draw_circle(Vector2.ZERO, 28.0 if ground != null else pickup.radius * 0.7,
 		Color(0.0, 0.0, 0.0, 0.28))
 	view.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	at.y += lift
 
 	var sprite: Texture2D = ground if ground != null else textures.get(pickup.content_id + "_top")
 	if pickup.kind == Pickup.KIND_ORGAN:
