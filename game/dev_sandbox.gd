@@ -87,6 +87,7 @@ func _ready() -> void:
 	hud_layer.layer = 5
 	add_child(hud_layer)
 	_organ_hud = OrganHud.new()
+	_organ_hud.actions = _view.actions
 	hud_layer.add_child(_organ_hud)
 	_sounds = SoundEffects.new()
 	add_child(_sounds)

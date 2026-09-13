@@ -19,6 +19,7 @@ const CELL_WIDTH := 128.0
 const GAP := 5.0
 
 var state: RunState = null
+var actions = null
 var player_index := 0
 var keyboard_slot := 0
 var network_mode := false
@@ -91,6 +92,9 @@ func _draw() -> void:
 		var id: String = slot.organs[socket]
 		var has_organ := id != ""
 		var over := rect.has_point(get_global_mouse_position())
+		if actions != null:
+			var pulse: float = actions.install_pulse(player.id, socket)
+			if pulse > 0.0: draw_rect(rect.grow(3), Color(MINT, pulse * 0.65), false, 3)
 		_panel(rect, ACCENT if over else (MINT.darkened(0.45) if has_organ else MUTED.darkened(0.6)))
 		_text(at + Vector2(10, 21), Organs.SLOT_NAMES[socket], 13, PAPER if has_organ else MUTED)
 		_text(at + Vector2(10, 43), _short_name(id), 12, MINT if has_organ else MUTED.darkened(0.2))

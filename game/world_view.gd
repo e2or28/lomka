@@ -8,6 +8,7 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const PlayerActions = preload("res://game/player_actions.gd")
 const RoomArt = preload("res://game/room_art.gd")
 const Actor = preload("res://sim/actor.gd")
 const Projectile = preload("res://sim/projectile.gd")
@@ -105,6 +106,7 @@ var _tank_art := TankArt.new()
 var _oil_art := OilBaronArt.new()
 var _gait := VerticalGait.new()
 var feedback := CombatFeedback.new()
+var actions := PlayerActions.new()
 var _animation_room := ""
 
 
@@ -115,6 +117,7 @@ func advance(delta: float) -> void:
 	if state == null:
 		return
 	feedback.advance(delta)
+	actions.advance(state, delta)
 	for id in feedback.falls.keys():
 		if state.actor_by_id(id) == null:
 			feedback.falls.erase(id)
@@ -159,6 +162,7 @@ func _sync_animation_state() -> void:
 	_oil_art.clear()
 	GuardArt.clear()
 	feedback.clear()
+	actions.clear()
 
 
 func consume_events(events: Array) -> void:
@@ -535,12 +539,18 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	var pose := _player_pose(actor)
 	if pose.is_empty():
 		return false
+	var slot = state.slots[actor.slot]
+	if pose.aim == Vector2.ZERO and actions.draw_actor(self, textures, actor, slot, at, tint):
+		actions.draw_install(self, textures, actor, at, origin)
+		return true
 	var side: int = pose.side
 	var canvas := at - PLAYER_ROOT + CharacterPose.idle_bob(actor.velocity.length(), breath)
 	var organs: Dictionary = state.slots[actor.slot].organs if actor.slot >= 0 else {}
 	var vertical := vertical_frame(actor, pose.aim)
 	if vertical != "":
-		return _draw_vertical(actor, canvas, tint, pose, organs, vertical)
+		var drawn := _draw_vertical(actor, canvas, tint, pose, organs, vertical)
+		actions.draw_install(self, textures, actor, at, origin)
+		return drawn
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, true)
 	var body_transform := Transform2D(0.0, canvas)
 	if side < 0:
@@ -551,6 +561,7 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 	draw_set_transform(Vector2.ZERO)
 	OrganArt.draw_body(self, textures, organs, canvas, side, tint, breath, false)
 	_draw_weapon(canvas, tint, pose, body_transform)
+	actions.draw_install(self, textures, actor, at, origin)
 	return true
 
 
