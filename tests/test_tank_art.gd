@@ -37,3 +37,32 @@ func _test_dead_tank_is_still_even_during_an_unfinished_attack() -> bool:
 	for p in [Vector2(8, 157), Vector2(290, 30), Vector2(290, 240)]:
 		eq(Art.deform(p, 45, 0.1, 0.8, 0.06, false), p, "мёртвый танк анимируется")
 	return true
+
+func _test_tracks_move_only_with_actual_travel_and_clear() -> bool:
+	var state = preload("res://tests/framework/arena.gd").duel("tracks", "tandem", Vector2(300, 0))
+	var actor = preload("res://tests/framework/arena.gd").enemies(state)[0]
+	var art = Art.new()
+	actor.aim = Vector2.LEFT
+	actor.velocity = Vector2(-45, 0)
+	art.advance(state.actors)
+	actor.position.x -= 9
+	art.advance(state.actors)
+	almost_eq(art.track_distance(actor.id), 9.0, "лента не связана с пройденным расстоянием")
+	art.advance(state.actors)
+	almost_eq(art.track_distance(actor.id), 9.0, "лента движется на месте")
+	actor.alive = false
+	actor.position.x -= 9
+	art.advance(state.actors)
+	almost_eq(art.track_distance(actor.id), 9.0, "мёртвый танк крутит гусеницы")
+	art.clear()
+	eq(art.track_distance(actor.id), 0.0, "смена комнаты сохранила гусеницы")
+	return true
+
+func _test_wheel_rotation_keeps_center_and_radius() -> bool:
+	var center := Vector2(206, 222)
+	var rim := center + Vector2(12, 0)
+	var moved: Vector2 = Art.wheel_uv(rim, center, 12.0)
+	almost_eq(moved.distance_to(center), 12.0, "поворот растянул колесо", 0.00001)
+	ne(moved, rim, "колесо не вращается")
+	eq(Art.wheel_uv(center, center, 12.0), center, "центр колеса съехал")
+	return true

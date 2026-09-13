@@ -11,6 +11,77 @@ var _points := PackedVector2Array()
 var _uv := PackedVector2Array()
 var _triangles := PackedInt32Array()
 var _meshes := {}
+var _travel := {}
+# Координаты измерены на исходном рисунке в холсте SIZE. Колёса скрыты
+# бронёй сверху, поэтому вращаем только внутренний диск, сохраняя обод.
+const WHEELS := [Vector3(83, 218, 10), Vector3(119, 220, 10),
+	Vector3(206, 222, 12), Vector3(239, 222, 12), Vector3(269, 221, 12),
+	Vector3(298, 220, 12), Vector3(328, 218, 12), Vector3(358, 217, 12),
+	Vector3(386, 214, 11), Vector3(414, 198, 9)]
+const TRACK := [Vector2(125, 197), Vector2(128, 211), Vector2(145, 226),
+	Vector2(188, 240), Vector2(370, 234), Vector2(409, 222), Vector2(426, 201)]
+const FAR_TRACK := [Vector2(26, 195), Vector2(31, 208), Vector2(45, 222),
+	Vector2(69, 232), Vector2(133, 232)]
+
+
+func advance(actors: Array) -> void:
+	var present := {}
+	for actor in actors:
+		if actor.behaviour != "tank": continue
+		present[actor.id] = true
+		var old: Dictionary = _travel.get(actor.id, {"position": actor.position, "distance": 0.0})
+		var displacement: Vector2 = actor.position - old.position
+		var distance: float = old.distance
+		if actor.alive and displacement.length() < 180.0:
+			var side := -1.0 if actor.aim.x > 0.0 else 1.0
+			var direction := -signf(displacement.x * side) if absf(displacement.x) > 0.001 else 1.0
+			distance += displacement.length() * direction
+		_travel[actor.id] = {"position": actor.position, "distance": distance}
+	for id in _travel.keys():
+		if not present.has(id):
+			_travel.erase(id)
+			_meshes.erase(id)
+
+
+func track_distance(id: int) -> float:
+	return float(_travel.get(id, {}).get("distance", 0.0))
+
+
+static func wheel_uv(point: Vector2, center: Vector2, distance: float) -> Vector2:
+	return center + (point - center).rotated(-distance / 12.0)
+
+
+func _draw_tracks(view: Node2D, actor, texture: Texture2D, tint: Color) -> void:
+	var distance := track_distance(actor.id)
+	for wheel in WHEELS:
+		var center := Vector2(wheel.x, wheel.y)
+		var points := PackedVector2Array()
+		var uv := PackedVector2Array()
+		for i in 24:
+			var p: Vector2 = center + Vector2.RIGHT.rotated(TAU * i / 24.0) * wheel.z
+			points.append(p - ROOT)
+			uv.append(wheel_uv(p, center, distance) / SIZE)
+		view.draw_polygon(points, PackedColorArray([tint]), uv, texture)
+	_draw_belt(view, FAR_TRACK, distance, tint, 3.0)
+	_draw_belt(view, TRACK, distance, tint, 3.6)
+
+
+func _draw_belt(view: Node2D, path: Array, distance: float, tint: Color, width: float) -> void:
+	var length := 0.0
+	var line := PackedVector2Array()
+	for point in path: line.append(point - ROOT)
+	view.draw_polyline(line, Color(0.105, 0.105, 0.08, tint.a) * Color(tint, 1.0), width + 1.0)
+	for segment in path.size() - 1:
+		var a: Vector2 = path[segment]
+		var b: Vector2 = path[segment + 1]
+		var span := a.distance_to(b)
+		var along := fposmod(distance - length, 5.0)
+		var normal := (b - a).normalized().orthogonal() * width * 0.5
+		while along < span:
+			var at := a.lerp(b, along / span) - ROOT
+			view.draw_line(at - normal, at + normal, Color(0.29, 0.28, 0.20, tint.a) * Color(tint, 1.0), 1.5)
+			along += 5.0
+		length += span
 
 
 static func recoil(age: float) -> float:
@@ -68,6 +139,7 @@ func draw(view: Node2D, actor, texture: Texture2D, tint: Color, time: float) -> 
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	_meshes[actor.id] = mesh
 	view.draw_mesh(mesh, texture, Transform2D.IDENTITY, tint)
+	_draw_tracks(view, actor, texture, tint)
 	if age >= 0.0 and age < 0.09:
 		var muzzle := deform(MUZZLE, actor.velocity.length(), time, windup, age, true) - ROOT
 		var size := 1.0 - age / 0.09
@@ -79,6 +151,7 @@ func draw(view: Node2D, actor, texture: Texture2D, tint: Color, time: float) -> 
 
 func clear() -> void:
 	_meshes.clear()
+	_travel.clear()
 
 
 func _build_grid() -> void:

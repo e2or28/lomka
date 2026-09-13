@@ -24,6 +24,7 @@ const Reinforcements = preload("res://sim/reinforcements.gd")
 const Organs = preload("res://sim/organs.gd")
 const Harvest = preload("res://sim/harvest.gd")
 const Miniboss = preload("res://sim/miniboss.gd")
+const EnemyGait = preload("res://game/enemy_gait.gd")
 const TankArt = preload("res://game/tank_art.gd")
 const OilBaronArt = preload("res://game/oil_baron_art.gd")
 const GuardArt = preload("res://game/guard_art.gd")
@@ -102,6 +103,7 @@ var breath := 0.0
 
 var _animation_state: RunState = null
 var _arms := CharacterArms.new()
+var _enemy_gait := EnemyGait.new()
 var _tank_art := TankArt.new()
 var _oil_art := OilBaronArt.new()
 var _gait := VerticalGait.new()
@@ -116,6 +118,8 @@ func advance(delta: float) -> void:
 	_sync_animation_state()
 	if state == null:
 		return
+	_enemy_gait.advance(state.actors, delta, state.tick)
+	_tank_art.advance(state.actors)
 	feedback.advance(delta)
 	actions.advance(state, delta)
 	for id in feedback.falls.keys():
@@ -158,6 +162,7 @@ func _sync_animation_state() -> void:
 	projectile_age.clear()
 	_arms.clear()
 	_tank_art.clear()
+	_enemy_gait.clear()
 	_gait.clear()
 	_oil_art.clear()
 	GuardArt.clear()
@@ -421,7 +426,10 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		return true
 	var size := sprite.get_size()
 	draw_set_transform(at, 0.0, Vector2(actor.facing, 1.0))
-	draw_texture(sprite, -Vector2(size.x * 0.5, size.y), tint)
+	if actor.archetype in EnemyGait.TYPES:
+		_enemy_gait.draw(self, actor, sprite, tint)
+	else:
+		draw_texture(sprite, -Vector2(size.x * 0.5, size.y), tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return true
 
