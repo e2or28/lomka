@@ -57,7 +57,8 @@ static func pose_point(p: Vector2, bend: float, _reach: float, kneel: float = 0.
 	return point
 
 func draw_pose(view: Node2D, texture: Texture2D, actor_id: int, at: Vector2,
-		tint: Color, side: int, bend: float, reach: float, kneel: float = 0.0) -> bool:
+		tint: Color, side: int, bend: float, reach: float, kneel: float = 0.0,
+		textures: Dictionary = {}, organs: Dictionary = {}) -> bool:
 	if texture == null: return false
 	var key := texture.get_instance_id()
 	if not _parts.has(key):
@@ -77,7 +78,9 @@ func draw_pose(view: Node2D, texture: Texture2D, actor_id: int, at: Vector2,
 		vertices.append(pose_point(p, bend, 0.0, kneel) - ROOT)
 		arm_vertices.append(pose_point(rotation * p, bend, 0.0, kneel) - ROOT)
 	view.draw_set_transform(at, 0.0, Vector2(side, 1))
+	draw_organs(view, textures, organs, tint, bend, kneel, true)
 	body.draw(view, _parts[key].body, vertices, tint)
+	draw_organs(view, textures, organs, tint, bend, kneel, false)
 	arm.draw(view, _parts[key].arm, arm_vertices, tint)
 	view.draw_set_transform(Vector2.ZERO)
 	return true
@@ -87,11 +90,13 @@ func draw_actor(view: Node2D, textures: Dictionary, actor, slot, at: Vector2, ti
 	if slot.harvest_ticks <= 0:
 		var pulse := install_pulse(actor.id)
 		if pulse <= 0.0 or actor.velocity.length() > 1.0: return false
-		return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, actor.facing, pulse * 0.18, pulse * 0.3)
+		return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, actor.facing, pulse * 0.18, pulse * 0.3, 0.0, textures, slot.organs)
 	var progress := float(slot.harvest_ticks) / Harvest.DURATION_TICKS
 	var bend := smoothstep(0.0, 0.2, progress)
 	var reach := bend * (0.8 + sin(progress * TAU * 2) * 0.2)
-	return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, actor.facing, bend, reach)
+	var source: Vector2 = _previous.get(actor.id, {}).get("source", actor.position + Vector2(actor.facing, 0))
+	var side: int = actor.facing if absf(source.x - actor.position.x) < 1.0 else (-1 if source.x < actor.position.x else 1)
+	return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, side, bend, reach, 0.0, textures, slot.organs)
 
 func install_pulse(actor_id: int, socket: String = "") -> float:
 	if not installs.has(actor_id): return 0.0
@@ -114,3 +119,13 @@ func draw_install(view: Node2D, textures: Dictionary, actor, at: Vector2, origin
 		view.draw_texture_rect(texture, Rect2(position - size * 0.5, size), false, Color(1, 1, 1, fade))
 	var pulse := install_pulse(actor.id)
 	view.draw_arc(chest, 8 + progress * 15, 0, TAU, 24, Color(0.83, 0.46, 0.35, pulse * 0.65), 2)
+
+static func draw_organs(view: Node2D, textures: Dictionary, organs: Dictionary, tint: Color,
+		bend: float, kneel: float, behind: bool) -> void:
+	var id: String = organs.get("spine" if behind else "heart", "")
+	var texture: Texture2D = textures.get(id)
+	if texture == null: return
+	var anchor := Vector2(42, 89) if behind else Vector2(73, 83)
+	var at := pose_point(anchor, bend, 0.0, kneel) - ROOT
+	var size := texture.get_size() * ((64.0 if behind else 28.0) / texture.get_height())
+	view.draw_texture_rect(texture, Rect2(at - size * 0.5, size), false, tint)

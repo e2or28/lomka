@@ -8,6 +8,7 @@ extends Node2D
 ## Знает о симуляции только то, где что стоит. Обратной связи нет (правила
 ## 1 и 2 из CLAUDE.md). Удаляется целиком без последствий.
 
+const RoomAtmosphere = preload("res://game/room_atmosphere.gd")
 const TankWreck = preload("res://game/tank_wreck.gd")
 const RoomEffects = preload("res://game/room_effects.gd")
 const LootFeedback = preload("res://game/loot_feedback.gd")
@@ -226,6 +227,8 @@ func _draw() -> void:
 		return
 	draw_rect(get_viewport_rect(), Color(0.035, 0.04, 0.045))
 	_draw_room()
+	var background: Texture2D = textures.get("room_" + state.room.id)
+	if background != null: RoomAtmosphere.draw_lamp(self, state.room, background.get_size(), origin, breath)
 	_draw_spawn_markers()
 	var actors := state.actors.duplicate()
 	actors.sort_custom(_draw_order)
@@ -429,6 +432,7 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		var body: Texture2D = textures.oil_baron
 		if actor.alive and actor.call_ticks > 0 and textures.get("oil_baron_call") != null:
 			body = textures.oil_baron_call
+		RoomAtmosphere.draw_dust(self, actor, at)
 		_oil_art.draw(self, actor, body, at, tint, breath, feedback.flash(actor.id),
 			textures.get("oil_baron_down"))
 		return true

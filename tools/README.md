@@ -79,3 +79,9 @@ Godot может напечатать ошибку вложенного вызо
 Инструменты баланса (автобот, дашборд, редактор таблиц спавна) сюда ещё не
 приехали — они начинаются на M1 и описаны в `../docs/LEVEL_EDITOR.md`.
 Раньше браться смысла нет: балансировать нечего.
+
+Контрольные рендеры оставшихся анимаций: `preview_enemy_tracks.gd`,
+`preview_actions.gd`, `preview_rescue.gd`, `preview_cover.gd`, `preview_loot.gd`,
+`preview_room_finish.gd`, `preview_atmosphere.gd`. Запуск через `tools/run.sh
+--script res://tools/<имя>.gd`, результат в `.cache/`. Описание —
+`docs/ANIMATIONS.md`.

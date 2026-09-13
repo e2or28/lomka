@@ -57,7 +57,7 @@ func draw_helper(view: Node2D, textures: Dictionary, actor, slot, at: Vector2,
 	var bend := smoothstep(0.0, 16.0, slot.revive_ticks)
 	var reach := bend * (0.8 + sin(float(slot.revive_ticks) * 0.16) * 0.15)
 	var side := -1 if target.position.x < actor.position.x else 1
-	return poses.draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, side, bend * 1.1, reach, bend)
+	return poses.draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, side, bend * 1.1, reach, bend, textures, slot.organs)
 
 func draw_rising(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: Color, poses) -> bool:
 	if not rising.has(actor.id): return false
