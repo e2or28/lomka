@@ -13,6 +13,7 @@ const TankWreck = preload("res://game/tank_wreck.gd")
 const RoomEffects = preload("res://game/room_effects.gd")
 const LootFeedback = preload("res://game/loot_feedback.gd")
 const CoverArt = preload("res://game/cover_art.gd")
+const HelicopterArt = preload("res://game/helicopter_art.gd")
 const RescueArt = preload("res://game/rescue_art.gd")
 const PlayerActions = preload("res://game/player_actions.gd")
 const RoomArt = preload("res://game/room_art.gd")
@@ -116,6 +117,7 @@ var _gait := VerticalGait.new()
 var feedback := CombatFeedback.new()
 var actions := PlayerActions.new()
 var rescue := RescueArt.new()
+var helicopter := HelicopterArt.new()
 var cover_art := CoverArt.new()
 var loot_feedback := LootFeedback.new()
 var tank_wreck := TankWreck.new()
@@ -134,6 +136,7 @@ func advance(delta: float) -> void:
 	feedback.advance(delta)
 	actions.advance(state, delta)
 	rescue.advance(state, delta)
+	helicopter.advance(state.actors, delta)
 	cover_art.advance(state, delta)
 	loot_feedback.advance(state, delta)
 	tank_wreck.advance(state.actors, delta)
@@ -185,6 +188,7 @@ func _sync_animation_state() -> void:
 	feedback.clear()
 	actions.clear()
 	rescue.clear()
+	helicopter.clear()
 	cover_art.clear()
 	loot_feedback.clear()
 	tank_wreck.clear()
@@ -436,9 +440,10 @@ func _draw_sprite(actor: Actor, at: Vector2, tint: Color) -> bool:
 		_oil_art.draw(self, actor, body, at, tint, breath, feedback.flash(actor.id),
 			textures.get("oil_baron_down"))
 		return true
+	if actor.behaviour == "gunship":
+		return helicopter.draw(self, textures, actor, at, tint, _riding_count())
 	if GuardArt.handles(actor):
-		return GuardArt.draw(self, textures, actor, at, tint, stride_phase.get(actor.id, 0.0),
-			_riding_count() if actor.behaviour == "gunship" else 0)
+		return GuardArt.draw(self, textures, actor, at, tint, stride_phase.get(actor.id, 0.0))
 
 	var sprite: Texture2D = textures.get(actor.archetype, textures.get("monster"))
 	if sprite == null:
@@ -554,7 +559,7 @@ func vertical_frame(actor: Actor, aim: Vector2) -> String:
 		return ""
 	# Анфасный покой остаётся за штатной позой: у него свои кадры с оружием
 	# в руке, а вид со спины без походки рисовать больше нечем.
-	if frame == VerticalGait.FRONT and not CharacterPose.use_walk_frames(actor.velocity.length()):
+	if aim == Vector2.ZERO and frame == VerticalGait.FRONT and not CharacterPose.use_walk_frames(actor.velocity.length()):
 		return ""
 	return frame
 
@@ -568,10 +573,18 @@ func _draw_vertical(actor: Actor, canvas: Vector2, tint: Color, pose: Dictionary
 		OrganArt.draw_body(self, textures, organs, canvas, 0, tint, breath, true)
 	var phase: float = stride_phase.get(actor.id, 0.0)
 	var moving := CharacterPose.use_walk_frames(actor.velocity.length())
-	var swap := loot_feedback.switch_progress(actor.id)
+	var swap := loot_feedback.switch_progress(actor.id) if pose.aim == Vector2.ZERO else -1.0
+	var aim_hand := Vector2.INF
+	if pose.aim != Vector2.ZERO:
+		aim_hand = ArmPose.hand(pose.frame, pose.motion)
+		if pose.side < 0: aim_hand.x = PLAYER_CANVAS.x - aim_hand.x
 	if not _gait.draw(self, textures, actor.id, canvas + PLAYER_ROOT, tint, frame,
-			phase, moving, "" if swap >= 0.0 else pose.weapon):
+			phase, moving, "" if swap >= 0.0 else pose.weapon, aim_hand):
 		return false
+	if pose.aim != Vector2.ZERO:
+		var body := Transform2D(0.0, canvas)
+		if pose.side < 0: body = Transform2D(Vector2(-1, 0), Vector2(0, 1), canvas + Vector2(PLAYER_CANVAS.x, 0))
+		_draw_weapon(canvas, tint, pose, body)
 	if swap >= 0.0:
 		var shown: String = loot_feedback.switches[actor.id].from if swap < 0.5 else pose.weapon
 		var weapon: Texture2D = textures.get(shown)
@@ -621,7 +634,7 @@ func _draw_player(actor: Actor, at: Vector2, tint: Color) -> bool:
 func _draw_fallen(actor: Actor, at: Vector2, tint: Color) -> bool:
 	if actor.kind == Actor.Kind.PLAYER and actor.alive and state.slots[actor.slot].downed:
 		return rescue.draw_downed(self, textures.get("player_side_stand"), actor, at, tint, breath, feedback.fall_progress(actor.id))
-	if actor.behaviour in ["tank", "oil_baron"]:
+	if actor.behaviour in ["tank", "oil_baron", "gunship"]:
 		return _draw_sprite(actor, at, tint)
 	var texture: Texture2D = textures.get("player_side_stand") if actor.kind == Actor.Kind.PLAYER else textures.get(actor.archetype, textures.get("monster"))
 	if GuardArt.handles(actor): texture = textures.get(GuardArt.frame(actor, textures))

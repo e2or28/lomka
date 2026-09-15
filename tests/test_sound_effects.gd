@@ -40,3 +40,13 @@ func _test_repeated_harvest_and_network_events_make_sound() -> bool:
 	eq(sounds.played, ["harvest", "revive", "wave"], "сетевые события потеряли звук или протекли между комнатами")
 	sounds.free()
 	return true
+
+func _test_explosion_event_uses_its_own_sound_in_current_room() -> bool:
+	var state := Arena.solo("explosion-audio")
+	var sounds := Recorder.new()
+	sounds.consume(state, [{"type": "explosion", "room_id": state.room.id}, {"type": "explosion", "room_id": "elsewhere"}], 0)
+	eq(sounds.played, ["explosion"], "взрыв молчит или слышен из другой комнаты")
+	var audio := AudioStreamWAV.load_from_file("res://assets/audio/explosion.wav")
+	check(audio != null and audio.get_length() > 1.0, "нет хвоста звука взрыва")
+	sounds.free()
+	return true

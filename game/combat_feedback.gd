@@ -1,5 +1,6 @@
 extends RefCounted
 
+const BarrelBlast = preload("res://game/barrel_blast.gd")
 const OilDropArt = preload("res://game/oil_drop_art.gd")
 
 const HOLD_AIM := 0.24
@@ -12,7 +13,7 @@ var falls := {}
 var impacts: Array[Dictionary] = []
 ## Взрывы бочек живут дольше попаданий: у огня есть рост и опадание.
 var blasts: Array[Dictionary] = []
-const BLAST_TIME := 0.62
+const BLAST_TIME := BarrelBlast.DURATION
 
 
 func clear() -> void:
@@ -100,7 +101,7 @@ func fall_progress(actor_id: int) -> float:
 
 func draw_impacts(view: Node2D, origin: Vector2) -> void:
 	for blast in blasts:
-		OilDropArt.blast(view, origin + Vector2(blast.at), float(blast.age) / BLAST_TIME,
+		BarrelBlast.draw(view, origin + Vector2(blast.at), float(blast.age),
 			float(blast.radius))
 	for h in impacts:
 		var progress := clampf(float(h.age) / duration(h.kind), 0, 1)

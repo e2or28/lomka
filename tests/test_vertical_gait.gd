@@ -14,8 +14,10 @@ func _test_direction_and_firing_override() -> bool:
 	eq(Gait.facing(Vector2(0, -260), Vector2.ZERO), Gait.BACK, "вверх нужна спина")
 	eq(Gait.facing(Vector2(260, 30), Vector2.ZERO), "", "вбок нужен прежний профиль")
 	eq(Gait.facing(Vector2.ZERO, Vector2.ZERO, Gait.BACK), Gait.BACK, "остановка не разворачивает спину")
-	for aim in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
-		eq(Gait.facing(Vector2(0, 260), aim), "", "стрельба должна сохранить точку выпуска")
+	for aim in [Vector2.LEFT, Vector2.RIGHT]:
+		eq(Gait.facing(Vector2(0, 260), aim), "", "боковая стрельба требует профиль")
+	eq(Gait.facing(Vector2.DOWN * 260, Vector2.UP), Gait.BACK, "прицел вверх сохраняет вертикальный шаг")
+	eq(Gait.facing(Vector2.UP * 260, Vector2.DOWN), Gait.FRONT, "прицел вниз сохраняет вертикальный шаг")
 	return true
 
 func _test_support_foot_and_cycle() -> bool:
@@ -60,7 +62,7 @@ func _test_view_picks_frame_and_returns_it_to_the_profile() -> bool:
 	eq(view.vertical_frame(player, Vector2.ZERO), Gait.BACK, "шаг вверх не показал спину")
 	player.velocity = Vector2.ZERO
 	eq(view.vertical_frame(player, Vector2.ZERO), Gait.BACK, "остановка развернула спину")
-	eq(view.vertical_frame(player, Vector2.UP), "", "стрельба не вернула штатную позу")
+	eq(view.vertical_frame(player, Vector2.UP), Gait.BACK, "стрельба вверх развернула спину")
 	player.velocity = Vector2(260, 0)
 	eq(view.vertical_frame(player, Vector2.ZERO), "", "шаг вбок перестал быть профилем")
 	player.velocity = Vector2(0, 260)
@@ -68,4 +70,16 @@ func _test_view_picks_frame_and_returns_it_to_the_profile() -> bool:
 	player.velocity = Vector2.ZERO
 	eq(view.vertical_frame(player, Vector2.ZERO), "", "анфасный покой отобран у штатной позы")
 	view.free()
+	return true
+
+func _test_aimed_hand_stays_at_weapon_grip() -> bool:
+	for target in [Vector2(78, 57), Vector2(84, 110), Vector2(79, 115)]:
+		var hand := Gait.aimed_arm_point(Vector2(85, 112), Vector2(83, 73), target)
+		check(hand.distance_to(target) < 0.001, "кисть оторвалась от оружия")
+	return true
+
+func _test_upward_elbow_bends_outside_the_head() -> bool:
+	var shoulder := Vector2(83, 73)
+	var elbow := Gait.aimed_arm_point(Vector2(84, 98), shoulder, Vector2(78, 57))
+	check(elbow.x > shoulder.x + 8, "локоть прошёл через голову вместо наружного сгиба")
 	return true

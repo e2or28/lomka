@@ -104,20 +104,3 @@ static func splash(view: Node2D, at: Vector2, direction: Vector2, progress: floa
 
 ## Взрыв бочки: огненный шар, вырастающий и опадающий в чёрный дым.
 ## Нефть горит грязно, поэтому пламя быстро уходит в копоть, а не гаснет
-## чистой вспышкой.
-static func blast(view: Node2D, at: Vector2, progress: float, radius: float) -> void:
-	var grow := smoothstep(0.0, 0.35, progress)
-	var fade := 1.0 - smoothstep(0.45, 1.0, progress)
-	var soot := smoothstep(0.2, 0.9, progress)
-	blob(view, at, radius * (0.35 + grow * 0.75), Vector2(1.0, 0.78),
-		Color(0.07, 0.06, 0.06, fade * 0.72))
-	blob(view, at, radius * (0.2 + grow * 0.52), Vector2(1.0, 0.82),
-		Color(1.0, 0.55, 0.14).lerp(Color(0.22, 0.18, 0.16), soot) * Color(1, 1, 1, fade))
-	blob(view, at - Vector2(0, radius * grow * 0.3), radius * (0.1 + grow * 0.26), Vector2.ONE,
-		Color(1.0, 0.88, 0.5, fade * (1.0 - soot)))
-	for i in 10:
-		var drop := splash_drop(i, progress, Vector2.DOWN)
-		if drop.z <= 0.0:
-			continue
-		blob(view, at + Vector2(drop.x, drop.y) * 1.7, drop.z * 1.4, Vector2.ONE,
-			Color(CORE, fade))

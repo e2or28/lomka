@@ -28,7 +28,7 @@ const SoundEffects = preload("res://game/sound_effects.gd")
 
 ## Нет файла в art/ — рисуется заглушка. Положи PNG с таким именем, нажми 4.
 const SPRITES: Array[String] = [
-	"player", "player_side_stand", "player_back_stand",
+	"player", "player_side_stand", "player_back_stand", "player_support", "player_kneel", "player_reach", "player_crouch",
 	"player_side_walk_1", "player_side_walk_2", "player_side_walk_3",
 	"player_side_walk_4", "player_side_walk_5", "player_side_walk_6",
 	"player_colt_stand", "player_colt_front",

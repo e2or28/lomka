@@ -1,6 +1,6 @@
 extends Node
 
-const NAMES := ["shot", "paper", "hit", "pickup", "harvest", "down", "revive", "wave", "door"]
+const NAMES := ["shot", "paper", "hit", "pickup", "harvest", "down", "revive", "wave", "door", "explosion"]
 const SETTINGS := "user://settings.cfg"
 var volume := 0.55
 var streams := {}
@@ -50,6 +50,7 @@ func consume(state, events: Array, local_slot: int) -> void:
 			"shot": play("paper" if event.get("kind", "") == "folder" else "shot")
 			"hit": play("down" if event.get("fallen", false) else "hit")
 			"revived": play("revive")
+			"explosion": play("explosion")
 			"wave_warning": play("wave")
 	var actor = state.actor_of_slot(local_slot)
 	if actor == null: return

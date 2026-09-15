@@ -1,5 +1,6 @@
 extends RefCounted
 
+const RecoveryFrames = preload("res://game/recovery_frames.gd")
 const CharacterArms = preload("res://game/character_arms.gd")
 const SpriteMesh = preload("res://game/sprite_mesh.gd")
 const Pickup = preload("res://sim/pickup.gd")
@@ -12,8 +13,10 @@ var _surfaces := {}
 var _arm_surfaces := {}
 var _parts := {}
 var _arms := CharacterArms.new()
+var recovery := RecoveryFrames.new()
 
 func clear() -> void:
+	recovery.clear()
 	installs.clear()
 	_previous.clear()
 	_surfaces.clear()
@@ -48,17 +51,33 @@ func advance(state, delta: float) -> void:
 
 static func pose_point(p: Vector2, bend: float, _reach: float, kneel: float = 0.0) -> Vector2:
 	var waist := Vector2(64, 112)
-	var upper := 1.0 - smoothstep(100.0, 133.0, p.y)
+	var upper := 1.0 - smoothstep(108.0, 133.0, p.y)
 	var point := p + ((p - waist).rotated(bend * 0.36) - (p - waist)) * upper
-	point.y += bend * 17.0 * (1.0 - smoothstep(120.0, 174.0, p.y))
-	point.y += kneel * 30.0 * (1.0 - smoothstep(112.0, 174.0, p.y))
-	if p.y > 112.0:
-		point.x += sin(clampf((p.y - 112.0) / 62.0, 0.0, 1.0) * PI) * kneel * 12.0
+	point += Vector2(-7 * kneel, bend * 12.0 + kneel * 27.0) * (1.0 - smoothstep(112.0, 174.0, p.y))
+	if p.y >= 112.0 and kneel > 0:
+		var rear := p.x < 64.0
+		var hip := Vector2(55 if rear else 72, 112)
+		var knee := Vector2(54 if rear else 75, 143)
+		var ankle := Vector2(53 if rear else 77, 171)
+		var bent_hip := hip + Vector2(-7, 27 + bend * 12)
+		var bent_knee := Vector2(32, 165) if rear else Vector2(89, 147)
+		var bent_ankle := Vector2(51, 171) if rear else Vector2(78, 171)
+		var posed: Vector2
+		if p.y < 143:
+			var t := (p.y - 112) / 31.0
+			posed = bent_hip.lerp(bent_knee, t) + Vector2(p.x - lerpf(hip.x, knee.x, t), 0)
+		else:
+			var t := clampf((p.y - 143) / 28.0, 0, 1)
+			posed = bent_knee.lerp(bent_ankle, t) + Vector2(p.x - lerpf(knee.x, ankle.x, t), maxf(0, p.y - 171))
+		point = point.lerp(posed, kneel)
 	return point
 
 func draw_pose(view: Node2D, texture: Texture2D, actor_id: int, at: Vector2,
 		tint: Color, side: int, bend: float, reach: float, kneel: float = 0.0,
 		textures: Dictionary = {}, organs: Dictionary = {}) -> bool:
+	if kneel > 0.0 and textures.get("player_reach") != null:
+		var frame := "player_crouch" if kneel < 0.45 else "player_reach"
+		if recovery.draw(view, textures, actor_id, at, tint, side, frame, (reach - 0.7) * 3.0, organs): return true
 	if texture == null: return false
 	var key := texture.get_instance_id()
 	if not _parts.has(key):
@@ -76,7 +95,13 @@ func draw_pose(view: Node2D, texture: Texture2D, actor_id: int, at: Vector2,
 	var rotation := Transform2D(-0.65 * reach, shoulder - shoulder.rotated(-0.65 * reach))
 	for p in body.points:
 		vertices.append(pose_point(p, bend, 0.0, kneel) - ROOT)
-		arm_vertices.append(pose_point(rotation * p, bend, 0.0, kneel) - ROOT)
+		var arm_point := pose_point(rotation * p, bend, 0.0, kneel)
+		var shoulder_at := pose_point(shoulder, bend, 0.0, kneel)
+		var palm := Vector2(94 + reach * 7, 137 + kneel * 22)
+		var elbow := shoulder_at.lerp(palm, 0.55) + Vector2(5, -3)
+		var target := shoulder_at.lerp(elbow, clampf((p.y - 72) / 26.0, 0, 1)) if p.y < 98 else elbow.lerp(palm, clampf((p.y - 98) / 18.0, 0, 1))
+		target.x += p.x - 50
+		arm_vertices.append(arm_point.lerp(target, clampf(reach, 0, 1)) - ROOT)
 	view.draw_set_transform(at, 0.0, Vector2(side, 1))
 	draw_organs(view, textures, organs, tint, bend, kneel, true)
 	body.draw(view, _parts[key].body, vertices, tint)
@@ -96,7 +121,7 @@ func draw_actor(view: Node2D, textures: Dictionary, actor, slot, at: Vector2, ti
 	var reach := bend * (0.8 + sin(progress * TAU * 2) * 0.2)
 	var source: Vector2 = _previous.get(actor.id, {}).get("source", actor.position + Vector2(actor.facing, 0))
 	var side: int = actor.facing if absf(source.x - actor.position.x) < 1.0 else (-1 if source.x < actor.position.x else 1)
-	return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, side, bend, reach, 0.0, textures, slot.organs)
+	return draw_pose(view, textures.get("player_side_stand"), actor.id, at, tint, side, bend, reach, bend * 0.72, textures, slot.organs)
 
 func install_pulse(actor_id: int, socket: String = "") -> float:
 	if not installs.has(actor_id): return 0.0

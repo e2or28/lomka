@@ -9,7 +9,7 @@ from pathlib import Path
 RATE = 22050
 SOUNDS = {
     'shot': 0.15, 'paper': 0.24, 'hit': 0.13, 'pickup': 0.24,
-    'harvest': 0.34, 'down': 0.42, 'revive': 0.50, 'wave': 0.42, 'door': 0.23,
+    'harvest': 0.34, 'down': 0.42, 'revive': 0.50, 'wave': 0.42, 'door': 0.23, 'explosion': 1.2,
 }
 
 
@@ -17,6 +17,7 @@ def synth(name, seconds):
     rng = random.Random(name)
     samples = []
     previous = 0.0
+    low = 0.0
     for i in range(round(seconds * RATE)):
         t = i / RATE
         p = t / seconds
@@ -25,7 +26,17 @@ def synth(name, seconds):
         previous = noise
         attack = min(1, t / 0.004)
         release = min(1, (seconds - t) / 0.02)
-        if name == 'shot':
+        if name == 'explosion':
+            low += (noise - low) * 0.11
+            boom = math.sin(math.tau * (31 * t + 38 * (1 - math.exp(-9 * t)) / 9))
+            value = (high * 0.52 * math.exp(-t * 65)
+                     + boom * 0.78 * math.exp(-t * 7)
+                     + low * 2.6 * math.exp(-t * 3.5))
+            for delay, frequency in [(0.13, 970), (0.22, 1510), (0.34, 710), (0.47, 1890)]:
+                age = t - delay
+                if age >= 0:
+                    value += 0.11 * math.sin(math.tau * frequency * age) * math.exp(-age * 32) * min(1, age / 0.002)
+        elif name == 'shot':
             value = (0.6 * high * math.exp(-t * 55)
                      + 0.7 * math.sin(math.tau * (130 * t - 220 * t * t)) * math.exp(-t * 25))
         elif name == 'paper':

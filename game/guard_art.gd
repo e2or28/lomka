@@ -24,7 +24,7 @@ const SPRITES := ["oil_baron", "soldier", "soldier_front", "soldier_dark", "sold
 	"soldier_fire", "soldier_fire_front", "soldier_dark_fire", "soldier_dark_fire_front",
 	"soldier_kneel", "soldier_kneel_front", "soldier_dark_kneel", "soldier_dark_kneel_front",
 	"ice_agent", "ice_agent_front", "ice_agent_windup", "ice_agent_windup_front",
-	"helicopter", "helicopter_wreck", "soldier_dark_rope", "barrel"]
+	"helicopter", "helicopter_wreck", "soldier_rope", "soldier_dark_rope", "barrel"]
 
 
 static func handles(actor) -> bool:
@@ -91,13 +91,6 @@ static func stride_amount(actor) -> float:
 	return clampf((actor.velocity.length() - STRIDE_SPEED) / 90.0, 0.0, 1.0)
 
 
-## Имя кадра. Со словарём текстур недостающая поза откатывается к стойке:
-## светлому солдату колено с опущенным оружием не нарисовали.
-## Висящий на канате рисуется своим кадром: он держится за канат, а не
-## стоит в воздухе. Кадр ищется по архетипу, и достаточно положить в art/
-## файл «<кто>_rope.png», чтобы боец поехал вниз своим рисунком. Пока
-## такого нет — едет чужим: спуска светлого солдата Саша не рисовала, а
-## видно его меньше двух секунд.
 const RIDING_FALLBACK := "soldier_dark_rope"
 
 static func riding_frame(actor, textures: Dictionary) -> String:
@@ -138,20 +131,20 @@ static func root_for(actor, size: Vector2) -> Vector2:
 
 
 static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: Color,
-		phase: float = 0.0, squad: int = 0) -> bool:
+		phase: float = 0.0) -> bool:
 	var chosen := frame(actor, textures)
 	var sprite: Texture2D = textures.get(chosen)
 	if sprite == null: return false
 	var side: float = 1.0 if actor.standing_front or actor.behaviour == "oil_baron" else float(actor.facing)
-	# Сбитая вертушка уже нарисована обломками, ещё и темнить её незачем.
-	if not actor.alive and actor.behaviour != "gunship": tint *= Color(0.48, 0.43, 0.39)
+	if not actor.alive: tint *= Color(0.48, 0.43, 0.39)
 	var lift := Reinforcements.rope_height(actor)
-	if lift > 0.0:
-		rope(view, at, lift, textures.get("rope"), tint)
-	var hover := Vector2.ZERO
-	if actor.behaviour == "gunship" and actor.alive:
-		hover = Vector2(0, sin(phase * 0.9) * 3.0)
-	view.draw_set_transform(at - Vector2(0, lift) + hover, 0.0, Vector2(side, 1))
+	var root := root_for(actor, sprite.get_size())
+	if Reinforcements.riding(actor):
+		# У старого тёмного кадра обрезанный холст; совмещаем оба по кисти.
+		var palm := Vector2(80, 28) if chosen == "soldier_rope" else Vector2(52, 26)
+		root.x = palm.x
+		rope(view, at, lift, textures.get("rope"), tint, root.y - palm.y)
+	view.draw_set_transform(at - Vector2(0, lift), 0.0, Vector2(side, 1))
 	var lean := strike_lean(strike_age(actor))
 	# Анфас бьёт на зрителя, и поворот вокруг пояса там читается слабо:
 	# наклон уменьшен, зато корпус заметнее оседает.
@@ -163,19 +156,14 @@ static func draw(view: Node2D, textures: Dictionary, actor, at: Vector2, tint: C
 			surface = SpriteMesh.new()
 			_surfaces[actor.id] = surface
 		surface.prepare(sprite.get_size())
-		var root := root_for(actor, sprite.get_size())
 		var vertices := PackedVector2Array()
 		for p in surface.points:
 			var moved := stride_point(p, phase, walk)
 			vertices.append(strike_point(moved, lean) - root + Vector2(0, lean * 9.0))
 		surface.draw(view, sprite, vertices, tint)
 	else:
-		view.draw_texture(sprite, -root_for(actor, sprite.get_size()), tint)
+		view.draw_texture(sprite, -root, tint)
 	view.draw_set_transform(Vector2.ZERO)
-	# Десант рисуется поверх корпуса, а не под ним: иначе он целиком уходит
-	# за обшивку, и проёма с бойцами не видно.
-	if squad > 0 and actor.alive:
-		cabin(view, textures, at + hover, side, tint, squad)
 	return true
 
 
@@ -210,9 +198,9 @@ static func clear() -> void:
 ## Канат от рук бойца до высоты, на которой висит вертушка. Верх берётся от
 ## точки высадки, а не от самой машины: она за время спуска смещается, и
 ## канат отрывался бы от её брюха.
-static func rope(view: Node2D, at: Vector2, lift: float, texture: Texture2D, tint: Color) -> void:
-	var top := at - Vector2(0, Reinforcements.ROPE_HEIGHT)
-	var hands := at - Vector2(0, lift + HEIGHT * 0.86)
+static func rope(view: Node2D, at: Vector2, lift: float, texture: Texture2D, tint: Color, hand_height: float = HEIGHT * 0.86) -> void:
+	var top := at - Vector2(0, Reinforcements.ROPE_HEIGHT + hand_height)
+	var hands := at - Vector2(0, lift + hand_height)
 	if texture == null:
 		view.draw_line(top, hands, Color(0.62, 0.52, 0.3, tint.a), 3.0)
 		return

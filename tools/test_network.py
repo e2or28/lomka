@@ -176,10 +176,10 @@ def smoke(directory: Path, peers: list[Peer]):
     host.call("pump", x=-1)
     arrived = host.until(lambda s: s["room"] == "oil_baron", "west door into oil baron room")
     host.call("pump")
-    roster = ["ice_agent", "ice_agent", "oil_baron", "soldier", "soldier_dark"]
+    roster = ["barrel"] * 4 + ["ice_agent", "ice_agent", "oil_baron", "soldier", "soldier_dark"]
     for client in clients:
         entered = client.until(lambda s: s["room"] == "oil_baron", "oil baron room snapshot")
-        check(sorted(entered["enemy_types"]) == roster, "new room lost boss or a guard")
+        check(sorted(entered["enemy_types"]) == roster, f"room roster mismatch: {sorted(entered['enemy_types'])} != {roster}")
     host.until(lambda s: "oil_drop" in s["projectile_types"], "oil baron fan after windup")
     for client in clients:
         client.until(lambda s: "oil_drop" in s["projectile_types"], "oil fan replication")
