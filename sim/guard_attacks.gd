@@ -3,6 +3,7 @@ extends RefCounted
 const Motion = preload("res://sim/motion.gd")
 const Projectile = preload("res://sim/projectile.gd")
 const Reinforcements = preload("res://sim/reinforcements.gd")
+const ShotGeometry = preload("res://sim/shot_geometry.gd")
 const PROFILES := {
 	"oil_baron": {"windup": 75, "recovery": 2.4, "distance": 1200.0,
 		"kind": "oil_drop", "angles": [-0.44, -0.22, 0.0, 0.22, 0.44]},
@@ -15,6 +16,17 @@ const PROFILES := {
 const ROCKET_RADIUS := 12.0
 const MELEE_REACH := 90.0
 const MELEE_HALF_ANGLE := PI / 3.0
+
+## Целятся в корпус и от дула, а не от опоры: ствол вынесен вбок, и линия
+## огня без поправки уходила мимо цели на ширину тела.
+const AIM_HEIGHT := 60.0
+
+
+static func _lead(actor, target, kind: String) -> Vector2:
+	var muzzle := ShotGeometry.offset(kind, actor.aim,
+		ShotGeometry.side(actor.facing, actor.aim), actor.standing_front)
+	var wanted: Vector2 = target.position + Vector2(0, -AIM_HEIGHT) - actor.position - muzzle
+	return wanted.normalized() if wanted != Vector2.ZERO else actor.aim
 
 
 static func drive(state, actor, target, delta: float) -> bool:
@@ -63,7 +75,9 @@ static func drive(state, actor, target, delta: float) -> bool:
 			if absf(offset.x) > 0.001: actor.facing = 1 if offset.x > 0 else -1
 			actor.standing_front = absf(offset.y) > absf(offset.x)
 	if actor.cooldown <= 0 and offset.length() <= float(profile.distance):
-		actor.attack_aim = actor.aim
+		# Дубинке поправка не нужна: сектор удара считается от опоры к опоре.
+		actor.attack_aim = actor.aim if actor.behaviour == "baton" \
+			else _lead(actor, target, profile.kind)
 		actor.attack_ticks = profile.windup
 		actor.velocity = Vector2.ZERO
 		return false

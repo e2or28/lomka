@@ -6,6 +6,7 @@ const Projectile = preload("res://sim/projectile.gd")
 const Tick = preload("res://sim/tick.gd")
 const View = preload("res://game/world_view.gd")
 const Art = preload("res://game/art_library.gd")
+const Hitboxes = preload("res://sim/hitboxes.gd")
 
 func title() -> String:
 	return "попадания в силуэт"
@@ -151,4 +152,76 @@ func _test_fast_piercing_shot_hits_nearest_bodies_once() -> bool:
 	if events.size() == 2:
 		eq(events[0].actor_id, near.id, "ближняя цель получила урон после дальней")
 	eq(state.projectiles.size(), 0, "после двух попаданий пробитие не закончилось")
+	return true
+
+## Зеркало проверки врагов: у игрока снаряд принимает видимое тело, а не
+## круг у ног. Линия, прошедшая по поясу, раньше была промахом — на экране
+## при этом вражеская пуля проходила сквозь героя.
+func _test_visible_enemy_shot_crossing_the_player_body_hits() -> bool:
+	var errors := PackedStringArray()
+	for kind in ["rifle_bullet", "oil_drop", "tank_shell", "rocket"]:
+		for aim in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+			var state := Arena.duel("player-body", "soldier", Vector2(240, 0))
+			var player := state.actor_of_slot(0)
+			var shot: Projectile = Projectile.spawn(state.take_id(), Arena.enemies(state)[0], aim,
+				{"damage": 8.0, "projectile_speed": 12000.0, "range": 1500.0}, kind)
+			var center: Vector2 = player.position + Vector2(0, -60)
+			var events: Array[Dictionary] = []
+			var health := player.health
+			var from: Vector2 = center - aim * 200 - shot.flight_offset()
+			var to: Vector2 = center + aim * 200 - shot.flight_offset()
+			if not Tick._hit_segment(state, shot, from, to, events) or player.health >= health:
+				errors.append("%s %s" % [kind, aim])
+	check(errors.is_empty(), "видимая линия по поясу не нанесла урона: " + ", ".join(errors))
+	return true
+
+
+## Прощение жанра: над плечами и мимо боков зона кончается раньше рисунка.
+func _test_shots_past_the_player_silhouette_miss() -> bool:
+	for probe in [{"at": Vector2(0, -150), "aim": Vector2.LEFT},
+			{"at": Vector2(40, -60), "aim": Vector2.DOWN},
+			{"at": Vector2(-40, -60), "aim": Vector2.DOWN}]:
+		var state := Arena.duel("player-edges", "soldier", Vector2(240, 0))
+		var player := state.actor_of_slot(0)
+		var aim: Vector2 = probe["aim"]
+		var shot: Projectile = Projectile.spawn(state.take_id(), Arena.enemies(state)[0], aim,
+			{"damage": 8.0, "projectile_speed": 12000.0, "range": 1500.0}, "rifle_bullet")
+		var center: Vector2 = player.position + probe["at"]
+		var events: Array[Dictionary] = []
+		check(not Tick._hit_segment(state, shot, center - aim * 200 - shot.flight_offset(),
+				center + aim * 200 - shot.flight_offset(), events),
+			"мимо силуэта засчиталось попадание: " + str(probe["at"]))
+	return true
+
+
+## Зона уже рисунка: по ширине плеч в неё не попасть, и это намеренно.
+func _test_player_zone_is_narrower_than_the_drawing() -> bool:
+	var state := Arena.solo("player-width")
+	var boxes := Hitboxes.rectangles(state.actor_of_slot(0))
+	eq(boxes.size(), 1, "зона урона игрока пропала или размножилась")
+
+	var image := Image.new()
+	eq(image.load("res://art/player.png"), OK, "нет анфасной стойки")
+	# Пояс на кадре: якорь character_root (64, 174) минус высота зоны.
+	var row: int = 174 - 60
+	var left := 0
+	var right := 0
+	for x in image.get_width():
+		if image.get_pixel(x, row).a > 0.06:
+			if left == 0: left = x
+			right = x
+	check(boxes[0].size.x < float(right - left + 1),
+		"зона шире рисунка: %d против %d" % [int(boxes[0].size.x), right - left + 1])
+	return true
+
+
+## Сквозная проверка боем: стрелок попадает в стоящего игрока с любой
+## стороны. Вынос ствола вбок уводил линию огня мимо цели целиком.
+func _test_guard_shooting_a_standing_player_lands_from_every_side() -> bool:
+	for at in [Vector2(300, 0), Vector2(-300, 0), Vector2(0, 300), Vector2(0, -300)]:
+		var state := Arena.duel("guard-aim", "soldier", at)
+		var player := state.actor_of_slot(0)
+		var health := player.health
+		Arena.coast(state, 180)
+		check(player.health < health, "солдат не попал в стоящего игрока: " + str(at))
 	return true

@@ -11,7 +11,7 @@ const SaveGame = preload("res://sim/save/save_game.gd")
 const ReferenceRun = preload("res://tests/framework/reference_run.gd")
 const Actor = preload("res://sim/actor.gd")
 
-const FIXTURE_PATH := "res://tests/fixtures/save_format_16.bin"
+const FIXTURE_PATH := "res://tests/fixtures/save_format_17.bin"
 
 
 func title() -> String:
@@ -55,7 +55,9 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 	eq(loaded.actor_of_slot(0).velocity, Vector2(-12.0, 3.5), "скорость тела прочиталась не та")
 	eq(loaded.actor_of_slot(0).stack.size(), 9, "модификаторы прочитались не все")
 	eq(loaded.actor_of_slot(0).weapon_id, "suitcase", "оружие в руках прочиталось не то")
-	eq(loaded.actor_of_slot(0).radius, 16.0, "хитбокс прочитался не тот")
+	eq(loaded.actor_of_slot(0).radius, 16.0, "напольный круг прочитался не тот")
+	eq(loaded.actor_of_slot(0).hurtboxes, [Rect2(-17, -118, 34, 118)],
+		"зона урона игрока не пережила сохранение")
 	eq(loaded.slots[1].downed, true, "признак падения прочитался не тот")
 	eq(loaded.slots[0].revive_ticks, 123, "подъём потерян")
 	eq(loaded.pending_spawns[0].spawn_tick, 4411, "предупреждение потеряно")
@@ -66,7 +68,7 @@ func _test_fixture_loads_and_makes_sense() -> bool:
 
 
 func _test_state_hash_is_stable() -> bool:
-	eq(ReferenceRun.build().state_hash(), -4492566180228245688,
+	eq(ReferenceRun.build().state_hash(), 4719254924987367316,
 		"отпечаток эталонного состояния поехал — сверка хоста с клиентом сломана")
 	return true
 

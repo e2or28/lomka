@@ -1,5 +1,5 @@
 extends SceneTree
-## Зоны урона поверх всех текущих врагов через WorldView.
+## Зоны урона поверх всех тел — врагов и игрока — через WorldView.
 
 const Arena = preload("res://tests/framework/arena.gd")
 const Encounter = preload("res://sim/encounter.gd")
@@ -12,13 +12,14 @@ class Gallery extends "res://game/world_view.gd":
 	func _draw() -> void:
 		draw_string(ThemeDB.fallback_font, Vector2(28, 30), "ORANGE: PROJECTILE HITBOX    RED: GROUND COLLISION", HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
 		for actor in state.actors:
-			if actor.kind != Actor.Kind.ENEMY:
-				continue
 			_draw_actor(actor)
 			draw_string(ThemeDB.fallback_font, actor.position + Vector2(-35, 45), labels[actor.id], HORIZONTAL_ALIGNMENT_LEFT, -1, 14)
 			var shot: Projectile = Projectile.spawn(9999, state.actor_of_slot(0), Vector2.RIGHT, {}, "bullet")
 			var start: Vector2 = actor.position + Vector2(-110, -42)
 			var end: Vector2 = actor.position + Vector2(110, -42)
+			if actor.kind == Actor.Kind.PLAYER:
+				start = actor.position + Vector2(-110, -60)
+				end = actor.position + Vector2(110, -60)
 			if actor.behaviour == "tank":
 				start = actor.position + Vector2(-310, -170)
 				end = actor.position + Vector2(150, -170)
@@ -35,8 +36,12 @@ func _initialize() -> void:
 	gallery = Gallery.new()
 	gallery.state = Arena.solo("hitbox-gallery")
 	gallery.show_hitboxes = true
-	for name in ["monster", "test_monster", "runner", "heavy", "tandem"]:
-		gallery.textures[name] = art.get_texture(name)
+	for file in DirAccess.get_files_at("res://art"):
+		if file.ends_with(".png"):
+			gallery.textures[file.get_basename()] = art.get_texture(file.get_basename())
+	var player := gallery.state.actor_of_slot(0)
+	player.position = Vector2(100, 190)
+	gallery.labels[player.id] = "clerk"
 	for i in 3:
 		var id: String = ["test_monster", "runner", "heavy"][i]
 		var actor := Encounter.add_enemy(gallery.state, id, Vector2(210 + i * 280, 165))

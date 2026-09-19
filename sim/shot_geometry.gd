@@ -2,6 +2,16 @@ extends RefCounted
 
 # Смещения от опоры тела в плоскости видимого полёта. Хранятся в снаряде:
 # поворот стрелка, смена оружия и загрузка не меняют уже выпущенную траекторию.
+
+# Сторона выпуска: стрельба вбок идёт по направлению, вверх и вниз — по
+# тому боку, которым тело уже стоит.
+static func side(facing: int, direction: Vector2) -> int:
+	if absf(direction.x) > 0.2:
+		return 1 if direction.x > 0 else -1
+	return facing
+
+
+
 static func offset(kind: String, direction: Vector2, side: int, front: bool) -> Vector2:
 	if kind == "oil_drop": return Vector2(0, -70)
 	if kind == "rifle_bullet": return Vector2(30 * side, -62)

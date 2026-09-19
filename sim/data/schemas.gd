@@ -104,6 +104,7 @@ const CHARACTER := {
 	"name": {"type": TYPE_STRING},
 	"base_stats": STAT_BLOCK,
 	"radius": HITBOX,
+	"hurtboxes": {"type": TYPE_ARRAY, "element_type": TYPE_RECT2, "required": false},
 	"start_items": {"type": TYPE_ARRAY, "element_type": TYPE_STRING, "required": false, "default": []},
 	"passive": {"type": TYPE_ARRAY, "element_schema": MODIFIER, "required": false, "default": []},
 	"skill": {"type": TYPE_STRING, "required": false, "default": ""},

@@ -45,9 +45,7 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 	projectile.owner_id = owner.id
 	projectile.owner_kind = int(owner.kind)
 	projectile.position = owner.position
-	var side: int = owner.facing
-	if absf(direction.x) > 0.2:
-		side = 1 if direction.x > 0 else -1
+	var side: int = ShotGeometry.side(owner.facing, direction)
 	var front: bool = owner.standing_front and owner.velocity.length() < 12.0 and absf(direction.x) <= 0.2
 	projectile.projection_offset = ShotGeometry.offset(p_kind, direction, side, front)
 	projectile.damage = float(stats.get("damage", 0.0))
@@ -169,19 +167,6 @@ static func _wall_hit(from: Vector2, step: Vector2, room) -> Dictionary:
 			nearest = enter
 			hit = {"fraction": enter, "normal": normal}
 	return hit
-
-
-static func hit_fraction(from: Vector2, to: Vector2, center: Vector2, reach: float) -> float:
-	var offset := from - center
-	if offset.length_squared() <= reach * reach: return 0.0
-	var step := to - from
-	var a := step.length_squared()
-	if a <= 0.000001: return INF
-	var b := offset.dot(step)
-	var discriminant := b * b - a * (offset.length_squared() - reach * reach)
-	if discriminant < 0: return INF
-	var fraction := (-b - sqrt(discriminant)) / a
-	return fraction if fraction >= 0 and fraction <= 1 else INF
 
 
 func can_hit(actor) -> bool:

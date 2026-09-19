@@ -41,6 +41,7 @@ static func add_player(state: RunState, slot_index: int, character_id: String,
 	var actor := Actor.new(state.take_id(), Actor.Kind.PLAYER)
 	actor.slot = slot_index
 	actor.archetype = character_id
+	actor.hurtboxes.assign(record.get("hurtboxes", []))
 	actor.radius = float(record.get("radius", actor.radius))
 	actor.position = state.room.player_spawn(slot_index)
 	actor.stack.base = record.get("base_stats", {}).duplicate()

@@ -310,9 +310,7 @@ static func _hit_segment(state: RunState, projectile: Projectile, from: Vector2,
 	for actor in state.actors:
 		if not projectile.can_hit(actor): continue
 		if actor.kind == Actor.Kind.PLAYER and actor.slot >= 0 and state.slots[actor.slot].downed: continue
-		var fraction := Projectile.hit_fraction(from, to, actor.position, projectile.radius + actor.radius)
-		if not actor.hurtboxes.is_empty():
-			fraction = Hitboxes.hit_fraction(projectile, from, to, actor)
+		var fraction := Hitboxes.hit_fraction(projectile, from, to, actor)
 		if fraction != INF: hits.append({"actor": actor, "fraction": fraction})
 	hits.sort_custom(func(a, b): return a.fraction < b.fraction if a.fraction != b.fraction else a.actor.id < b.actor.id)
 	for hit in hits:

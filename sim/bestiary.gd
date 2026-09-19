@@ -18,6 +18,10 @@ const CLERK := {
 		"health": 100.0,
 	},
 	"radius": 16.0,
+	## Снаряд принимает видимое тело, как у врагов. Зона уже силуэта: голова
+	## и разведённые руки в неё не входят — промах по краю читается промахом,
+	## а не обидным попаданием. Рост 156, ширина торса 34 (art/player_layers.json).
+	"hurtboxes": [Rect2(-17, -118, 34, 118)],
 	"start_items": [],
 	"skill": "lunch_break",
 	"unlocked_by_default": true,
@@ -175,10 +179,16 @@ static func enemy(id: String) -> Dictionary:
 static func validate_all() -> PackedStringArray:
 	var errors := Schemas.validate_records("character", CHARACTERS)
 	errors.append_array(Schemas.validate_records("enemy", ENEMIES))
+	# Зоны нужны каждому телу: снаряд больше не ловится напольным кругом,
+	# и запись без них молча стала бы неуязвимой.
+	for records in [CHARACTERS, ENEMIES]:
+		for id in records:
+			if records[id].get("hurtboxes", []).is_empty():
+				errors.append("'%s': hurtboxes required" % id)
+			for rect in records[id].get("hurtboxes", []):
+				if typeof(rect) == TYPE_RECT2 and (rect.size.x <= 0 or rect.size.y <= 0):
+					errors.append("'%s': hurtbox must have positive size" % id)
 	for id in ENEMIES:
-		for rect in ENEMIES[id].get("hurtboxes", []):
-			if typeof(rect) == TYPE_RECT2 and (rect.size.x <= 0 or rect.size.y <= 0):
-				errors.append("enemy '%s': hurtbox must have positive size" % id)
 		for drop in ENEMIES[id].get("organ_drops", []):
 			if Organs.organ(drop["organ"]).is_empty():
 				errors.append("enemy '%s': unknown organ %s" % [id, drop["organ"]])
