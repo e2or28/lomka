@@ -21,13 +21,15 @@ static func start(seed_text: String, players: int) -> RunState:
 
 
 static func advance(state: RunState, commands: Dictionary) -> void:
-	if not state.room_cleared() or state.party_down(): return
+	if state.party_down(): return
+	var cleared := state.room_cleared()
 	for slot in state.slots:
 		if not slot.occupied or slot.downed or not commands.has(slot.index): continue
 		var actor := state.actor_of_slot(slot.index)
 		if actor == null or not actor.alive: continue
 		var move: Vector2 = commands[slot.index].move_vector()
 		for direction in RoomMap.exits(state.room):
+			if not cleared and not RoomMap.free_passage(state.room, direction): continue
 			var outward: Vector2 = RoomMap.DIRECTIONS[direction]
 			if move.dot(outward) < 0.5: continue
 			var offset: Vector2 = actor.position - RoomMap.door(state.room, direction)

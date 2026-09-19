@@ -11,6 +11,9 @@ const LINKS := {
 	"north": {"south": "center"}, "west": {"east": "oil_baron"}, "east": {"west": "center"},
 	"oil_baron": {"east": "center", "west": "west"},
 }
+## Комнаты, вход в которые зачисткой не держится: к боссу ходят драться,
+## а не разбирать зал перед ним заново. Выход из них — по общему правилу.
+const ALWAYS_OPEN := ["oil_baron"]
 const DIRECTIONS := {"north": Vector2.UP, "south": Vector2.DOWN,
 	"west": Vector2.LEFT, "east": Vector2.RIGHT}
 const OPPOSITE := {"north": "south", "south": "north", "west": "east", "east": "west"}
@@ -67,6 +70,10 @@ static func make(id: String) -> Room:
 
 static func exits(room: Room) -> Dictionary:
 	return LINKS.get(room.id, {})
+
+
+static func free_passage(room: Room, direction: String) -> bool:
+	return LINKS.get(room.id, {}).get(direction, "") in ALWAYS_OPEN
 
 
 static func door(room: Room, direction: String) -> Vector2:

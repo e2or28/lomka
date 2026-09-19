@@ -143,3 +143,28 @@ func _test_lower_boundary_matches_black_outline_and_stops_bodies() -> bool:
 			var at: Vector2 = room.clamp_body(blocker.get_center(), 16)
 			check(not blocker.grow(15.99).has_point(at), "тело в косяке " + id)
 	return true
+
+
+## Комната босса — единственная, куда пускают из боя: к барону ходят
+## пробовать бой, а не зачищать зал перед ним заново.
+func _test_boss_room_opens_without_clearing_the_hall() -> bool:
+	var state = Travel.start("boss-door", 1)
+	_walk(state, "north")
+	eq(state.room.id, "center", "приёмная не выпустила в зал")
+	check(not state.room_cleared(), "в зале некого держать за дверью")
+
+	_walk(state, "east")
+	eq(state.room.id, "center", "архив открылся до зачистки зала")
+	_walk(state, "south")
+	eq(state.room.id, "center", "приёмная открылась до зачистки зала")
+
+	_walk(state, "west")
+	eq(state.room.id, "oil_baron", "проход к барону закрыт до зачистки зала")
+	check(not state.room_cleared(), "барон не встретил группу")
+	_walk(state, "east")
+	eq(state.room.id, "oil_baron", "из комнаты босса выпустили до зачистки")
+	_clear(state)
+	_walk(state, "east")
+	eq(state.room.id, "center", "зачистка не открыла выход из комнаты босса")
+	check(not state.room_cleared(), "зал зачистился, пока группа была у барона")
+	return true

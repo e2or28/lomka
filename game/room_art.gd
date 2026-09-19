@@ -28,10 +28,14 @@ static func draw(view: Node2D, room: Room, texture: Texture2D, origin: Vector2) 
 
 
 ## Проём открыт — зелёная стрелка наружу, закрыт — красная решётка.
+## Проход к боссу зачисткой не держится, поэтому створки считаются
+## по каждой двери отдельно, а не по одному состоянию комнаты.
 static func draw_doors(view: Node2D, room: Room, opened: bool, origin: Vector2, progress: float = 1.0) -> void:
-	var slide := smoothstep(0.0, 1.0, progress) if opened else 0.0
-	var color := Color(0.63, 0.86, 0.65) if opened else Color(0.9, 0.32, 0.25)
 	for direction in RoomMap.exits(room):
+		var free: bool = RoomMap.free_passage(room, direction)
+		var door_open: bool = opened or free
+		var slide := 1.0 if free else (smoothstep(0.0, 1.0, progress) if opened else 0.0)
+		var color := Color(0.63, 0.86, 0.65) if door_open else Color(0.9, 0.32, 0.25)
 		var normal: Vector2 = RoomMap.DIRECTIONS[direction]
 		var tangent := Vector2(-normal.y, normal.x)
 		var at := origin + RoomMap.door(room, direction) - normal * 5
@@ -41,7 +45,7 @@ static func draw_doors(view: Node2D, room: Room, opened: bool, origin: Vector2, 
 			for side in [-1, 1]:
 				view.draw_line(at + tangent * width * side * slide, at + tangent * width * side, color.darkened(0.5), 10)
 				view.draw_line(at + tangent * width * side * slide, at + tangent * width * side, color, 3)
-		if opened:
+		if door_open:
 			color.a = slide
 			var tip := at - normal * (14 + slide * 8)
 			view.draw_line(tip - normal * 12 - tangent * 9, tip, color, 3)

@@ -283,5 +283,13 @@ func _draw_map(viewport: Vector2) -> void:
 		if id != state.room.id and state.room_states.has(id): color = MUTED
 		draw_rect(Rect2(cell, Vector2(23, 20)), color)
 		if id in ["north", "oil_baron"]: _text(cell + Vector2(7, 15), "!", 14, INK)
-	_text(at + Vector2(12, 138), "Проходы открыты" if state.room_cleared() else "Зачисти комнату для выхода", 11, MINT if state.room_cleared() else ACCENT)
+	var cleared: bool = state.room_cleared()
+	var free := ""
+	for direction in RoomMap.exits(state.room):
+		if RoomMap.free_passage(state.room, direction):
+			free = RoomMap.LINKS[state.room.id][direction]
+	var hint := "Проходы открыты"
+	if not cleared:
+		hint = "Открыт: " + RoomMap.NAMES[free] if free != "" else "Зачисти комнату для выхода"
+	_text(at + Vector2(12, 138), hint, 11, MINT if cleared or free != "" else ACCENT)
 	_text(at + Vector2(12, 159), "↑ Главный зал" if state.room.id == "south" else "Иди к зелёной стрелке", 11, MUTED)
