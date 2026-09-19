@@ -136,9 +136,12 @@ const CHARACTERS := {"clerk": CLERK}
 ## снаряд, прошедший мимо зон, не считался попаданием в пустоту.
 const GUNSHIP := {
 	"id": "gunship", "name": "Вертушка", "behaviour": "gunship",
+	## range — топливо ракеты, а не дальность стрельбы: на 130 в секунду это
+	## восемь секунд погони, и манёвры их тратят. Прежние 3000 держали её
+	## в воздухе двадцать три секунды, и в комнате копился рой.
 	"base_stats": {"health": 260.0, "damage": 18.0, "move_speed": 90.0,
 		"acceleration": 260.0, "friction": 300.0, "projectile_speed": 130.0,
-		"range": 3000.0, "homing": 1.5},
+		"range": 1040.0, "homing": 1.5},
 	"radius": 70.0,
 	"hurtboxes": [Rect2(-233, -106, 424, 68), Rect2(-85, -148, 148, 47)],
 	"organ_drops": [], "zones": ["oil_baron"], "tier": 3,

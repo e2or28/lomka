@@ -190,3 +190,35 @@ func _test_barrel_takes_any_hit() -> bool:
 	almost_eq(float(record.base_stats.health), 1.0, "бочку стало нужно расстреливать")
 	almost_eq(float(record.base_stats.move_speed), 0.0, "бочка научилась ходить")
 	return true
+
+
+## Топливо кончается, и это видно: без срока ракета висела над комнатой
+## двадцать три секунды, а их в воздухе копилось по полдюжины.
+func _test_rocket_burns_out_and_leaves_a_flash() -> bool:
+	var state = _room()
+	var gunship = Encounter.add_enemy(state, "gunship", Vector2(0, Reinforcements.HOVER_Y))
+	var shot: Projectile = Projectile.spawn(state.take_id(), gunship, Vector2.UP,
+		gunship.stack.compute(), "rocket")
+	state.projectiles.append(shot)
+	var lifetime := 0
+	var flash := {}
+	for i in 900:
+		var events: Array = Tick.step(state, {0: Command.new()})
+		for event in events:
+			if event.type == "explosion": flash = event
+		if state.projectiles.is_empty(): break
+		lifetime = i + 1
+	check(state.projectiles.is_empty(), "ракета не кончилась за пятнадцать секунд")
+	check(lifetime <= 8 * 60, "ракета живёт дольше восьми секунд: %.1f с" % (lifetime / 60.0))
+	check(not flash.is_empty(), "догоревшая ракета исчезла без вспышки")
+
+	var player = state.actor_of_slot(0)
+	var health: float = player.health
+	var near: Projectile = Projectile.spawn(state.take_id(), gunship, Vector2.UP,
+		gunship.stack.compute(), "rocket")
+	near.position = player.position + Vector2(40, 0)
+	near.travelled = near.total_range()
+	state.projectiles.append(near)
+	Tick.step(state, {0: Command.new()})
+	almost_eq(player.health, health, "вспышка догоревшей ракеты нанесла урон")
+	return true

@@ -301,6 +301,11 @@ static func _fly_projectiles(state: RunState, events: Array[Dictionary]) -> void
 		projectile.position = destination
 		if not spent and flight["flying"]:
 			surviving.append(projectile)
+		elif not spent and projectile.kind == "rocket":
+			# Ракета, ушедшая в стену или выжегшая топливо, гаснет вспышкой:
+			# без неё она просто растворялась в воздухе посреди комнаты.
+			events.append({"type": "explosion", "position": projectile.position + projectile.flight_offset(),
+				"radius": GuardAttacks.ROCKET_BLAST})
 	state.projectiles = surviving
 
 

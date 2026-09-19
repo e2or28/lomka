@@ -6,6 +6,8 @@ const ShotGeometry = preload("res://sim/shot_geometry.gd")
 ## здесь была и убрана: снаряд, шлёпающийся на пол, обрывал атаку там, где
 ## игрок ждал продолжения.
 
+## Доля топлива, на которой работает наведение.
+const HOMING_SHARE := 0.5
 
 var id: int = 0
 
@@ -71,6 +73,11 @@ static func spawn(p_id: int, owner, direction: Vector2, stats: Dictionary,
 ## случайности здесь нет, иначе поток сместился бы и забег разошёлся.
 func steer(target: Vector2, delta: float) -> void:
 	if homing <= 0.0 or velocity == Vector2.ZERO:
+		return
+	# Наведение живёт первую половину топлива. Дальше ракета идёт прямо и
+	# врезается: радиус её разворота — 87 пикселей, и промахнувшаяся ракета
+	# наматывала круги вокруг цели до самого конца пути.
+	if total_range() > 0.0 and travelled > total_range() * HOMING_SHARE:
 		return
 	var wanted := target - position
 	if wanted == Vector2.ZERO:

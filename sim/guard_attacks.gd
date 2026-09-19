@@ -10,10 +10,14 @@ const PROFILES := {
 	"rifleman": {"windup": 36, "recovery": 1.4, "distance": 360.0,
 		"kind": "rifle_bullet", "angles": [0.0]},
 	"baton": {"windup": 36, "recovery": 1.1, "distance": 76.0},
-	"gunship": {"windup": 54, "recovery": 2.8, "distance": 2000.0,
+	"gunship": {"windup": 54, "recovery": 2.8, "distance": 1000.0,
 		"kind": "rocket", "angles": [0.0]},
 }
 const ROCKET_RADIUS := 12.0
+
+## Вспышка догоревшей ракеты: меньше бочки, урона не наносит — топливо
+## кончилось, а не сдетонировала боевая часть.
+const ROCKET_BLAST := 90.0
 const MELEE_REACH := 90.0
 const MELEE_HALF_ANGLE := PI / 3.0
 
