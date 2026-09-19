@@ -40,7 +40,7 @@ func _initialize() -> void:
 		if file.ends_with(".png"):
 			gallery.textures[file.get_basename()] = art.get_texture(file.get_basename())
 	var player := gallery.state.actor_of_slot(0)
-	player.position = Vector2(100, 190)
+	player.position = Vector2(100, 215)
 	gallery.labels[player.id] = "clerk"
 	for i in 3:
 		var id: String = ["test_monster", "runner", "heavy"][i]

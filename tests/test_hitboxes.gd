@@ -176,9 +176,27 @@ func _test_visible_enemy_shot_crossing_the_player_body_hits() -> bool:
 	return true
 
 
-## Прощение жанра: над плечами и мимо боков зона кончается раньше рисунка.
+## Выстрел в голову засчитывается: пуля, прошедшая по лицу, пролетала мимо,
+## пока зона кончалась на плечах.
+func _test_shot_through_the_players_head_hits() -> bool:
+	for aim in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		var state := Arena.duel("player-head", "soldier", Vector2(240, 0))
+		var player := state.actor_of_slot(0)
+		var shot: Projectile = Projectile.spawn(state.take_id(), Arena.enemies(state)[0], aim,
+			{"damage": 8.0, "projectile_speed": 12000.0, "range": 1500.0}, "rifle_bullet")
+		var center: Vector2 = player.position + Vector2(0, -134)
+		var events: Array[Dictionary] = []
+		var health := player.health
+		check(Tick._hit_segment(state, shot, center - aim * 200 - shot.flight_offset(),
+				center + aim * 200 - shot.flight_offset(), events) and player.health < health,
+			"пуля прошла через голову: " + str(aim))
+	return true
+
+
+## Прощение жанра: над макушкой и мимо боков зона кончается раньше рисунка.
 func _test_shots_past_the_player_silhouette_miss() -> bool:
-	for probe in [{"at": Vector2(0, -150), "aim": Vector2.LEFT},
+	for probe in [{"at": Vector2(0, -170), "aim": Vector2.LEFT},
+			{"at": Vector2(30, -134), "aim": Vector2.DOWN},
 			{"at": Vector2(40, -60), "aim": Vector2.DOWN},
 			{"at": Vector2(-40, -60), "aim": Vector2.DOWN}]:
 		var state := Arena.duel("player-edges", "soldier", Vector2(240, 0))
@@ -198,20 +216,21 @@ func _test_shots_past_the_player_silhouette_miss() -> bool:
 func _test_player_zone_is_narrower_than_the_drawing() -> bool:
 	var state := Arena.solo("player-width")
 	var boxes := Hitboxes.rectangles(state.actor_of_slot(0))
-	eq(boxes.size(), 1, "зона урона игрока пропала или размножилась")
+	eq(boxes.size(), 2, "зоны урона игрока пропали или размножились")
 
 	var image := Image.new()
 	eq(image.load("res://art/player.png"), OK, "нет анфасной стойки")
-	# Пояс на кадре: якорь character_root (64, 174) минус высота зоны.
-	var row: int = 174 - 60
-	var left := 0
-	var right := 0
-	for x in image.get_width():
-		if image.get_pixel(x, row).a > 0.06:
-			if left == 0: left = x
-			right = x
-	check(boxes[0].size.x < float(right - left + 1),
-		"зона шире рисунка: %d против %d" % [int(boxes[0].size.x), right - left + 1])
+	# Пояс и лицо на кадре: якорь character_root (64, 174) минус высота.
+	for probe in [{"row": 60, "box": 0}, {"row": 134, "box": 1}]:
+		var left := 0
+		var right := 0
+		for x in image.get_width():
+			if image.get_pixel(x, 174 - int(probe["row"])).a > 0.06:
+				if left == 0: left = x
+				right = x
+		var rect: Rect2 = boxes[int(probe["box"])]
+		check(rect.size.x < float(right - left + 1),
+			"зона шире рисунка на высоте %d: %d против %d" % [probe["row"], int(rect.size.x), right - left + 1])
 	return true
 
 
