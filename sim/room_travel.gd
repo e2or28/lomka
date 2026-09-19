@@ -34,7 +34,11 @@ static func advance(state: RunState, commands: Dictionary) -> void:
 			if move.dot(outward) < 0.5: continue
 			var offset: Vector2 = actor.position - RoomMap.door(state.room, direction)
 			var across := absf(offset.cross(outward))
-			if absf(offset.dot(outward)) <= actor.radius + 3.0 and across <= RoomMap.half_width(direction) - actor.radius:
+			# Окно — весь проём по ширине и вся ниша по глубине. Боковой
+			# проём утоплен за косяки на 42 пикселя (blockers в room_map):
+			# тело, идущее вдоль их выступов, стоит в 58 от линии двери и
+			# при прежнем допуске в три пикселя проезжало нишу мимо.
+			if absf(offset.dot(outward)) <= actor.radius + 46.0 and across <= RoomMap.half_width(direction):
 				_enter(state, direction)
 				return
 

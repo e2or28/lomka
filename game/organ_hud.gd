@@ -1,6 +1,7 @@
 extends Control
 
 const RoomMap = preload("res://sim/room_map.gd")
+const ARROWS := {"north": "↑", "south": "↓", "west": "←", "east": "→"}
 const RunState = preload("res://sim/run_state.gd")
 const Organs = preload("res://sim/organs.gd")
 const Schemas = preload("res://sim/data/schemas.gd")
@@ -287,9 +288,9 @@ func _draw_map(viewport: Vector2) -> void:
 	var free := ""
 	for direction in RoomMap.exits(state.room):
 		if RoomMap.free_passage(state.room, direction):
-			free = RoomMap.LINKS[state.room.id][direction]
+			free = "%s %s" % [ARROWS[direction], RoomMap.NAMES[RoomMap.LINKS[state.room.id][direction]]]
 	var hint := "Проходы открыты"
 	if not cleared:
-		hint = "Открыт: " + RoomMap.NAMES[free] if free != "" else "Зачисти комнату для выхода"
+		hint = free if free != "" else "Зачисти комнату для выхода"
 	_text(at + Vector2(12, 138), hint, 11, MINT if cleared or free != "" else ACCENT)
 	_text(at + Vector2(12, 159), "↑ Главный зал" if state.room.id == "south" else "Иди к зелёной стрелке", 11, MUTED)

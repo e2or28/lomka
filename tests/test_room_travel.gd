@@ -168,3 +168,23 @@ func _test_boss_room_opens_without_clearing_the_hall() -> bool:
 	eq(state.room.id, "center", "зачистка не открыла выход из комнаты босса")
 	check(not state.room_cleared(), "зал зачистился, пока группа была у барона")
 	return true
+
+
+## Вход считается по всему проёму и с подхода, а не из одной точки:
+## прежние ±24 при трёх пикселях допуска у стены заставляли искать
+## середину двери вслепую, ведя тело вдоль стены.
+func _test_doorway_accepts_the_whole_opening() -> bool:
+	var half: float = Map.half_width("west")
+	for across in [-half + 2.0, 0.0, half - 2.0]:
+		var state = Encounter.dev_room("проём", 1, 0, Map.make("center"))
+		var actor = state.actor_of_slot(0)
+		actor.position = Map.door(state.room, "west") + Vector2(actor.radius + 20.0, across)
+		Travel.advance(state, {0: Command.from_axes(state.tick, Vector2.LEFT, Vector2.ZERO)})
+		eq(state.room.id, "oil_baron", "проём не пустил со смещением %.0f" % across)
+
+	var missed = Encounter.dev_room("мимо", 1, 0, Map.make("center"))
+	var body = missed.actor_of_slot(0)
+	body.position = Map.door(missed.room, "west") + Vector2(body.radius + 20.0, half + 30.0)
+	Travel.advance(missed, {0: Command.from_axes(missed.tick, Vector2.LEFT, Vector2.ZERO)})
+	eq(missed.room.id, "center", "стена рядом с проёмом выпустила наружу")
+	return true
